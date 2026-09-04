@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ff4fc3">
+  <title>EvoSQL · 可进化多智能体 Text2SQL</title>
+  <meta name="description" content="EvoSQL 多智能体 Text2SQL 问答、知识、评测与受控自进化控制台">
+  <link rel="stylesheet" href="/assets/app.css?v=20260904.pink2">
+</head>
+<body>
+  <div class="app-shell text2sql-shell">
+    <aside class="sidebar" aria-label="Text2SQL 主导航">
+      <a class="brand" href="#query" aria-label="EvoSQL 首页">
+        <span class="brand-mark" aria-hidden="true">E</span>
+        <span class="brand-copy">EvoSQL<small>EVOLVING TEXT2SQL</small></span>
+      </a>
+
+      <nav class="nav-list">
+        <button class="nav-item active" data-view="query" data-icon="SQL"><span>问答工作台</span></button>
+        <button class="nav-item" data-view="trace" data-icon="TR"><span>运行轨迹</span></button>
+        <button class="nav-item" data-view="data" data-icon="DB"><span>数据与知识</span></button>
+        <button class="nav-item" data-view="skills" data-icon="SK"><span>Skills</span></button>
+        <button class="nav-item" data-view="evaluation" data-icon="QA"><span>评测与审核</span></button>
+        <button class="nav-item" data-view="evolution" data-icon="EV"><span>自进化中心</span></button>
+      </nav>
+
+      <div class="sidebar-foot">
+        <span class="live-dot" aria-hidden="true"></span>
+        <span><small>系统状态</small><b id="system-status">正在连接服务</b></span>
+      </div>
+    </aside>
+
+    <main>
+      <header class="topbar">
+        <div>
+          <p class="topbar-kicker" id="page-kicker">TEXT2SQL WORKSPACE</p>
+          <h1 id="page-title">问答工作台</h1>
+        </div>
+        <div class="top-actions">
+          <span class="model-chip" id="top-model">模型状态读取中</span>
+          <button class="refresh-button" id="refresh" type="button">刷新</button>
+          <span class="avatar" aria-label="本地只读工作区">SQL</span>
+        </div>
+      </header>
+
+      <section class="view active" id="view-query" aria-labelledby="page-title">
+        <div class="text2sql-hero query-hero">
+          <div class="text2sql-intro">
+            <p class="eyebrow">MULTI-AGENT · GROUNDED · READ-ONLY</p>
+            <h2>把业务问题，<br><em>变成可信 SQL。</em></h2>
+            <p>Leader 先结合会话记忆判断独立查询、追问修改或上次结果问答；需要查库时并行调度 Grounding 与 Strategy，再由 Critic 盲审、Harness 执行只读门禁。</p>
+          </div>
+          <div class="text2sql-runtime">
+            <span class="status status-neutral" id="text2sql-ready"><i></i>正在读取状态</span>
+            <strong id="text2sql-model">模型状态加载中</strong>
+            <small id="text2sql-runtime-note">数据库与知识版本正在校验</small>
+          </div>
+        </div>
+
+        <form id="text2sql-form" class="text2sql-composer panel">
+          <div class="composer-heading">
+            <div><p class="eyebrow">ASK YOUR DATABASE</p><h3>向数据库提问</h3></div>
+            <span>Enter 发送 · Shift + Enter 换行</span>
+          </div>
+          <div class="text2sql-input-row">
+            <textarea id="text2sql-question" name="question" rows="3" maxlength="2000" required placeholder="例如：强烈岩爆案例有多少个？"></textarea>
+            <button class="button text2sql-submit" type="submit">发送问题</button>
+          </div>
+          <div class="text2sql-examples" aria-label="示例问题">
+            <span>示例问题</span>
+            <button type="button" data-sql-question="强烈岩爆案例有多少个？">强烈岩爆案例数量</button>
+            <button type="button" data-sql-question="按岩爆等级统计案例数量，并按数量从高到低排列。">岩爆等级分布</button>
+            <button type="button" data-sql-question="查询累计事件数量非空的最大值。">最大累计事件数</button>
+          </div>
+          <p class="text2sql-form-note" id="text2sql-form-note">正在读取运行配置。</p>
+        </form>
+
+        <div class="text2sql-status-grid" id="text2sql-status-grid" aria-live="polite">
+          <article class="panel text2sql-status-card loading"></article>
+          <article class="panel text2sql-status-card loading"></article>
+          <article class="panel text2sql-status-card loading"></article>
+          <article class="panel text2sql-status-card loading"></article>
+        </div>
+
+        <div class="text2sql-result-layout hidden" id="text2sql-result" aria-live="polite">
+          <div class="text2sql-main-result">
+            <article class="panel answer-panel">
+              <div class="panel-head">
+                <div><p class="eyebrow">ANSWER</p><h3>数据库回答</h3></div>
+                <span class="status status-neutral" id="text2sql-gate-status">等待执行</span>
+              </div>
+              <div class="answer-value" id="text2sql-answer-summary">--</div>
+              <div class="answer-meta" id="text2sql-answer-meta"></div>
+            </article>
+            <article class="panel query-feedback-panel" id="query-feedback-panel">
+              <div class="panel-head">
+                <div><p class="eyebrow">HUMAN FEEDBACK</p><h3>这次回答正确吗？</h3></div>
+                <span class="status status-neutral" id="query-feedback-status">等待反馈</span>
+              </div>
+              <div class="query-feedback-actions">
+                <button class="button feedback-correct" id="feedback-correct" type="button">结果正确</button>
+                <button class="copy-button" id="feedback-incorrect" type="button">结果或 SQL 错误</button>
+              </div>
+              <div class="feedback-correction hidden" id="feedback-correction">
+                <label>正确 SQL（可选）
+                  <textarea id="feedback-corrected-sql" rows="4" placeholder="如果你知道正确 SQL，可以提交为待审核经验"></textarea>
+                </label>
+                <label>问题说明
+                  <input id="feedback-note" maxlength="2000" placeholder="说明结果哪里不符合预期">
+                </label>
+                <button class="button" id="feedback-submit-incorrect" type="button">提交错误反馈</button>
+              </div>
+              <p class="feedback-note">反馈只会生成候选经验；未经人工审核和离线重建，不会进入 Vanna 稳定索引。</p>
+            </article>
+            <article class="panel">
+              <div class="panel-head">
+                <div><p class="eyebrow">FINAL SQL</p><h3>最终执行语句</h3></div>
+                <button class="copy-button" id="copy-sql" type="button">复制 SQL</button>
+              </div>
+              <pre class="text2sql-sql" id="text2sql-final-sql">--</pre>
+            </article>
+            <article class="panel">
+              <div class="panel-head">
+                <div><p class="eyebrow">RESULT SET</p><h3>结果明细</h3></div>
+                <span class="muted" id="text2sql-row-count">0 行</span>
+              </div>
+              <div class="text2sql-table-wrap" id="text2sql-answer"></div>
+            </article>
+          </div>
+          <aside class="panel text2sql-agent-panel">
+            <div class="panel-head">
+              <div><p class="eyebrow">AGENT TRACE</p><h3>多智能体协作</h3></div>
+              <span class="muted" id="text2sql-usage">--</span>
+            </div>
+            <div class="text2sql-agent-trace" id="text2sql-agent-trace"></div>
+            <div class="version-pins" id="result-version-pins"></div>
+          </aside>
+        </div>
+
+        <section class="session-section hidden" id="session-section">
+          <div class="section-heading inline">
+            <div><p class="eyebrow">CURRENT SESSION</p><h2>本次会话记录</h2></div>
+            <span class="muted">QueryRun 已按当前会话写入本地记忆</span>
+          </div>
+          <div class="session-list" id="session-list"></div>
+        </section>
+      </section>
+
+      <section class="view" id="view-trace" aria-labelledby="page-title">
+        <div class="section-heading page-heading">
+          <div><p class="eyebrow">EXECUTION TRACE</p><h2>运行轨迹</h2><p>复盘最近一次次 Text2SQL 问答中的 SQL 门禁、Agent 协作、耗时与版本固定信息。</p></div>
+        </div>
+        <div class="module-stats" id="trace-stats"></div>
+        <div class="trace-layout">
+          <article class="panel trace-list-panel">
+            <div class="panel-head"><div><p class="eyebrow">RECENT RUNS</p><h3>最近查询</h3></div><span class="muted">本地持久化 · 最近 50 条</span></div>
+            <div class="trace-list" id="trace-list"><div class="empty-state"><span>还没有运行轨迹</span></div></div>
+          </article>
+          <article class="panel trace-detail-panel" id="trace-detail">
+            <div class="empty-state"><span><b>选择一条轨迹</b>这里会显示 SQL、门禁结果和四角色执行过程。</span></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="view" id="view-data" aria-labelledby="page-title">
+        <div class="section-heading page-heading">
+          <div><p class="eyebrow">DATABASE & KNOWLEDGE</p><h2>数据与知识</h2><p>查看只读数据库快照、Wiki 知识索引与候选知识隔离状态。</p></div>
+        </div>
+        <div class="module-stats" id="data-status-grid"></div>
+        <div class="module-grid two-column">
+          <article class="panel module-panel">
+            <div class="panel-head"><div><p class="eyebrow">DATABASE SNAPSHOT</p><h3>SQLite 数据库</h3></div><span class="status status-online"><i></i>只读</span></div>
+            <div class="detail-list" id="database-detail"></div>
+          </article>
+          <article class="panel module-panel">
+            <div class="panel-head"><div><p class="eyebrow">KNOWLEDGE INDEX</p><h3>Wiki 与结构化知识</h3></div><span class="status status-neutral" id="knowledge-state">加载中</span></div>
+            <div class="knowledge-bars" id="knowledge-bars"></div>
+          </article>
+          <article class="panel module-panel">
+            <div class="panel-head"><div><p class="eyebrow">VECTOR RETRIEVER</p><h3>Vanna / Chroma</h3></div><span class="status status-neutral" id="vanna-state">加载中</span></div>
+            <div class="detail-list" id="vanna-detail"></div>
+            <p class="feedback-note">只开放 DDL、文档与审核 Question-SQL 检索；生成和 SQL 执行接口永久关闭。</p>
+          </article>
+        </div>
+        <article class="panel guardrail-panel">
+          <div><p class="eyebrow">DATA BOUNDARY</p><h3>数据边界</h3></div>
+          <div class="guardrail-grid">
+            <div><b>01</b><strong>云端推理</strong><span>发送问题、必要 Schema / 知识，以及结果追问所需的有限 QueryRun 快照</span></div>
+            <div><b>02</b><strong>本地执行</strong><span>SQLite 文件不上传，SQL 只在本机执行</span></div>
+            <div><b>03</b><strong>确定性门禁</strong><span>AST 白名单、EXPLAIN、超时和行数限制</span></div>
+          </div>
+        </article>
+      </section>
+
+      <section class="view" id="view-skills" aria-labelledby="page-title">
+        <div class="section-heading page-heading">
+          <div><p class="eyebrow">TEXT2SQL SKILLS</p><h2>Skills</h2><p>四个角色 Skill 共同组成 Text2SQL 多智能体协议；新的 Skill 修改先进入候选区，不会直接覆盖稳定策略。</p></div>
+        </div>
+        <div class="module-stats" id="skill-stats"></div>
+        <div class="skill-catalog" id="text2sql-skill-list"></div>
+        <div class="module-grid two-column skill-submit-layout">
+          <article class="panel module-panel">
+            <div class="panel-head"><div><p class="eyebrow">SUBMIT CANDIDATE</p><h3>提交候选 Skill</h3></div><span class="status status-neutral">候选隔离</span></div>
+            <form id="skill-submit-form" class="skill-submit-form">
+              <label>目标 Skill
+                <select id="skill-role" name="skill_name" required>
+                  <option value="text2sql-lead">text2sql-lead</option>
+                  <option value="schema-grounding">schema-grounding</option>
+                  <option value="sql-strategy" selected>sql-strategy</option>
+                  <option value="text2sql-critic">text2sql-critic</option>
+                </select>
+              </label>
+              <label>新增或修改的指令
+                <textarea id="skill-instructions" name="prompt_fragment" rows="7" maxlength="4000" required placeholder="例如：聚合前必须先明确结果粒度，并检查 Join 是否造成重复计数。"></textarea>
+              </label>
+              <label>修改原因
+                <input id="skill-reason" name="change_reason" maxlength="2000" required placeholder="说明要解决的 Text2SQL 失败模式">
+              </label>
+              <div class="skill-submit-footer">
+                <small>提交后状态为 Candidate，仍需 Validation、Sealed Holdout、Shadow、Canary 与人工确认。</small>
+                <button class="button" type="submit">提交候选 Skill</button>
+              </div>
+            </form>
+          </article>
+          <article class="panel module-panel">
+            <div class="panel-head"><div><p class="eyebrow">CANDIDATE QUEUE</p><h3>候选队列</h3></div><button class="copy-button" id="refresh-skills" type="button">刷新</button></div>
+            <div id="skill-candidates" class="candidate-list"></div>
+            <div id="skill-submit-result" class="skill-submit-result hidden" aria-live="polite"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="view" id="view-evaluation" aria-labelledby="page-title">
+        <div class="section-heading page-heading">
+          <div><p class="eyebrow">EVALUATION & REVIEW</p><h2>评测与人工审核</h2><p>固定数据快照、隔离 Holdout，并用签名证书证明评测集审核状态。</p></div>
+        </div>
+        <div class="evaluation-banner panel" id="evaluation-banner"></div>
+        <div class="split-grid" id="dataset-splits"></div>
+        <div class="module-grid two-column">
+          <article class="panel module-panel">
+            <div class="panel-head"><div><p class="eyebrow">REVIEW CERTIFICATE</p><h3>审核证书</h3></div></div>
+            <div class="detail-list" id="certificate-detail"></div>
+          </article>
+          <article class="panel module-panel">
+            <div class="panel-head"><div><p class="eyebrow">RELEASE RULE</p><h3>发布约束</h3></div></div>
+            <ul class="release-rules">
+              <li>Validation 与密封 Holdout 分离评测</li>
+              <li>240 条样本必须全部具备人工审核证据</li>
+              <li>候选策略不允许直接替换稳定版本</li>
+              <li>指标门禁、Shadow、Canary 与人工确认逐级放行</li>
+            </ul>
+          </article>
+        </div>
+        <article class="panel module-panel experience-review-panel">
+          <div class="panel-head"><div><p class="eyebrow">EXPERIENCE REVIEW</p><h3>Question-SQL 候选经验</h3></div><button class="copy-button" id="refresh-experiences" type="button">刷新</button></div>
+          <div class="candidate-list" id="experience-list"><div class="empty-state compact"><span>正在读取候选经验</span></div></div>
+        </article>
+      </section>
+
+      <section class="view" id="view-evolution" aria-labelledby="page-title">
+        <div class="section-heading page-heading">
+          <div><p class="eyebrow">SELF-EVOLUTION</p><h2>自进化中心</h2><p>失败案例进入候选记忆和策略评测，只有通过离线与在线门禁后才可发布。</p></div>
+        </div>
+        <div class="evolution-flow panel">
+          <div><b>01</b><strong>真实问答</strong><span>记录 SQL 门禁与执行结果</span></div><i></i>
+          <div><b>02</b><strong>失败归因</strong><span>沉淀候选记忆与策略修改</span></div><i></i>
+          <div><b>03</b><strong>离线评测</strong><span>Validation + Sealed Holdout</span></div><i></i>
+          <div><b>04</b><strong>灰度发布</strong><span>Shadow → Canary → 人工激活</span></div>
+        </div>
+        <div class="module-stats" id="evolution-stats"></div>
+        <div class="module-grid two-column">
+          <article class="panel module-panel">
+            <div class="panel-head"><div><p class="eyebrow">ACTIVE VERSION</p><h3>当前稳定版本</h3></div><span class="status status-online"><i></i>生效中</span></div>
+            <div class="detail-list" id="evolution-detail"></div>
+          </article>
+          <article class="panel module-panel">
+            <div class="panel-head"><div><p class="eyebrow">AGENT TOPOLOGY</p><h3>四角色协议</h3></div></div>
+            <div class="role-grid" id="agent-role-grid"></div>
+          </article>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="/assets/app.js?v=20260904.2"></script>
+</body>
+</html>

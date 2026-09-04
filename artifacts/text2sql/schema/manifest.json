@@ -1,0 +1,9 @@
+{
+  "contract_version": 1,
+  "database_snapshot_id": "dbs_57a4a4c99520477b1c8e",
+  "files": {
+    "database_snapshot.json": "a8b58e86e084ff81403b87c6e13021b7c25f7cdc7f3392b70de1377735f7929a",
+    "join_candidates.json": "ba48713eed7298e699940368daf965ccd3f47a102db4b529491c7809ad523886",
+    "join_catalog.review.json": "ec58732fc0d535c970ee49c65f7fdaca9f2e1d417f0394e6d6e179fde43bbabf"
+  }
+}

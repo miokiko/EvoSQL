@@ -1,0 +1,9 @@
+psycopg[binary]>=3.1,<4
+redis>=5,<7
+PyJWT[crypto]>=2.8,<3
+opentelemetry-sdk>=1.24,<2
+opentelemetry-exporter-otlp-proto-http>=1.24,<2
+PyYAML>=5.4,<7
+mysql-connector-python>=9,<10
+sqlglot>=26,<31
+vanna[chromadb]==2.0.2

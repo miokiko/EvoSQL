@@ -1,0 +1,38 @@
+__pycache__/
+*.py[cod]
+.venv/
+.idea/
+.DS_Store
+.pytest_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+*.db
+*.sqlite3
+*.db-wal
+*.db-shm
+*.sqlite3-wal
+*.sqlite3-shm
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.log
+*.pid
+database/*.local.sql
+
+# Local legacy resume notes are superseded by the EvoSQL guides.
+导学-EvoAgent.md
+面经-EvoAgent.md
+
+# Keep compact, reviewable evaluation reports; omit resumable runtime journals.
+artifacts/text2sql/evaluation/*.checkpoint.jsonl
+artifacts/text2sql/evaluation/*recovery*.json
+
+# Vanna/Chroma indexes are reproducible binary build outputs. Keep manifests only.
+artifacts/text2sql/vanna/**/*
+!artifacts/text2sql/vanna/**/
+!artifacts/text2sql/vanna/**/manifest.json

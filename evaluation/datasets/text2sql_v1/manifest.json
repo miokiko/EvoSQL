@@ -1,0 +1,41 @@
+{
+  "contract_version": 1,
+  "dataset_id": "text2sql-eval-v1-661d4c396c97a3d4",
+  "dataset_sha256": "661d4c396c97a3d4f93fea820c5d1544d71a55f9d663168f98cd6289bfc10fa6",
+  "database_snapshot_id": "dbs_57a4a4c99520477b1c8e",
+  "source": "original deterministic generation from the copied database snapshot only",
+  "review_status": "human_reviewed",
+  "human_reviewed_cases": 240,
+  "release_eligible": true,
+  "category_counts": {
+    "projection_filter": 40,
+    "count_group": 40,
+    "aggregate_topk": 40,
+    "null_existence": 40,
+    "join": 50,
+    "composite_subquery": 30
+  },
+  "files": {
+    "train": {
+      "path": "train.jsonl",
+      "case_count": 144,
+      "sha256": "20fd4cfb14c2868e91f2f079fd9abfa0023d214f9b2151a1f7353941811d19e0"
+    },
+    "validation": {
+      "path": "validation.jsonl",
+      "case_count": 48,
+      "sha256": "16bab9e706f339db6dd4d2fbbdb1052b430a3e776bf9950be64b25ff5f79c902"
+    },
+    "sealed_holdout": {
+      "path": "sealed_holdout.jsonl",
+      "case_count": 48,
+      "sha256": "98b407d6225f5359555ff66a8d2c7470d7c9f074e2ebc473fedc2903296b648c"
+    }
+  },
+  "split_policy": "SQL skeleton grouped 60/20/20; Gold never enters agent input",
+  "review_certificate": {
+    "path": "review_certificate.json",
+    "sha256": "a6dfe561ababf2bf950a849daa8e9fe17f9bc4f352038aa57482545d03742e8f",
+    "key_id": "dce8c8caa35566bd8234"
+  }
+}

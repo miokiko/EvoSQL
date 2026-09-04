@@ -1,0 +1,6021 @@
+{
+  "contract_version": 1,
+  "snapshot_id": "dbs_57a4a4c99520477b1c8e",
+  "database": "evo_text2sql_eval",
+  "source": {
+    "kind": "mysql_dump",
+    "path": "/Users/tyl/Desktop/EvoAgent-Text2SQL/database/test1_full_20241118.sql",
+    "dump_sha256": "f4fff88ef9ba98c368bbe2d9f7daf34d9e943c22a1d344596e4c604bc1ad39c3"
+  },
+  "generated_at": "2026-09-03T06:28:47.821482+00:00",
+  "schema_fingerprint": "087f9f3989e917c93e43ed598fc9eed49203575fb62a6fe2bff12f0f705abbe4",
+  "profile_fingerprint": "f715787769d3271bb2ecf89ac4ae09063ff514cb620c026855a394e79b5aea68",
+  "table_count": 20,
+  "row_count": 562,
+  "tables": [
+    {
+      "name": "gale_casefile",
+      "engine": "InnoDB",
+      "collation": "utf8mb4_0900_ai_ci",
+      "comment": "",
+      "primary_key": [],
+      "indexes": [],
+      "foreign_keys": [],
+      "columns": [
+        {
+          "name": "列 0",
+          "ordinal": 1,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "参数0",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "列 1",
+          "ordinal": 2,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "参数1",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "列 2",
+          "ordinal": 3,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "参数2",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "列 3",
+          "ordinal": 4,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "参数3",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "列 4",
+          "ordinal": 5,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "参数4",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "列 5",
+          "ordinal": 6,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "参数5",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "列 6",
+          "ordinal": 7,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "参数6",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        }
+      ],
+      "row_count": 0
+    },
+    {
+      "name": "t_activeevent",
+      "engine": "InnoDB",
+      "collation": "utf8mb4_unicode_ci",
+      "comment": "",
+      "primary_key": [
+        "i_serialid"
+      ],
+      "indexes": [],
+      "foreign_keys": [],
+      "columns": [
+        {
+          "name": "i_serialid",
+          "ordinal": 1,
+          "data_type": "int",
+          "column_type": "int",
+          "nullable": false,
+          "default": null,
+          "auto_increment": true,
+          "comment": "序号",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "i_timeId",
+          "ordinal": 2,
+          "data_type": "bigint",
+          "column_type": "bigint",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "时间编号",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_rockEnergy",
+          "ordinal": 3,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "岩体能量",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_time",
+          "ordinal": 4,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "发生时间",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_mark",
+          "ordinal": 5,
+          "data_type": "char",
+          "column_type": "char(1)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "标记信息",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_remark",
+          "ordinal": 6,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "备注信息",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        }
+      ],
+      "row_count": 0
+    },
+    {
+      "name": "t_activeinfo",
+      "engine": "InnoDB",
+      "collation": "utf8mb4_0900_ai_ci",
+      "comment": "",
+      "primary_key": [],
+      "indexes": [],
+      "foreign_keys": [],
+      "columns": [
+        {
+          "name": "d_sumEvent",
+          "ordinal": 1,
+          "data_type": "decimal",
+          "column_type": "decimal(8, 2)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "累计事件数量",
+          "profile": {
+            "null_count": 25,
+            "null_ratio": 0.675676,
+            "distinct_count": 6,
+            "max_length": 6,
+            "low_cardinality_values": [
+              "0.00",
+              "19.00",
+              "244.00",
+              "344.00",
+              "379.00",
+              "417.00"
+            ],
+            "min": "0.00",
+            "max": "417.00"
+          }
+        },
+        {
+          "name": "d_sumLogarithm",
+          "ordinal": 2,
+          "data_type": "decimal",
+          "column_type": "decimal(8, 2)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "累计对数值",
+          "profile": {
+            "null_count": 27,
+            "null_ratio": 0.72973,
+            "distinct_count": 4,
+            "max_length": 4,
+            "low_cardinality_values": [
+              "4.70",
+              "4.88",
+              "4.97",
+              "7.13"
+            ],
+            "min": "4.70",
+            "max": "7.13"
+          }
+        },
+        {
+          "name": "c_sumBulk",
+          "ordinal": 3,
+          "data_type": "decimal",
+          "column_type": "decimal(8, 2)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "累计体积",
+          "profile": {
+            "null_count": 27,
+            "null_ratio": 0.72973,
+            "distinct_count": 4,
+            "max_length": 9,
+            "low_cardinality_values": [
+              "193000.00",
+              "6.13",
+              "6.18",
+              "6.60"
+            ],
+            "min": "6.13",
+            "max": "193000.00"
+          }
+        },
+        {
+          "name": "d_sumEventRate",
+          "ordinal": 4,
+          "data_type": "decimal",
+          "column_type": "decimal(8, 2)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "累计事件增速",
+          "profile": {
+            "null_count": 27,
+            "null_ratio": 0.72973,
+            "distinct_count": 5,
+            "max_length": 5,
+            "low_cardinality_values": [
+              "19.00",
+              "23.16",
+              "28.70",
+              "40.70",
+              "44.00"
+            ],
+            "min": "19.00",
+            "max": "44.00"
+          }
+        },
+        {
+          "name": "d_sumLogarithmRate",
+          "ordinal": 5,
+          "data_type": "decimal",
+          "column_type": "decimal(8, 2)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "累计对数增速",
+          "profile": {
+            "null_count": 27,
+            "null_ratio": 0.72973,
+            "distinct_count": 5,
+            "max_length": 4,
+            "low_cardinality_values": [
+              "3.52",
+              "3.95",
+              "4.97",
+              "6.12",
+              "6.19"
+            ],
+            "min": "3.52",
+            "max": "6.19"
+          }
+        },
+        {
+          "name": "d_sumBulkRate",
+          "ordinal": 6,
+          "data_type": "decimal",
+          "column_type": "decimal(8, 2)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "累计体积增速",
+          "profile": {
+            "null_count": 27,
+            "null_ratio": 0.72973,
+            "distinct_count": 5,
+            "max_length": 9,
+            "low_cardinality_values": [
+              "193000.00",
+              "4.96",
+              "5.20",
+              "5.23",
+              "5.58"
+            ],
+            "min": "4.96",
+            "max": "193000.00"
+          }
+        },
+        {
+          "name": "d_event",
+          "ordinal": 7,
+          "data_type": "decimal",
+          "column_type": "decimal(8, 2)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "当前事件数量",
+          "profile": {
+            "null_count": 37,
+            "null_ratio": 1.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "d_logarithm",
+          "ordinal": 8,
+          "data_type": "decimal",
+          "column_type": "decimal(8, 2)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "当前对数值",
+          "profile": {
+            "null_count": 37,
+            "null_ratio": 1.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "d_bulk",
+          "ordinal": 9,
+          "data_type": "decimal",
+          "column_type": "decimal(8, 2)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "当前体积",
+          "profile": {
+            "null_count": 37,
+            "null_ratio": 1.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "d_fate",
+          "ordinal": 10,
+          "data_type": "decimal",
+          "column_type": "decimal(8, 2)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "事件命运值",
+          "profile": {
+            "null_count": 27,
+            "null_ratio": 0.72973,
+            "distinct_count": 5,
+            "max_length": 5,
+            "low_cardinality_values": [
+              "10.25",
+              "14.85",
+              "8.50",
+              "8.60",
+              "9.00"
+            ],
+            "min": "8.50",
+            "max": "14.85"
+          }
+        },
+        {
+          "name": "c_continuity",
+          "ordinal": 11,
+          "data_type": "varchar",
+          "column_type": "varchar(10)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "是否连续性",
+          "profile": {
+            "null_count": 25,
+            "null_ratio": 0.675676,
+            "distinct_count": 1,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "是"
+            ]
+          }
+        },
+        {
+          "name": "c_energy",
+          "ordinal": 12,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "能量值",
+          "profile": {
+            "null_count": 35,
+            "null_ratio": 0.945946,
+            "distinct_count": 2,
+            "max_length": 10,
+            "low_cardinality_values": [
+              "4.986E+06",
+              "4986000.00"
+            ]
+          }
+        },
+        {
+          "name": "c_time",
+          "ordinal": 13,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "时间描述",
+          "profile": {
+            "null_count": 35,
+            "null_ratio": 0.945946,
+            "distinct_count": 2,
+            "max_length": 16,
+            "low_cardinality_values": [
+              "12月15日14点25",
+              "2017-12-15 14:25"
+            ]
+          }
+        },
+        {
+          "name": "c_position",
+          "ordinal": 14,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "位置描述",
+          "profile": {
+            "null_count": 35,
+            "null_ratio": 0.945946,
+            "distinct_count": 1,
+            "max_length": 12,
+            "low_cardinality_values": [
+              "DK200+037右拱肩"
+            ]
+          }
+        },
+        {
+          "name": "c_remark",
+          "ordinal": 15,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "备注信息",
+          "profile": {
+            "null_count": 37,
+            "null_ratio": 1.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_caseCode",
+          "ordinal": 16,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": false,
+          "default": null,
+          "auto_increment": false,
+          "comment": "案件编码",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 23,
+            "max_length": 20
+          }
+        },
+        {
+          "name": "c_mark",
+          "ordinal": 17,
+          "data_type": "char",
+          "column_type": "char(1)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "标注信息",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "1"
+            ]
+          }
+        }
+      ],
+      "row_count": 37
+    },
+    {
+      "name": "t_activeinfoevent",
+      "engine": "InnoDB",
+      "collation": "utf8mb4_0900_ai_ci",
+      "comment": "",
+      "primary_key": [
+        "c_caseCode"
+      ],
+      "indexes": [],
+      "foreign_keys": [],
+      "columns": [
+        {
+          "name": "c_rockEnergy",
+          "ordinal": 1,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "岩体能量（初喷混凝土，锚杆，钢筋网，复喷混凝土，钢拱架/TH梁，衬砌）",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_Magnitude",
+          "ordinal": 2,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "震级",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_remark",
+          "ordinal": 3,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "备注信息",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_caseCode",
+          "ordinal": 4,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": false,
+          "default": null,
+          "auto_increment": false,
+          "comment": "案件编码",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_mark",
+          "ordinal": 5,
+          "data_type": "char",
+          "column_type": "char(1)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "标记信息",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        }
+      ],
+      "row_count": 0
+    },
+    {
+      "name": "t_casedesc",
+      "engine": "InnoDB",
+      "collation": "utf8mb4_0900_ai_ci",
+      "comment": "",
+      "primary_key": [
+        "c_caseCode"
+      ],
+      "indexes": [],
+      "foreign_keys": [],
+      "columns": [
+        {
+          "name": "c_spaceTime",
+          "ordinal": 1,
+          "data_type": "varchar",
+          "column_type": "varchar(10)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "时空类型",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 2,
+            "max_length": 3,
+            "low_cardinality_values": [
+              "即时型",
+              "时滞型"
+            ]
+          }
+        },
+        {
+          "name": "c_mechanism",
+          "ordinal": 2,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "机制类型",
+          "profile": {
+            "null_count": 1,
+            "null_ratio": 0.027778,
+            "distinct_count": 2,
+            "max_length": 6,
+            "low_cardinality_values": [
+              "应变型",
+              "结构面滑移型"
+            ]
+          }
+        },
+        {
+          "name": "c_rockLevel",
+          "ordinal": 3,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "岩石等级",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 4,
+            "max_length": 2,
+            "low_cardinality_values": [
+              "中等",
+              "强烈",
+              "极强",
+              "轻微"
+            ]
+          }
+        },
+        {
+          "name": "c_process",
+          "ordinal": 4,
+          "data_type": "text",
+          "column_type": "text",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "处理过程",
+          "profile": {
+            "null_count": 5,
+            "null_ratio": 0.138889,
+            "distinct_count": 31,
+            "max_length": 199
+          }
+        },
+        {
+          "name": "c_remark",
+          "ordinal": 5,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "备注信息",
+          "profile": {
+            "null_count": 35,
+            "null_ratio": 0.972222,
+            "distinct_count": 1,
+            "max_length": 0,
+            "low_cardinality_values": [
+              ""
+            ]
+          }
+        },
+        {
+          "name": "c_mark",
+          "ordinal": 6,
+          "data_type": "char",
+          "column_type": "char(1)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "标记",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "1"
+            ]
+          }
+        },
+        {
+          "name": "c_caseCode",
+          "ordinal": 7,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": false,
+          "default": null,
+          "auto_increment": false,
+          "comment": "案件编码",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 36,
+            "max_length": 20
+          }
+        },
+        {
+          "name": "c_soundFeatures",
+          "ordinal": 8,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "声音特征",
+          "profile": {
+            "null_count": 3,
+            "null_ratio": 0.083333,
+            "distinct_count": 29,
+            "max_length": 24
+          }
+        },
+        {
+          "name": "c_stive",
+          "ordinal": 9,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "干扰信息",
+          "profile": {
+            "null_count": 4,
+            "null_ratio": 0.111111,
+            "distinct_count": 20,
+            "max_length": 29,
+            "low_cardinality_values": [
+              "",
+              "伴有大量粉尘",
+              "围岩爆裂时，伴有岩粉喷射现象，快速充满开挖空间，能见度低",
+              "围岩爆裂时，伴有岩粉喷射现象，快速充满开挖空间，能见度低。",
+              "基本无粉尘",
+              "大量粉尘",
+              "存在大量粉尘，能见度迅速降低",
+              "岩爆发生时响声较大",
+              "岩爆发生过程中有较大灰尘",
+              "岩爆时伴有粉尘喷射现象，快速充满开挖空间",
+              "岩爆过程中伴随有粉尘",
+              "很多",
+              "很多，能见度低",
+              "粉尘大，密度高",
+              "粉尘较大",
+              "粉尘较小",
+              "轻微粉尘",
+              "较多",
+              "较小",
+              "较少"
+            ]
+          }
+        },
+        {
+          "name": "c_craterRemark",
+          "ordinal": 10,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "火山口备注信息",
+          "profile": {
+            "null_count": 35,
+            "null_ratio": 0.972222,
+            "distinct_count": 1,
+            "max_length": 0,
+            "low_cardinality_values": [
+              ""
+            ]
+          }
+        },
+        {
+          "name": "c_water",
+          "ordinal": 11,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "水分信息",
+          "profile": {
+            "null_count": 1,
+            "null_ratio": 0.027778,
+            "distinct_count": 3,
+            "max_length": 6,
+            "low_cardinality_values": [
+              "不发育",
+              "地下水不发育",
+              "无地下水发育"
+            ]
+          }
+        },
+        {
+          "name": "c_weathering",
+          "ordinal": 12,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "风化程度",
+          "profile": {
+            "null_count": 2,
+            "null_ratio": 0.055556,
+            "distinct_count": 7,
+            "max_length": 9,
+            "low_cardinality_values": [
+              "围岩不风化",
+              "围岩未风化",
+              "微风化",
+              "未",
+              "未见风险，岩体新鲜",
+              "未风化",
+              "风化程度低"
+            ]
+          }
+        },
+        {
+          "name": "c_integrity",
+          "ordinal": 13,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "完整性",
+          "profile": {
+            "null_count": 1,
+            "null_ratio": 0.027778,
+            "distinct_count": 10,
+            "max_length": 7,
+            "low_cardinality_values": [
+              "围岩完整性较好",
+              "围岩较完整",
+              "完整",
+              "完整性一般",
+              "完整性好",
+              "完整性差",
+              "岩体完整",
+              "岩体较完整",
+              "较完整",
+              "较破碎"
+            ]
+          }
+        },
+        {
+          "name": "c_jointing",
+          "ordinal": 14,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "接缝情况",
+          "profile": {
+            "null_count": 1,
+            "null_ratio": 0.027778,
+            "distinct_count": 9,
+            "max_length": 5,
+            "low_cardinality_values": [
+              "",
+              "一般发育",
+              "不发育",
+              "不确定",
+              "发育",
+              "很发育",
+              "节理不发育",
+              "节理发育",
+              "较发育"
+            ]
+          }
+        },
+        {
+          "name": "c_geologyRemark",
+          "ordinal": 15,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "地质备注",
+          "profile": {
+            "null_count": 35,
+            "null_ratio": 0.972222,
+            "distinct_count": 1,
+            "max_length": 0,
+            "low_cardinality_values": [
+              ""
+            ]
+          }
+        }
+      ],
+      "row_count": 36
+    },
+    {
+      "name": "t_casefile",
+      "engine": "InnoDB",
+      "collation": "utf8mb4_unicode_ci",
+      "comment": "",
+      "primary_key": [
+        "c_caseCode"
+      ],
+      "indexes": [],
+      "foreign_keys": [],
+      "columns": [
+        {
+          "name": "c_caseCode",
+          "ordinal": 1,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": false,
+          "default": null,
+          "auto_increment": false,
+          "comment": "案件编码",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 39,
+            "max_length": 20
+          }
+        },
+        {
+          "name": "c_geologyPath",
+          "ordinal": 2,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "地质文件路径",
+          "profile": {
+            "null_count": 24,
+            "null_ratio": 0.615385,
+            "distinct_count": 15,
+            "max_length": 52,
+            "low_cardinality_values": [
+              "^0.1.jpg",
+              "^DSC00061.JPG^DSC00078.JPG^DSC00090.JPG^DSC00115.JPG",
+              "^DSC00561.JPG^DSC00581.JPG^DSC00555.JPG^DSC00556.JPG",
+              "^DSC01328.JPG",
+              "^DSC01414.JPG^DSC01417.JPG^DSC01425.JPG^掌子面.JPG",
+              "^DSC01461.JPG^DSC01481.JPG^DSC01490.JPG^DSC01677.JPG",
+              "^DSC01644.JPG^DSC01571.JPG",
+              "^DSC01777.JPG^DSC01786.JPG^掌子面.JPG",
+              "^DSC08591.JPG^2.jpg",
+              "^QQ图片20180423084946.jpg",
+              "^地质1.jpg",
+              "^掌子面.JPG^右侧.JPG^左侧.JPG^顶拱.JPG",
+              "^掌子面.JPG^岩爆位置.JPG^南侧围岩.JPG^裂纹.JPG",
+              "^掌子面.JPG^顶拱.JPG^左侧围岩.JPG^右侧围岩.JPG",
+              "^爆前1.JPG^爆前2.JPG"
+            ]
+          }
+        },
+        {
+          "name": "c_processPath",
+          "ordinal": 3,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "过程文件路径",
+          "profile": {
+            "null_count": 12,
+            "null_ratio": 0.307692,
+            "distinct_count": 25,
+            "max_length": 102
+          }
+        },
+        {
+          "name": "c_supportPath",
+          "ordinal": 4,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "辅助文件路径",
+          "profile": {
+            "null_count": 28,
+            "null_ratio": 0.717949,
+            "distinct_count": 11,
+            "max_length": 52,
+            "low_cardinality_values": [
+              "",
+              "^0.0.jpg",
+              "^DSC01528.JPG^DSC01534.JPG^DSC01514.JPG",
+              "^DSC01568.JPG^DSC01571.JPG^DSC01587.JPG^DSC01585.JPG",
+              "^DSC01667.JPG^DSC01652.JPG^DSC01639.JPG",
+              "^DSC01912.JPG^DSC01935.JPG^DSC01953.JPG",
+              "^DSC02017.JPG^DSC02044.JPG^DSC02063.JPG^DSC02070.JPG",
+              "^DSC02035.JPG",
+              "^DSC06751.JPG^DSC06739.JPG^DSC06746.JPG^DSC06752.JPG",
+              "^北侧.JPG^结束位置.JPG^起始.JPG^整体.JPG",
+              "^喷浆、锚杆与网片支护.JPG^北侧.JPG^拱顶.JPG^南侧.JPG"
+            ]
+          }
+        },
+        {
+          "name": "c_otherPath",
+          "ordinal": 5,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "其他文件路径",
+          "profile": {
+            "null_count": 25,
+            "null_ratio": 0.641026,
+            "distinct_count": 12,
+            "max_length": 24,
+            "low_cardinality_values": [
+              "",
+              "^00000.MTS^00001.MTS",
+              "^QQ视频20180603.mp4",
+              "^QQ视频20180604.mp4",
+              "^VID_20180619_211951.mp4",
+              "^中等岩爆7 555-595.evp",
+              "^岩爆视频-20181008.mp4",
+              "^视频10142040.MP4",
+              "^视频3.mp4^视频2.mp4^视频1.mp4",
+              "^轻微岩爆7 445-485.evp",
+              "^轻微岩爆7 475-515.evp",
+              "^轻微岩爆7 855-895.evp"
+            ]
+          }
+        },
+        {
+          "name": "c_mark",
+          "ordinal": 6,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "标记信息",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "1"
+            ]
+          }
+        },
+        {
+          "name": "c_remark",
+          "ordinal": 7,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "备注信息",
+          "profile": {
+            "null_count": 38,
+            "null_ratio": 0.974359,
+            "distinct_count": 1,
+            "max_length": 0,
+            "low_cardinality_values": [
+              ""
+            ]
+          }
+        }
+      ],
+      "row_count": 39
+    },
+    {
+      "name": "t_caseinfo",
+      "engine": "InnoDB",
+      "collation": "utf8mb4_0900_ai_ci",
+      "comment": "",
+      "primary_key": [
+        "c_caseCode"
+      ],
+      "indexes": [],
+      "foreign_keys": [],
+      "columns": [
+        {
+          "name": "c_areatCode",
+          "ordinal": 1,
+          "data_type": "varchar",
+          "column_type": "varchar(6)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "区域编码",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 7,
+            "max_length": 4,
+            "low_cardinality_values": [
+              "1001",
+              "2001",
+              "2002",
+              "3001",
+              "3002",
+              "3003",
+              "3004"
+            ]
+          }
+        },
+        {
+          "name": "c_caseCode",
+          "ordinal": 2,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": false,
+          "default": null,
+          "auto_increment": false,
+          "comment": "案件编码",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 39,
+            "max_length": 20
+          }
+        },
+        {
+          "name": "c_happenDate",
+          "ordinal": 3,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "发生日期",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 38,
+            "max_length": 10
+          }
+        },
+        {
+          "name": "c_digWay",
+          "ordinal": 4,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "开挖方式",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 2,
+            "max_length": 4,
+            "low_cardinality_values": [
+              "TBM法",
+              "钻爆法"
+            ]
+          }
+        },
+        {
+          "name": "c_blastDatetime",
+          "ordinal": 5,
+          "data_type": "varchar",
+          "column_type": "varchar(30)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "爆破时间",
+          "profile": {
+            "null_count": 5,
+            "null_ratio": 0.128205,
+            "distinct_count": 21,
+            "max_length": 19
+          }
+        },
+        {
+          "name": "c_rockBeginTime",
+          "ordinal": 6,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "岩爆开始时间",
+          "profile": {
+            "null_count": 2,
+            "null_ratio": 0.051282,
+            "distinct_count": 37,
+            "max_length": 16
+          }
+        },
+        {
+          "name": "c_rockEndTime",
+          "ordinal": 7,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "岩爆结束时间",
+          "profile": {
+            "null_count": 3,
+            "null_ratio": 0.076923,
+            "distinct_count": 35,
+            "max_length": 16
+          }
+        },
+        {
+          "name": "d_rockDelayHour",
+          "ordinal": 8,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "岩爆延迟小时数",
+          "profile": {
+            "null_count": 1,
+            "null_ratio": 0.025641,
+            "distinct_count": 10,
+            "max_length": 3,
+            "low_cardinality_values": [
+              "0",
+              "1",
+              "10",
+              "14",
+              "3",
+              "3.5",
+              "4",
+              "5",
+              "5.5",
+              "无"
+            ]
+          }
+        },
+        {
+          "name": "c_poleBeginNo",
+          "ordinal": 9,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "起始桩号",
+          "profile": {
+            "null_count": 1,
+            "null_ratio": 0.025641,
+            "distinct_count": 38,
+            "max_length": 13
+          }
+        },
+        {
+          "name": "c_poleEndNo",
+          "ordinal": 10,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "结束桩号",
+          "profile": {
+            "null_count": 1,
+            "null_ratio": 0.025641,
+            "distinct_count": 36,
+            "max_length": 13
+          }
+        },
+        {
+          "name": "c_supportNo",
+          "ordinal": 11,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "支撑桩号",
+          "profile": {
+            "null_count": 4,
+            "null_ratio": 0.102564,
+            "distinct_count": 33,
+            "max_length": 15
+          }
+        },
+        {
+          "name": "d_distance",
+          "ordinal": 12,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "距离",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 15,
+            "max_length": 4,
+            "low_cardinality_values": [
+              "...",
+              "0",
+              "0.1",
+              "0.5",
+              "0.8",
+              "1",
+              "2.11",
+              "25",
+              "3",
+              "4.78",
+              "5",
+              "6",
+              "7",
+              "75",
+              "9"
+            ]
+          }
+        },
+        {
+          "name": "c_lithology",
+          "ordinal": 13,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "岩性",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 3,
+            "max_length": 6,
+            "low_cardinality_values": [
+              "大理岩",
+              "砂岩、粉砂岩",
+              "花岗岩"
+            ]
+          }
+        },
+        {
+          "name": "c_structureClass",
+          "ordinal": 14,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "结构类别",
+          "profile": {
+            "null_count": 3,
+            "null_ratio": 0.076923,
+            "distinct_count": 7,
+            "max_length": 10,
+            "low_cardinality_values": [
+              "块体状",
+              "块状",
+              "层状",
+              "层状、碎石状、散体状",
+              "整体~厚层状",
+              "整体状",
+              "较完整"
+            ]
+          }
+        },
+        {
+          "name": "c_level",
+          "ordinal": 15,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "级别",
+          "profile": {
+            "null_count": 5,
+            "null_ratio": 0.128205,
+            "distinct_count": 2,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "Ⅱ",
+              "Ⅳ"
+            ]
+          }
+        },
+        {
+          "name": "c_mark",
+          "ordinal": 16,
+          "data_type": "char",
+          "column_type": "char(1)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "标记信息",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "1"
+            ]
+          }
+        },
+        {
+          "name": "c_remark",
+          "ordinal": 17,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "备注信息",
+          "profile": {
+            "null_count": 38,
+            "null_ratio": 0.974359,
+            "distinct_count": 1,
+            "max_length": 0,
+            "low_cardinality_values": [
+              ""
+            ]
+          }
+        }
+      ],
+      "row_count": 39
+    },
+    {
+      "name": "t_casetimeinfo",
+      "engine": "InnoDB",
+      "collation": "utf8mb4_0900_ai_ci",
+      "comment": "",
+      "primary_key": [
+        "i_serialid"
+      ],
+      "indexes": [],
+      "foreign_keys": [],
+      "columns": [
+        {
+          "name": "i_serialid",
+          "ordinal": 1,
+          "data_type": "int",
+          "column_type": "int",
+          "nullable": false,
+          "default": null,
+          "auto_increment": true,
+          "comment": "序列号",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 18,
+            "max_length": 2,
+            "low_cardinality_values": [
+              "1",
+              "10",
+              "11",
+              "12",
+              "13",
+              "14",
+              "15",
+              "16",
+              "19",
+              "2",
+              "20",
+              "3",
+              "4",
+              "5",
+              "6",
+              "7",
+              "8",
+              "9"
+            ],
+            "min": "1",
+            "max": "20"
+          }
+        },
+        {
+          "name": "c_projectCode",
+          "ordinal": 2,
+          "data_type": "varchar",
+          "column_type": "varchar(3)",
+          "nullable": false,
+          "default": null,
+          "auto_increment": false,
+          "comment": "项目代码",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 2,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "1",
+              "2"
+            ]
+          }
+        },
+        {
+          "name": "c_caseCode",
+          "ordinal": 3,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": false,
+          "default": null,
+          "auto_increment": false,
+          "comment": "案件编码",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 16,
+            "max_length": 20,
+            "low_cardinality_values": [
+              "BY-JZ-201810061300-S",
+              "JP-201504210800-S",
+              "JP-201508232340-EI",
+              "NJ-96-201602270758-I",
+              "NJ-96-201603020115-I",
+              "NJ-97-201602121900-S",
+              "NJ-97-201602131400-S",
+              "NJ-97-201602151600-S",
+              "NJ-97-201602232100-S",
+              "NJ-97-201603110109-M",
+              "NJ-97-201603180734-S",
+              "NJ-97-201603212019-S",
+              "NJ-97-201603280526-S",
+              "NJ-97-201604052215-S",
+              "NJ-97-201606010826-S",
+              "NJ-97-201607171618-S"
+            ]
+          }
+        },
+        {
+          "name": "c_happenDate",
+          "ordinal": 4,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "发生日期",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 16,
+            "max_length": 19,
+            "low_cardinality_values": [
+              "2015/4/21 0:00:00",
+              "2015/8/23 0:00:00",
+              "2016.02.12 00:00:00",
+              "2016/2/13 0:00:00",
+              "2016/2/15 0:00:00",
+              "2016/2/23 0:00:00",
+              "2016/2/27 0:00:00",
+              "2016/3/11 0:00:00",
+              "2016/3/18 0:00:00",
+              "2016/3/2 0:00:00",
+              "2016/3/21 0:00:00",
+              "2016/3/28 0:00:00",
+              "2016/4/5 0:00:00",
+              "2016/6/1 0:00:00",
+              "2016/7/17 0:00:00",
+              "2018.10.06 00:00:00"
+            ]
+          }
+        },
+        {
+          "name": "c_supportNo",
+          "ordinal": 5,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "支撑编号",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 16,
+            "max_length": 12,
+            "low_cardinality_values": [
+              "",
+              "0",
+              "JPD1K196+595",
+              "ST6+147",
+              "ST6+664",
+              "ST7+303",
+              "ST7+383",
+              "ST7+447",
+              "ST7+491",
+              "ST7+570",
+              "ST7+748",
+              "ST7+834",
+              "ST7+861.2",
+              "ST7+865.5",
+              "ST9+621.97",
+              "ST9+638.62"
+            ]
+          }
+        },
+        {
+          "name": "c_poleBeginNo",
+          "ordinal": 6,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "起始杆号",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 16,
+            "max_length": 12,
+            "low_cardinality_values": [
+              "0+05",
+              "7# 0+09",
+              "JPD1K196+594",
+              "ST6+147",
+              "ST6+672",
+              "ST7+304",
+              "ST7+385",
+              "ST7+447.5",
+              "ST7+494",
+              "ST7+575",
+              "ST7+749",
+              "ST7+834",
+              "ST7+862.0",
+              "ST7+866.5",
+              "ST9+621.97",
+              "ST9+633.84"
+            ]
+          }
+        },
+        {
+          "name": "c_poleEndNo",
+          "ordinal": 7,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "终止杆号",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 16,
+            "max_length": 12,
+            "low_cardinality_values": [
+              "0+08.5",
+              "8#0+35",
+              "JPD1K196+595",
+              "ST6+147",
+              "ST6+671",
+              "ST7+304",
+              "ST7+384",
+              "ST7+447.5",
+              "ST7+494",
+              "ST7+575",
+              "ST7+748",
+              "ST7+834",
+              "ST7+862.0",
+              "ST7+866.5",
+              "ST9+621.97",
+              "ST9+633.84"
+            ]
+          }
+        },
+        {
+          "name": "d_distance",
+          "ordinal": 8,
+          "data_type": "decimal",
+          "column_type": "decimal(6, 1)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "距离",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 9,
+            "max_length": 3,
+            "low_cardinality_values": [
+              "0.0",
+              "0.5",
+              "0.8",
+              "1.0",
+              "2.1",
+              "3.0",
+              "4.8",
+              "5.0",
+              "7.0"
+            ],
+            "min": "0.0",
+            "max": "7.0"
+          }
+        },
+        {
+          "name": "c_eventArea",
+          "ordinal": 9,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "事件区域",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 16,
+            "max_length": 25,
+            "low_cardinality_values": [
+              "",
+              "0",
+              "JPD1K196+569~JPD1K196+604",
+              "ST6+133~ST6+173",
+              "ST6+650~ST6+690",
+              "ST7+290~ST7+330",
+              "ST7+380~ST7+420",
+              "ST7+445~ST7+485",
+              "ST7+475~ST7+515",
+              "ST7+555~ST7+595",
+              "ST7+737~ST7+777",
+              "ST7+820~ST7+860",
+              "ST7+846~ST7+886",
+              "ST7+855~ST7+895",
+              "ST9+609~ST9+649",
+              "ST9+623~ST9+663"
+            ]
+          }
+        },
+        {
+          "name": "c_digInfo",
+          "ordinal": 10,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": false,
+          "default": null,
+          "auto_increment": false,
+          "comment": "挖掘信息",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 6,
+            "max_length": 19,
+            "low_cardinality_values": [
+              "",
+              "2015/4/21 0:00:00",
+              "2018.10.04 00:30:27",
+              "2018.10.04 19:01:02",
+              "2018.10.05 06:31:27",
+              "无"
+            ]
+          }
+        },
+        {
+          "name": "c_level",
+          "ordinal": 11,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "级别",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 4,
+            "max_length": 2,
+            "low_cardinality_values": [
+              "中等",
+              "强烈",
+              "极强",
+              "轻微"
+            ]
+          }
+        },
+        {
+          "name": "c_spaceTime",
+          "ordinal": 12,
+          "data_type": "varchar",
+          "column_type": "varchar(10)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "时空类型",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 2,
+            "max_length": 3,
+            "low_cardinality_values": [
+              "即时性",
+              "时滞型"
+            ]
+          }
+        },
+        {
+          "name": "c_mechanism",
+          "ordinal": 13,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "机制",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 3,
+            "max_length": 6,
+            "low_cardinality_values": [
+              "复合型",
+              "应变型",
+              "结构面滑移型"
+            ]
+          }
+        },
+        {
+          "name": "d_sumEvent",
+          "ordinal": 14,
+          "data_type": "decimal",
+          "column_type": "decimal(6, 2)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "累计事件数量",
+          "profile": {
+            "null_count": 18,
+            "null_ratio": 1.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "d_sumLogarithm",
+          "ordinal": 15,
+          "data_type": "decimal",
+          "column_type": "decimal(6, 2)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "累计对数值",
+          "profile": {
+            "null_count": 18,
+            "null_ratio": 1.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_sumBulk",
+          "ordinal": 16,
+          "data_type": "decimal",
+          "column_type": "decimal(6, 2)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "累计体积",
+          "profile": {
+            "null_count": 18,
+            "null_ratio": 1.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "d_sumEventRate",
+          "ordinal": 17,
+          "data_type": "decimal",
+          "column_type": "decimal(6, 2)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "累计事件增速",
+          "profile": {
+            "null_count": 18,
+            "null_ratio": 1.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "d_sumLogarithmRate",
+          "ordinal": 18,
+          "data_type": "decimal",
+          "column_type": "decimal(6, 2)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "累计对数增速",
+          "profile": {
+            "null_count": 18,
+            "null_ratio": 1.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "d_sumBulkRate",
+          "ordinal": 19,
+          "data_type": "decimal",
+          "column_type": "decimal(6, 2)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "累计体积增速",
+          "profile": {
+            "null_count": 18,
+            "null_ratio": 1.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "d_event",
+          "ordinal": 20,
+          "data_type": "decimal",
+          "column_type": "decimal(6, 2)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "当前事件数量",
+          "profile": {
+            "null_count": 18,
+            "null_ratio": 1.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "d_logarithm",
+          "ordinal": 21,
+          "data_type": "decimal",
+          "column_type": "decimal(6, 2)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "当前对数值",
+          "profile": {
+            "null_count": 18,
+            "null_ratio": 1.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "d_bulk",
+          "ordinal": 22,
+          "data_type": "decimal",
+          "column_type": "decimal(6, 2)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "当前体积",
+          "profile": {
+            "null_count": 18,
+            "null_ratio": 1.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_dataSeries",
+          "ordinal": 23,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "数据系列",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 2,
+            "low_cardinality_values": [
+              "连续"
+            ]
+          }
+        },
+        {
+          "name": "c_producePath",
+          "ordinal": 24,
+          "data_type": "longblob",
+          "column_type": "longblob",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "生成文件路径",
+          "profile": {
+            "null_count": 18,
+            "null_ratio": 1.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_evpPath",
+          "ordinal": 25,
+          "data_type": "longblob",
+          "column_type": "longblob",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "EVP文件路径",
+          "profile": {
+            "null_count": 3,
+            "null_ratio": 0.166667,
+            "distinct_count": 15,
+            "max_length": 140298
+          }
+        },
+        {
+          "name": "c_timetPath",
+          "ordinal": 26,
+          "data_type": "longblob",
+          "column_type": "longblob",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "时间文件路径",
+          "profile": {
+            "null_count": 18,
+            "null_ratio": 1.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_timePicPath",
+          "ordinal": 27,
+          "data_type": "longblob",
+          "column_type": "longblob",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "时间图片路径",
+          "profile": {
+            "null_count": 18,
+            "null_ratio": 1.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_otherPath",
+          "ordinal": 28,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "其他文件路径",
+          "profile": {
+            "null_count": 18,
+            "null_ratio": 1.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_maxEnergy",
+          "ordinal": 29,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "最大能量值",
+          "profile": {
+            "null_count": 18,
+            "null_ratio": 1.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_maxTime",
+          "ordinal": 30,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "最大能量时间",
+          "profile": {
+            "null_count": 18,
+            "null_ratio": 1.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_mark",
+          "ordinal": 31,
+          "data_type": "char",
+          "column_type": "char(1)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "标记",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "1"
+            ]
+          }
+        },
+        {
+          "name": "c_remark",
+          "ordinal": 32,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "备注",
+          "profile": {
+            "null_count": 18,
+            "null_ratio": 1.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        }
+      ],
+      "row_count": 18
+    },
+    {
+      "name": "t_event",
+      "engine": "InnoDB",
+      "collation": "utf8mb4_unicode_ci",
+      "comment": "",
+      "primary_key": [
+        "i_serialid"
+      ],
+      "indexes": [],
+      "foreign_keys": [],
+      "columns": [
+        {
+          "name": "i_serialid",
+          "ordinal": 1,
+          "data_type": "int",
+          "column_type": "int",
+          "nullable": false,
+          "default": null,
+          "auto_increment": true,
+          "comment": "序号",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 91,
+            "max_length": 2,
+            "min": "2",
+            "max": "92"
+          }
+        },
+        {
+          "name": "d",
+          "ordinal": 2,
+          "data_type": "varchar",
+          "column_type": "varchar(100)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "事件日期",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 91,
+            "max_length": 19
+          }
+        },
+        {
+          "name": "t",
+          "ordinal": 3,
+          "data_type": "varchar",
+          "column_type": "varchar(100)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "事件时间",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "0"
+            ]
+          }
+        },
+        {
+          "name": "p1",
+          "ordinal": 4,
+          "data_type": "double",
+          "column_type": "double",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "参数1",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 88,
+            "max_length": 5,
+            "min": "1.04",
+            "max": "13.36"
+          }
+        },
+        {
+          "name": "p2",
+          "ordinal": 5,
+          "data_type": "double",
+          "column_type": "double",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "参数2",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 89,
+            "max_length": 7,
+            "min": "7820.01",
+            "max": "7883.51"
+          }
+        },
+        {
+          "name": "p3",
+          "ordinal": 6,
+          "data_type": "double",
+          "column_type": "double",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "参数3",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 91,
+            "max_length": 5,
+            "min": "10.48",
+            "max": "98.62"
+          }
+        },
+        {
+          "name": "p4",
+          "ordinal": 7,
+          "data_type": "double",
+          "column_type": "double",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "参数4",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 90,
+            "max_length": 7,
+            "min": "-100.69",
+            "max": "22.17"
+          }
+        },
+        {
+          "name": "p5",
+          "ordinal": 8,
+          "data_type": "double",
+          "column_type": "double",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "参数5",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 89,
+            "max_length": 7,
+            "min": "0.00117",
+            "max": "21500"
+          }
+        },
+        {
+          "name": "p6",
+          "ordinal": 9,
+          "data_type": "double",
+          "column_type": "double",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "参数6",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 91,
+            "max_length": 9,
+            "min": "0.0000518",
+            "max": "529"
+          }
+        },
+        {
+          "name": "p7",
+          "ordinal": 10,
+          "data_type": "double",
+          "column_type": "double",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "参数7",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 90,
+            "max_length": 8,
+            "min": "0.000587",
+            "max": "21000"
+          }
+        },
+        {
+          "name": "p8",
+          "ordinal": 11,
+          "data_type": "double",
+          "column_type": "double",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "参数8",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "0"
+            ],
+            "min": "0",
+            "max": "0"
+          }
+        },
+        {
+          "name": "p9",
+          "ordinal": 12,
+          "data_type": "double",
+          "column_type": "double",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "参数9",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "0"
+            ],
+            "min": "0",
+            "max": "0"
+          }
+        },
+        {
+          "name": "p10",
+          "ordinal": 13,
+          "data_type": "double",
+          "column_type": "double",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "参数10",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "0"
+            ],
+            "min": "0",
+            "max": "0"
+          }
+        },
+        {
+          "name": "p11",
+          "ordinal": 14,
+          "data_type": "double",
+          "column_type": "double",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "参数11",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 88,
+            "max_length": 10,
+            "min": "63300",
+            "max": "1300000000"
+          }
+        },
+        {
+          "name": "p12",
+          "ordinal": 15,
+          "data_type": "double",
+          "column_type": "double",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "参数12",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 86,
+            "max_length": 10,
+            "min": "63300",
+            "max": "1300000000"
+          }
+        },
+        {
+          "name": "p13",
+          "ordinal": 16,
+          "data_type": "double",
+          "column_type": "double",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "参数13",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 88,
+            "max_length": 10,
+            "min": "63300",
+            "max": "1300000000"
+          }
+        },
+        {
+          "name": "p14",
+          "ordinal": 17,
+          "data_type": "double",
+          "column_type": "double",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "参数14",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "0"
+            ],
+            "min": "0",
+            "max": "0"
+          }
+        },
+        {
+          "name": "p15",
+          "ordinal": 18,
+          "data_type": "double",
+          "column_type": "double",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "参数15",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "0"
+            ],
+            "min": "0",
+            "max": "0"
+          }
+        },
+        {
+          "name": "p16",
+          "ordinal": 19,
+          "data_type": "double",
+          "column_type": "double",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "参数16",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 75,
+            "max_length": 11,
+            "min": "9.1751114",
+            "max": "265277.2313"
+          }
+        },
+        {
+          "name": "p17",
+          "ordinal": 20,
+          "data_type": "double",
+          "column_type": "double",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "参数17",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 90,
+            "max_length": 6,
+            "min": "99.57",
+            "max": "896.69"
+          }
+        },
+        {
+          "name": "p18",
+          "ordinal": 21,
+          "data_type": "double",
+          "column_type": "double",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "参数18",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "0"
+            ],
+            "min": "0",
+            "max": "0"
+          }
+        },
+        {
+          "name": "p19",
+          "ordinal": 22,
+          "data_type": "double",
+          "column_type": "double",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "参数19",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "0"
+            ],
+            "min": "0",
+            "max": "0"
+          }
+        },
+        {
+          "name": "p20",
+          "ordinal": 23,
+          "data_type": "double",
+          "column_type": "double",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "参数20",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "0"
+            ],
+            "min": "0",
+            "max": "0"
+          }
+        },
+        {
+          "name": "p21",
+          "ordinal": 24,
+          "data_type": "double",
+          "column_type": "double",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "参数21",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "0"
+            ],
+            "min": "0",
+            "max": "0"
+          }
+        },
+        {
+          "name": "p22",
+          "ordinal": 25,
+          "data_type": "double",
+          "column_type": "double",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "参数22",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 87,
+            "max_length": 7,
+            "min": "580",
+            "max": "2120000"
+          }
+        },
+        {
+          "name": "p23",
+          "ordinal": 26,
+          "data_type": "double",
+          "column_type": "double",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "参数23",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 88,
+            "max_length": 8,
+            "min": "10800",
+            "max": "11900000"
+          }
+        },
+        {
+          "name": "p24",
+          "ordinal": 27,
+          "data_type": "double",
+          "column_type": "double",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "参数24",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "0"
+            ],
+            "min": "0",
+            "max": "0"
+          }
+        },
+        {
+          "name": "p25",
+          "ordinal": 28,
+          "data_type": "double",
+          "column_type": "double",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "参数25",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "0"
+            ],
+            "min": "0",
+            "max": "0"
+          }
+        },
+        {
+          "name": "p26",
+          "ordinal": 29,
+          "data_type": "double",
+          "column_type": "double",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "参数26",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "0"
+            ],
+            "min": "0",
+            "max": "0"
+          }
+        },
+        {
+          "name": "p27",
+          "ordinal": 30,
+          "data_type": "double",
+          "column_type": "double",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "参数27",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "0"
+            ],
+            "min": "0",
+            "max": "0"
+          }
+        },
+        {
+          "name": "p28",
+          "ordinal": 31,
+          "data_type": "varchar",
+          "column_type": "varchar(100)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "参数28",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "0"
+            ]
+          }
+        },
+        {
+          "name": "p29",
+          "ordinal": 32,
+          "data_type": "varchar",
+          "column_type": "varchar(100)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "参数29",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 3,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "4",
+              "5",
+              "6"
+            ]
+          }
+        },
+        {
+          "name": "p30",
+          "ordinal": 33,
+          "data_type": "double",
+          "column_type": "double",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "参数30",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "0"
+            ],
+            "min": "0",
+            "max": "0"
+          }
+        }
+      ],
+      "row_count": 91
+    },
+    {
+      "name": "t_geology",
+      "engine": "InnoDB",
+      "collation": "utf8mb4_0900_ai_ci",
+      "comment": "",
+      "primary_key": [
+        "c_caseCode",
+        "c_groupNo"
+      ],
+      "indexes": [],
+      "foreign_keys": [],
+      "columns": [
+        {
+          "name": "c_groupNo",
+          "ordinal": 1,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": false,
+          "default": null,
+          "auto_increment": false,
+          "comment": "组号",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 9,
+            "max_length": 3,
+            "low_cardinality_values": [
+              "",
+              " ",
+              "1",
+              "2",
+              "3",
+              "4",
+              "5",
+              "6",
+              "不确定"
+            ]
+          }
+        },
+        {
+          "name": "c_class",
+          "ordinal": 2,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "地质结构类别（断层/层理/节理/破碎带）",
+          "profile": {
+            "null_count": 3,
+            "null_ratio": 0.085714,
+            "distinct_count": 3,
+            "max_length": 5,
+            "low_cardinality_values": [
+              "层理",
+              "硬性结构面",
+              "节理"
+            ]
+          }
+        },
+        {
+          "name": "c_distance",
+          "ordinal": 3,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "距离",
+          "profile": {
+            "null_count": 8,
+            "null_ratio": 0.228571,
+            "distinct_count": 12,
+            "max_length": 9,
+            "low_cardinality_values": [
+              "0",
+              "0.1",
+              "0.1-0.2",
+              "0.1-0.3",
+              "0.1-0.6m",
+              "0.2",
+              "0.4",
+              "0.5",
+              "0.65~0.80",
+              "03",
+              "1-1.5",
+              "未知"
+            ]
+          }
+        },
+        {
+          "name": "c_inclination",
+          "ordinal": 4,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "倾角",
+          "profile": {
+            "null_count": 5,
+            "null_ratio": 0.142857,
+            "distinct_count": 19,
+            "max_length": 8,
+            "low_cardinality_values": [
+              "10",
+              "100",
+              "110",
+              "130",
+              "15",
+              "150",
+              "160",
+              "165",
+              "180",
+              "200",
+              "210",
+              "280",
+              "310",
+              "35",
+              "40",
+              "50",
+              "N20～30°E",
+              "N60°E",
+              "N65°W"
+            ]
+          }
+        },
+        {
+          "name": "c_obliquity",
+          "ordinal": 5,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "倾向",
+          "profile": {
+            "null_count": 5,
+            "null_ratio": 0.142857,
+            "distinct_count": 13,
+            "max_length": 6,
+            "low_cardinality_values": [
+              "15",
+              "25",
+              "30",
+              "35",
+              "40",
+              "50",
+              "55",
+              "60",
+              "70",
+              "80",
+              "NW∠15°",
+              "SE∠65°",
+              "SW∠45°"
+            ]
+          }
+        },
+        {
+          "name": "c_aperture",
+          "ordinal": 6,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "裂隙状态（闭合/微张）",
+          "profile": {
+            "null_count": 6,
+            "null_ratio": 0.171429,
+            "distinct_count": 4,
+            "max_length": 9,
+            "low_cardinality_values": [
+              "岩爆破坏前为闭合状",
+              "微张",
+              "无充填",
+              "闭合"
+            ]
+          }
+        },
+        {
+          "name": "c_glue",
+          "ordinal": 7,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "充填物",
+          "profile": {
+            "null_count": 6,
+            "null_ratio": 0.171429,
+            "distinct_count": 13,
+            "max_length": 15,
+            "low_cardinality_values": [
+              "以钙质胶结为主",
+              "以钙质胶结为主局部少量铁猛渲染",
+              "好/无",
+              "好/有",
+              "局部伴有泥土充填",
+              "无充填",
+              "胶结好/无充填",
+              "胶结好/有充填",
+              "胶结强度较高",
+              "胶结良好/有充填",
+              "良好/无",
+              "良好/有",
+              "良好/有充填"
+            ]
+          }
+        },
+        {
+          "name": "c_intersect",
+          "ordinal": 8,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "相交信息",
+          "profile": {
+            "null_count": 18,
+            "null_ratio": 0.514286,
+            "distinct_count": 11,
+            "max_length": 11,
+            "low_cardinality_values": [
+              "与北侧围岩相交/80度",
+              "与南侧围岩相交",
+              "与南侧围岩相交/60度",
+              "与隧道平行",
+              "与隧道斜交",
+              "与隧道趋近于垂直相交",
+              "北侧围岩相交",
+              "北侧顶拱相交",
+              "南侧围岩相交",
+              "南侧拱脚与南侧围岩相交",
+              "斜交于隧道"
+            ]
+          }
+        },
+        {
+          "name": "c_trace",
+          "ordinal": 9,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "迹线",
+          "profile": {
+            "null_count": 17,
+            "null_ratio": 0.485714,
+            "distinct_count": 10,
+            "max_length": 4,
+            "low_cardinality_values": [
+              "10",
+              "10以上",
+              "2",
+              "3",
+              "4",
+              "4-7",
+              "5",
+              "6",
+              "8",
+              "9"
+            ]
+          }
+        },
+        {
+          "name": "c_position",
+          "ordinal": 10,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "位置描述",
+          "profile": {
+            "null_count": 15,
+            "null_ratio": 0.428571,
+            "distinct_count": 16,
+            "max_length": 16,
+            "low_cardinality_values": [
+              "北侧围岩",
+              "北侧岩爆位置出露",
+              "北侧拱肩",
+              "发育在岩爆破坏1区内",
+              "发育在岩爆破坏2区内",
+              "拱肩",
+              "掌子面",
+              "掌子面中部",
+              "掌子面前40米左右北侧围岩及顶拱",
+              "掌子面前70米左右北侧围岩及顶拱",
+              "掌子面北侧拱顶",
+              "掌子面南侧",
+              "掌子面南侧拱脚",
+              "掌子面南部",
+              "掌子面右侧拱脚与围岩交接处",
+              "掌子面左侧顶拱与围岩交界处"
+            ]
+          }
+        },
+        {
+          "name": "c_remark",
+          "ordinal": 11,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "备注信息",
+          "profile": {
+            "null_count": 35,
+            "null_ratio": 1.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_caseCode",
+          "ordinal": 12,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": false,
+          "default": null,
+          "auto_increment": false,
+          "comment": "案件编码",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 23,
+            "max_length": 20
+          }
+        },
+        {
+          "name": "c_mark",
+          "ordinal": 13,
+          "data_type": "char",
+          "column_type": "char(1)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "标记信息",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "1"
+            ]
+          }
+        }
+      ],
+      "row_count": 35
+    },
+    {
+      "name": "t_harm",
+      "engine": "InnoDB",
+      "collation": "utf8mb4_unicode_ci",
+      "comment": "",
+      "primary_key": [
+        "c_caseCode"
+      ],
+      "indexes": [],
+      "foreign_keys": [],
+      "columns": [
+        {
+          "name": "c_wreck",
+          "ordinal": 1,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "破损情况描述",
+          "profile": {
+            "null_count": 13,
+            "null_ratio": 0.342105,
+            "distinct_count": 9,
+            "max_length": 30,
+            "low_cardinality_values": [
+              "两根锚杆掉落及4 榀拱架滑动错位，其中2 榀拱架滑动10cm",
+              "伞钻附近三榀TH错位变形",
+              "喷射混凝土、锚杆、钢筋网等严重破坏",
+              "岩爆造成岩爆区域内隧洞拱肩部位已有锚杆和初喷支护严重损坏",
+              "岩爆造成岩爆区域内隧洞拱肩部位已有锚杆和初喷支护较大损坏",
+              "无",
+              "此次岩爆造成岩爆区域内隧洞拱肩部位已有锚杆和初喷支护轻微损坏",
+              "混凝土剥落",
+              "钢筋网损坏"
+            ]
+          }
+        },
+        {
+          "name": "c_personnel",
+          "ordinal": 2,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "人员损害情况",
+          "profile": {
+            "null_count": 15,
+            "null_ratio": 0.394737,
+            "distinct_count": 2,
+            "max_length": 2,
+            "low_cardinality_values": [
+              " 无",
+              "无"
+            ]
+          }
+        },
+        {
+          "name": "c_device",
+          "ordinal": 3,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "设备损害情况",
+          "profile": {
+            "null_count": 14,
+            "null_ratio": 0.368421,
+            "distinct_count": 3,
+            "max_length": 7,
+            "low_cardinality_values": [
+              " 无",
+              "护盾顶油缸损坏",
+              "无"
+            ]
+          }
+        },
+        {
+          "name": "c_danger",
+          "ordinal": 4,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "危险范围描述",
+          "profile": {
+            "null_count": 18,
+            "null_ratio": 0.473684,
+            "distinct_count": 20,
+            "max_length": 19,
+            "low_cardinality_values": [
+              "195+422-425",
+              "196+130-137",
+              "196+340-350",
+              "196+454-457",
+              "196+461-464",
+              "196+540-546",
+              "196+555-560",
+              "196+555-575",
+              "196+595-595.5",
+              "196+606-607",
+              "196+610-630",
+              "196+611-613",
+              "8~527",
+              "CPDK200+374.5~369.5",
+              "DK199+493~490",
+              "DK199+506~503",
+              "DK199+520~519",
+              "DK199+564~562",
+              "DK200+038~036",
+              "DK200+098~096"
+            ]
+          }
+        },
+        {
+          "name": "d_clearTime",
+          "ordinal": 5,
+          "data_type": "decimal",
+          "column_type": "decimal(6, 1)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "清理时间",
+          "profile": {
+            "null_count": 21,
+            "null_ratio": 0.552632,
+            "distinct_count": 9,
+            "max_length": 4,
+            "low_cardinality_values": [
+              "0.5",
+              "1.0",
+              "1.5",
+              "10.0",
+              "12.0",
+              "2.0",
+              "2.5",
+              "3.0",
+              "5.0"
+            ],
+            "min": "0.5",
+            "max": "12.0"
+          }
+        },
+        {
+          "name": "d_stopTime",
+          "ordinal": 6,
+          "data_type": "decimal",
+          "column_type": "decimal(6, 1)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "停工时间",
+          "profile": {
+            "null_count": 21,
+            "null_ratio": 0.552632,
+            "distinct_count": 11,
+            "max_length": 4,
+            "low_cardinality_values": [
+              "1.0",
+              "1.5",
+              "10.0",
+              "12.0",
+              "13.0",
+              "2.0",
+              "3.0",
+              "4.0",
+              "5.0",
+              "6.0",
+              "8.0"
+            ],
+            "min": "1.0",
+            "max": "13.0"
+          }
+        },
+        {
+          "name": "d_newTime",
+          "ordinal": 7,
+          "data_type": "decimal",
+          "column_type": "decimal(6, 1)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "新增损害发现时间",
+          "profile": {
+            "null_count": 21,
+            "null_ratio": 0.552632,
+            "distinct_count": 11,
+            "max_length": 4,
+            "low_cardinality_values": [
+              "0.5",
+              "1.5",
+              "12.0",
+              "13.0",
+              "15.0",
+              "2.0",
+              "3.0",
+              "5.0",
+              "6.0",
+              "7.5",
+              "8.0"
+            ],
+            "min": "0.5",
+            "max": "15.0"
+          }
+        },
+        {
+          "name": "d_delayTime",
+          "ordinal": 8,
+          "data_type": "decimal",
+          "column_type": "decimal(6, 1)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "延误时间",
+          "profile": {
+            "null_count": 21,
+            "null_ratio": 0.552632,
+            "distinct_count": 15,
+            "max_length": 4,
+            "low_cardinality_values": [
+              "11.5",
+              "14.0",
+              "15.0",
+              "16.0",
+              "17.0",
+              "19.0",
+              "20.0",
+              "24.0",
+              "28.0",
+              "3.5",
+              "5.5",
+              "6.0",
+              "7.0",
+              "7.5",
+              "8.5"
+            ],
+            "min": "3.5",
+            "max": "28.0"
+          }
+        },
+        {
+          "name": "c_remark",
+          "ordinal": 9,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "备注信息",
+          "profile": {
+            "null_count": 38,
+            "null_ratio": 1.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_caseCode",
+          "ordinal": 10,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": false,
+          "default": null,
+          "auto_increment": false,
+          "comment": "案件编码",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 38,
+            "max_length": 20
+          }
+        },
+        {
+          "name": "c_mark",
+          "ordinal": 11,
+          "data_type": "char",
+          "column_type": "char(1)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "标记信息",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "1"
+            ]
+          }
+        }
+      ],
+      "row_count": 38
+    },
+    {
+      "name": "t_operaator",
+      "engine": "InnoDB",
+      "collation": "utf8mb4_0900_ai_ci",
+      "comment": "",
+      "primary_key": [
+        "c_operatorCode"
+      ],
+      "indexes": [],
+      "foreign_keys": [],
+      "columns": [
+        {
+          "name": "c_operatorCode",
+          "ordinal": 1,
+          "data_type": "varchar",
+          "column_type": "varchar(3)",
+          "nullable": false,
+          "default": null,
+          "auto_increment": false,
+          "comment": "操作人员编码",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "1"
+            ]
+          }
+        },
+        {
+          "name": "c_nickName",
+          "ordinal": 2,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "昵称",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "1"
+            ]
+          }
+        },
+        {
+          "name": "c_password",
+          "ordinal": 3,
+          "data_type": "varchar",
+          "column_type": "varchar(30)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "密码",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "1"
+            ]
+          }
+        },
+        {
+          "name": "c_operatorName",
+          "ordinal": 4,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "操作人员姓名",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "1"
+            ]
+          }
+        },
+        {
+          "name": "c_sex",
+          "ordinal": 5,
+          "data_type": "varchar",
+          "column_type": "varchar(2)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "性别",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "男"
+            ]
+          }
+        },
+        {
+          "name": "c_mark",
+          "ordinal": 6,
+          "data_type": "char",
+          "column_type": "char(1)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "标记信息",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "1"
+            ]
+          }
+        },
+        {
+          "name": "c_remark",
+          "ordinal": 7,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "备注信息",
+          "profile": {
+            "null_count": 1,
+            "null_ratio": 1.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        }
+      ],
+      "row_count": 1
+    },
+    {
+      "name": "t_project",
+      "engine": "InnoDB",
+      "collation": "utf8mb4_0900_ai_ci",
+      "comment": "",
+      "primary_key": [
+        "c_projectCode"
+      ],
+      "indexes": [],
+      "foreign_keys": [],
+      "columns": [
+        {
+          "name": "c_projectCode",
+          "ordinal": 1,
+          "data_type": "varchar",
+          "column_type": "varchar(3)",
+          "nullable": false,
+          "default": null,
+          "auto_increment": false,
+          "comment": "项目编码",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 3,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "1",
+              "2",
+              "3"
+            ]
+          }
+        },
+        {
+          "name": "c_projectName",
+          "ordinal": 2,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "项目名称",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 3,
+            "max_length": 20,
+            "low_cardinality_values": [
+              "Neelum-Jhelum水电站引水隧洞",
+              "川藏线巴玉隧道",
+              "锦屏地下实验室"
+            ]
+          }
+        },
+        {
+          "name": "c_descPath",
+          "ordinal": 3,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "描述路径",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 3,
+            "max_length": 29,
+            "low_cardinality_values": [
+              "Neelum-Jhelum水电站引水隧洞\\工程描述.pdf",
+              "川藏线巴玉隧道\\工程描述.pdf",
+              "锦屏地下实验室\\工程描述.pdf"
+            ]
+          }
+        },
+        {
+          "name": "c_opCode",
+          "ordinal": 4,
+          "data_type": "varchar",
+          "column_type": "varchar(3)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "操作人员编码",
+          "profile": {
+            "null_count": 3,
+            "null_ratio": 1.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_date",
+          "ordinal": 5,
+          "data_type": "varchar",
+          "column_type": "varchar(10)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "项目日期",
+          "profile": {
+            "null_count": 3,
+            "null_ratio": 1.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_time",
+          "ordinal": 6,
+          "data_type": "varchar",
+          "column_type": "varchar(10)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "项目时间",
+          "profile": {
+            "null_count": 3,
+            "null_ratio": 1.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_mark",
+          "ordinal": 7,
+          "data_type": "char",
+          "column_type": "char(1)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "标记信息",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "1"
+            ]
+          }
+        },
+        {
+          "name": "c_remark",
+          "ordinal": 8,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "备注信息",
+          "profile": {
+            "null_count": 3,
+            "null_ratio": 1.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_digWay",
+          "ordinal": 9,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "开挖方式",
+          "profile": {
+            "null_count": 1,
+            "null_ratio": 0.333333,
+            "distinct_count": 2,
+            "max_length": 4,
+            "low_cardinality_values": [
+              "TBM法",
+              "钻爆法"
+            ]
+          }
+        },
+        {
+          "name": "c_beginTime",
+          "ordinal": 10,
+          "data_type": "varchar",
+          "column_type": "varchar(10)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "开始时间",
+          "profile": {
+            "null_count": 2,
+            "null_ratio": 0.666667,
+            "distinct_count": 1,
+            "max_length": 10,
+            "low_cardinality_values": [
+              "2016-02-12"
+            ]
+          }
+        },
+        {
+          "name": "c_endTime",
+          "ordinal": 11,
+          "data_type": "varchar",
+          "column_type": "varchar(10)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "结束时间",
+          "profile": {
+            "null_count": 2,
+            "null_ratio": 0.666667,
+            "distinct_count": 1,
+            "max_length": 10,
+            "low_cardinality_values": [
+              "2016-07-01"
+            ]
+          }
+        },
+        {
+          "name": "c_totalEvp",
+          "ordinal": 12,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "总估值",
+          "profile": {
+            "null_count": 3,
+            "null_ratio": 1.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_lithology",
+          "ordinal": 13,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "岩性",
+          "profile": {
+            "null_count": 2,
+            "null_ratio": 0.666667,
+            "distinct_count": 1,
+            "max_length": 9,
+            "low_cardinality_values": [
+              "砂岩、粉砂岩、泥岩"
+            ]
+          }
+        }
+      ],
+      "row_count": 3
+    },
+    {
+      "name": "t_rockdesc",
+      "engine": "InnoDB",
+      "collation": "utf8mb4_0900_ai_ci",
+      "comment": "",
+      "primary_key": [
+        "c_caseCode",
+        "c_craterNo"
+      ],
+      "indexes": [],
+      "foreign_keys": [],
+      "columns": [
+        {
+          "name": "c_craterNo",
+          "ordinal": 1,
+          "data_type": "int",
+          "column_type": "int",
+          "nullable": false,
+          "default": null,
+          "auto_increment": false,
+          "comment": "爆坑编号",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 3,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "0",
+              "1",
+              "2"
+            ],
+            "min": "0",
+            "max": "2"
+          }
+        },
+        {
+          "name": "c_craterShape",
+          "ordinal": 2,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "爆坑形状（V形/浅窝形/平滑形/凹形）",
+          "profile": {
+            "null_count": 13,
+            "null_ratio": 0.325,
+            "distinct_count": 10,
+            "max_length": 3,
+            "low_cardinality_values": [
+              "U型",
+              "V型",
+              "V形",
+              "凹形",
+              "平滑型",
+              "浅窝",
+              "浅窝形",
+              "浅窝状",
+              "漏斗形",
+              "漏斗状"
+            ]
+          }
+        },
+        {
+          "name": "c_craterPole",
+          "ordinal": 3,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "爆坑极限位置",
+          "profile": {
+            "null_count": 3,
+            "null_ratio": 0.075,
+            "distinct_count": 37,
+            "max_length": 15
+          }
+        },
+        {
+          "name": "c_craterPosition",
+          "ordinal": 4,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "爆坑实际位置",
+          "profile": {
+            "null_count": 19,
+            "null_ratio": 0.475,
+            "distinct_count": 19,
+            "max_length": 13,
+            "low_cardinality_values": [
+              "8#实验室南侧边墙至拱肩",
+              "CPDK200+369.5",
+              "DK0+09",
+              "DK199+490",
+              "DK199+503",
+              "DK199+519",
+              "DK199+527",
+              "DK199+562",
+              "DK200+036",
+              "DK200+097",
+              "北侧围岩",
+              "北侧拱肩",
+              "北侧拱肩至拱顶",
+              "左侧拱肩至拱顶",
+              "掌子面",
+              "掌子面前75m左右",
+              "掌子面南侧与围岩交接处",
+              "掌子面右侧拱脚",
+              "掌子面后方北侧围岩"
+            ]
+          }
+        },
+        {
+          "name": "c_craterSize",
+          "ordinal": 5,
+          "data_type": "varchar",
+          "column_type": "varchar(30)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "爆坑尺寸",
+          "profile": {
+            "null_count": 21,
+            "null_ratio": 0.525,
+            "distinct_count": 18,
+            "max_length": 11,
+            "low_cardinality_values": [
+              "1*1*0.2",
+              "1*1.5*0.2",
+              "1.5*2.5*0.2",
+              "15*6*0.4",
+              "2*1*0.1",
+              "2*1.5*0.2",
+              "2*2*0.5",
+              "2*4*0.3",
+              "3*1.5*0.5",
+              "3*2*1.5",
+              "3*2*2",
+              "3*2.0*1.5",
+              "4*3*0.5",
+              "4*4*0.8",
+              "5*2*0.5",
+              "5*3*0.8",
+              "5*6*0.1",
+              "5*6*0.15"
+            ]
+          }
+        },
+        {
+          "name": "c_features",
+          "ordinal": 6,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "爆破特征（松脱/剥落/弹射/抛掷）",
+          "profile": {
+            "null_count": 23,
+            "null_ratio": 0.575,
+            "distinct_count": 8,
+            "max_length": 5,
+            "low_cardinality_values": [
+              "剥落",
+              "弹射",
+              "弹射、抛掷",
+              "弹射、脱落",
+              "抛掷",
+              "松脱",
+              "爆落",
+              "脱落"
+            ]
+          }
+        },
+        {
+          "name": "d_maxDistance",
+          "ordinal": 7,
+          "data_type": "decimal",
+          "column_type": "decimal(6, 2)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "最大飞散距离",
+          "profile": {
+            "null_count": 21,
+            "null_ratio": 0.525,
+            "distinct_count": 7,
+            "max_length": 5,
+            "low_cardinality_values": [
+              "0.50",
+              "1.00",
+              "1.50",
+              "10.00",
+              "14.00",
+              "2.00",
+              "3.00"
+            ],
+            "min": "0.50",
+            "max": "14.00"
+          }
+        },
+        {
+          "name": "d_SectionalArea",
+          "ordinal": 8,
+          "data_type": "decimal",
+          "column_type": "decimal(6, 2)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "爆坑横截面积",
+          "profile": {
+            "null_count": 21,
+            "null_ratio": 0.525,
+            "distinct_count": 15,
+            "max_length": 5,
+            "low_cardinality_values": [
+              "1.00",
+              "1.50",
+              "10.00",
+              "12.00",
+              "15.00",
+              "16.00",
+              "2.00",
+              "3.00",
+              "3.75",
+              "30.00",
+              "4.00",
+              "4.50",
+              "6.00",
+              "8.00",
+              "90.00"
+            ],
+            "min": "1.00",
+            "max": "90.00"
+          }
+        },
+        {
+          "name": "d_craterBulk",
+          "ordinal": 9,
+          "data_type": "decimal",
+          "column_type": "decimal(6, 2)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "爆坑体积",
+          "profile": {
+            "null_count": 21,
+            "null_ratio": 0.525,
+            "distinct_count": 15,
+            "max_length": 5,
+            "low_cardinality_values": [
+              "0.20",
+              "0.30",
+              "0.60",
+              "0.75",
+              "12.00",
+              "13.00",
+              "2.00",
+              "2.25",
+              "2.40",
+              "3.00",
+              "32.00",
+              "4.50",
+              "5.00",
+              "6.00",
+              "9.00"
+            ],
+            "min": "0.20",
+            "max": "32.00"
+          }
+        },
+        {
+          "name": "d_maxDepth",
+          "ordinal": 10,
+          "data_type": "decimal",
+          "column_type": "decimal(6, 2)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "爆坑最大深度",
+          "profile": {
+            "null_count": 18,
+            "null_ratio": 0.45,
+            "distinct_count": 9,
+            "max_length": 4,
+            "low_cardinality_values": [
+              "0.10",
+              "0.20",
+              "0.50",
+              "0.80",
+              "1.50",
+              "1.60",
+              "2.00",
+              "3.00",
+              "3.30"
+            ],
+            "min": "0.10",
+            "max": "3.30"
+          }
+        },
+        {
+          "name": "c_rockShape",
+          "ordinal": 11,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "岩石形态（散体状/薄片/板状）",
+          "profile": {
+            "null_count": 3,
+            "null_ratio": 0.075,
+            "distinct_count": 21,
+            "max_length": 9
+          }
+        },
+        {
+          "name": "c_remark",
+          "ordinal": 12,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "备注信息",
+          "profile": {
+            "null_count": 40,
+            "null_ratio": 1.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_caseCode",
+          "ordinal": 13,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": false,
+          "default": null,
+          "auto_increment": false,
+          "comment": "案件编码",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 37,
+            "max_length": 20
+          }
+        },
+        {
+          "name": "c_mark",
+          "ordinal": 14,
+          "data_type": "char",
+          "column_type": "char(1)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "标记信息",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "1"
+            ]
+          }
+        }
+      ],
+      "row_count": 40
+    },
+    {
+      "name": "t_stress",
+      "engine": "InnoDB",
+      "collation": "utf8mb4_0900_ai_ci",
+      "comment": "",
+      "primary_key": [
+        "c_caseCode"
+      ],
+      "indexes": [],
+      "foreign_keys": [],
+      "columns": [
+        {
+          "name": "d_terrain",
+          "ordinal": 1,
+          "data_type": "decimal",
+          "column_type": "decimal(6, 2)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "地层类别（初喷混凝土，锚杆，钢筋网，复喷混凝土，钢拱架/TH梁，衬砌）",
+          "profile": {
+            "null_count": 33,
+            "null_ratio": 0.846154,
+            "distinct_count": 3,
+            "max_length": 7,
+            "low_cardinality_values": [
+              "0.00",
+              "1700.00",
+              "2400.00"
+            ],
+            "min": "0.00",
+            "max": "2400.00"
+          }
+        },
+        {
+          "name": "d_azimuth1",
+          "ordinal": 2,
+          "data_type": "decimal",
+          "column_type": "decimal(6, 2)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "第一主应力方向的方位角（单位：度）",
+          "profile": {
+            "null_count": 34,
+            "null_ratio": 0.871795,
+            "distinct_count": 2,
+            "max_length": 6,
+            "low_cardinality_values": [
+              "0.00",
+              "326.04"
+            ],
+            "min": "0.00",
+            "max": "326.04"
+          }
+        },
+        {
+          "name": "c_plunge1",
+          "ordinal": 3,
+          "data_type": "decimal",
+          "column_type": "decimal(6, 2)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "第一主应力方向的倾角（单位：度）",
+          "profile": {
+            "null_count": 34,
+            "null_ratio": 0.871795,
+            "distinct_count": 2,
+            "max_length": 5,
+            "low_cardinality_values": [
+              "0.00",
+              "55.60"
+            ],
+            "min": "0.00",
+            "max": "55.60"
+          }
+        },
+        {
+          "name": "d_size1",
+          "ordinal": 4,
+          "data_type": "decimal",
+          "column_type": "decimal(6, 2)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "第一主应力的大小（单位：MPa）初喷混凝土，锚杆，钢筋网，复喷混凝土，钢拱架/TH梁，衬砌",
+          "profile": {
+            "null_count": 34,
+            "null_ratio": 0.871795,
+            "distinct_count": 2,
+            "max_length": 5,
+            "low_cardinality_values": [
+              "0.00",
+              "69.20"
+            ],
+            "min": "0.00",
+            "max": "69.20"
+          }
+        },
+        {
+          "name": "d_azimuth2",
+          "ordinal": 5,
+          "data_type": "decimal",
+          "column_type": "decimal(6, 2)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "第二主应力方向的方位角（单位：度）",
+          "profile": {
+            "null_count": 34,
+            "null_ratio": 0.871795,
+            "distinct_count": 2,
+            "max_length": 6,
+            "low_cardinality_values": [
+              "0.00",
+              "167.36"
+            ],
+            "min": "0.00",
+            "max": "167.36"
+          }
+        },
+        {
+          "name": "c_plunge2",
+          "ordinal": 6,
+          "data_type": "decimal",
+          "column_type": "decimal(6, 2)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "第二主应力方向的倾角（单位：度）",
+          "profile": {
+            "null_count": 34,
+            "null_ratio": 0.871795,
+            "distinct_count": 2,
+            "max_length": 5,
+            "low_cardinality_values": [
+              "0.00",
+              "32.60"
+            ],
+            "min": "0.00",
+            "max": "32.60"
+          }
+        },
+        {
+          "name": "d_size2",
+          "ordinal": 7,
+          "data_type": "decimal",
+          "column_type": "decimal(6, 2)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "第二主应力的大小（单位：MPa）（初喷混凝土，锚杆，钢筋网，复喷混凝土，钢拱架/TH梁，衬砌）",
+          "profile": {
+            "null_count": 34,
+            "null_ratio": 0.871795,
+            "distinct_count": 2,
+            "max_length": 5,
+            "low_cardinality_values": [
+              "0.00",
+              "67.32"
+            ],
+            "min": "0.00",
+            "max": "67.32"
+          }
+        },
+        {
+          "name": "d_azimuth3",
+          "ordinal": 8,
+          "data_type": "decimal",
+          "column_type": "decimal(6, 2)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "第三主应力方向的方位角（单位：度）",
+          "profile": {
+            "null_count": 34,
+            "null_ratio": 0.871795,
+            "distinct_count": 2,
+            "max_length": 5,
+            "low_cardinality_values": [
+              "0.00",
+              "70.90"
+            ],
+            "min": "0.00",
+            "max": "70.90"
+          }
+        },
+        {
+          "name": "c_plunge3",
+          "ordinal": 9,
+          "data_type": "decimal",
+          "column_type": "decimal(6, 2)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "第三主应力方向的倾角（单位：度）",
+          "profile": {
+            "null_count": 34,
+            "null_ratio": 0.871795,
+            "distinct_count": 2,
+            "max_length": 4,
+            "low_cardinality_values": [
+              "0.00",
+              "9.98"
+            ],
+            "min": "0.00",
+            "max": "9.98"
+          }
+        },
+        {
+          "name": "d_size3",
+          "ordinal": 10,
+          "data_type": "decimal",
+          "column_type": "decimal(6, 2)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "第三主应力的大小（单位：MPa）（初喷混凝土，锚杆，钢筋网，复喷混凝土，钢拱架/TH梁，衬砌）",
+          "profile": {
+            "null_count": 34,
+            "null_ratio": 0.871795,
+            "distinct_count": 2,
+            "max_length": 5,
+            "low_cardinality_values": [
+              "0.00",
+              "25.54"
+            ],
+            "min": "0.00",
+            "max": "25.54"
+          }
+        },
+        {
+          "name": "d_kangya",
+          "ordinal": 11,
+          "data_type": "decimal",
+          "column_type": "decimal(6, 2)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "抗压强度（单位：MPa）",
+          "profile": {
+            "null_count": 34,
+            "null_ratio": 0.871795,
+            "distinct_count": 2,
+            "max_length": 6,
+            "low_cardinality_values": [
+              "0.00",
+              "160.00"
+            ],
+            "min": "0.00",
+            "max": "160.00"
+          }
+        },
+        {
+          "name": "d_kangla",
+          "ordinal": 12,
+          "data_type": "decimal",
+          "column_type": "decimal(6, 2)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "抗拉强度（单位：MPa）",
+          "profile": {
+            "null_count": 38,
+            "null_ratio": 0.974359,
+            "distinct_count": 1,
+            "max_length": 4,
+            "low_cardinality_values": [
+              "0.00"
+            ],
+            "min": "0.00",
+            "max": "0.00"
+          }
+        },
+        {
+          "name": "d_strain",
+          "ordinal": 13,
+          "data_type": "decimal",
+          "column_type": "decimal(6, 2)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "变形量（初喷混凝土，锚杆，钢筋网，复喷混凝土，钢拱架/TH梁，衬砌）",
+          "profile": {
+            "null_count": 38,
+            "null_ratio": 0.974359,
+            "distinct_count": 1,
+            "max_length": 4,
+            "low_cardinality_values": [
+              "0.00"
+            ],
+            "min": "0.00",
+            "max": "0.00"
+          }
+        },
+        {
+          "name": "d_Brittleness",
+          "ordinal": 14,
+          "data_type": "decimal",
+          "column_type": "decimal(6, 2)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "脆性指数",
+          "profile": {
+            "null_count": 38,
+            "null_ratio": 0.974359,
+            "distinct_count": 1,
+            "max_length": 4,
+            "low_cardinality_values": [
+              "0.00"
+            ],
+            "min": "0.00",
+            "max": "0.00"
+          }
+        },
+        {
+          "name": "c_remark",
+          "ordinal": 15,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "备注信息",
+          "profile": {
+            "null_count": 38,
+            "null_ratio": 0.974359,
+            "distinct_count": 1,
+            "max_length": 0,
+            "low_cardinality_values": [
+              ""
+            ]
+          }
+        },
+        {
+          "name": "c_caseCode",
+          "ordinal": 16,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": false,
+          "default": null,
+          "auto_increment": false,
+          "comment": "案件编码",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 39,
+            "max_length": 20
+          }
+        },
+        {
+          "name": "c_mark",
+          "ordinal": 17,
+          "data_type": "char",
+          "column_type": "char(1)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "标记信息",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "1"
+            ]
+          }
+        }
+      ],
+      "row_count": 39
+    },
+    {
+      "name": "t_support",
+      "engine": "InnoDB",
+      "collation": "utf8mb4_0900_ai_ci",
+      "comment": "",
+      "primary_key": [
+        "i_serialid"
+      ],
+      "indexes": [],
+      "foreign_keys": [],
+      "columns": [
+        {
+          "name": "c_supportType",
+          "ordinal": 1,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "支护类型（初喷混凝土，锚杆，钢筋网，复喷混凝土，钢拱架/TH梁，衬砌）\r\n",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 6,
+            "max_length": 7,
+            "low_cardinality_values": [
+              "",
+              "初喷混凝土",
+              "复喷混凝土",
+              "钢拱架/TH梁",
+              "钢筋网",
+              "锚杆"
+            ]
+          }
+        },
+        {
+          "name": "c_supportTime",
+          "ordinal": 2,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "支护时间",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 7,
+            "max_length": 7,
+            "low_cardinality_values": [
+              "",
+              "10月13日",
+              "10月1日中午",
+              "10月8日凌晨",
+              "19日",
+              "20日",
+              "前一个月"
+            ]
+          }
+        },
+        {
+          "name": "c_area",
+          "ordinal": 3,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "区域",
+          "profile": {
+            "null_count": 50,
+            "null_ratio": 0.833333,
+            "distinct_count": 10,
+            "max_length": 19,
+            "low_cardinality_values": [
+              "196+340-350",
+              "196+450-454",
+              "196+555-575",
+              "196+606-607",
+              "196+610-630",
+              "CPDK200+374.5~369.5",
+              "DK199+509~503",
+              "DK199+564~562",
+              "DK200+038~036",
+              "DK200+098~096"
+            ]
+          }
+        },
+        {
+          "name": "c_position",
+          "ordinal": 4,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "位置",
+          "profile": {
+            "null_count": 49,
+            "null_ratio": 0.816667,
+            "distinct_count": 8,
+            "max_length": 13,
+            "low_cardinality_values": [
+              "CPDK200+373.5",
+              "DK199+503",
+              "DK199+553",
+              "DK200+037",
+              "DK200+097",
+              "北侧围岩",
+              "掌子面附近",
+              "整体覆盖"
+            ]
+          }
+        },
+        {
+          "name": "c_supportNum",
+          "ordinal": 5,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "支护编号",
+          "profile": {
+            "null_count": 55,
+            "null_ratio": 0.916667,
+            "distinct_count": 4,
+            "max_length": 2,
+            "low_cardinality_values": [
+              "3",
+              "4榀",
+              "5方",
+              "8方"
+            ]
+          }
+        },
+        {
+          "name": "c_parameter",
+          "ordinal": 6,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "参数",
+          "profile": {
+            "null_count": 55,
+            "null_ratio": 0.916667,
+            "distinct_count": 5,
+            "max_length": 7,
+            "low_cardinality_values": [
+              "偶读0.09m",
+              "厚度0.05m",
+              "厚度0.09m",
+              "厚度0.1m",
+              "间距0.8m"
+            ]
+          }
+        },
+        {
+          "name": "c_remark",
+          "ordinal": 7,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "备注信息",
+          "profile": {
+            "null_count": 58,
+            "null_ratio": 0.966667,
+            "distinct_count": 1,
+            "max_length": 5,
+            "low_cardinality_values": [
+              "岩爆区域前"
+            ]
+          }
+        },
+        {
+          "name": "i_serialid",
+          "ordinal": 8,
+          "data_type": "int",
+          "column_type": "int",
+          "nullable": false,
+          "default": null,
+          "auto_increment": true,
+          "comment": "序号",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 60,
+            "max_length": 2,
+            "min": "39",
+            "max": "98"
+          }
+        },
+        {
+          "name": "c_caseCode",
+          "ordinal": 9,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "案例编码",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 28,
+            "max_length": 20
+          }
+        },
+        {
+          "name": "c_mark",
+          "ordinal": 10,
+          "data_type": "char",
+          "column_type": "char(1)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "标记信息",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "1"
+            ]
+          }
+        }
+      ],
+      "row_count": 60
+    },
+    {
+      "name": "t_supportnew",
+      "engine": "InnoDB",
+      "collation": "utf8mb4_0900_ai_ci",
+      "comment": "",
+      "primary_key": [
+        "i_serialid"
+      ],
+      "indexes": [],
+      "foreign_keys": [],
+      "columns": [
+        {
+          "name": "c_supportType",
+          "ordinal": 1,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "支护类型（初喷混凝土，锚杆，钢筋网，复喷混凝土，钢拱架/TH梁，衬砌）\r\n",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 5,
+            "max_length": 7,
+            "low_cardinality_values": [
+              "",
+              "复喷混凝土",
+              "钢拱架/TH梁",
+              "钢筋网",
+              "锚杆"
+            ]
+          }
+        },
+        {
+          "name": "c_supportTime",
+          "ordinal": 2,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "支护时间",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 30,
+            "max_length": 11
+          }
+        },
+        {
+          "name": "c_area",
+          "ordinal": 3,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "区域",
+          "profile": {
+            "null_count": 13,
+            "null_ratio": 0.171053,
+            "distinct_count": 26,
+            "max_length": 27
+          }
+        },
+        {
+          "name": "c_position",
+          "ordinal": 4,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "位置",
+          "profile": {
+            "null_count": 17,
+            "null_ratio": 0.223684,
+            "distinct_count": 17,
+            "max_length": 13,
+            "low_cardinality_values": [
+              "",
+              "CPDK200+373.5",
+              "DK199+430",
+              "DK199+492",
+              "DK199+493~492",
+              "DK199+495",
+              "DK199+519",
+              "DK199+527",
+              "DK200+037",
+              "DK200+091",
+              "DK200+097",
+              "全断面",
+              "北侧围岩",
+              "掌子面",
+              "掌子面-后方5m区域",
+              "掌子面后方3m区域",
+              "掌子面附近"
+            ]
+          }
+        },
+        {
+          "name": "c_supportNum",
+          "ordinal": 5,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "支护编号",
+          "profile": {
+            "null_count": 49,
+            "null_ratio": 0.644737,
+            "distinct_count": 13,
+            "max_length": 3,
+            "low_cardinality_values": [
+              "",
+              "12a",
+              "12根",
+              "15根",
+              "16方",
+              "2榀",
+              "30方",
+              "3方",
+              "6方",
+              "8",
+              "9方",
+              "未知",
+              "覆盖"
+            ]
+          }
+        },
+        {
+          "name": "c_parameter",
+          "ordinal": 6,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "参数",
+          "profile": {
+            "null_count": 52,
+            "null_ratio": 0.684211,
+            "distinct_count": 14,
+            "max_length": 16,
+            "low_cardinality_values": [
+              "",
+              "厚度0.1m",
+              "厚度0.29m",
+              "厚度0.29m，共计30立方米",
+              "厚度0.2m",
+              "厚度0.3m",
+              "厚度0.5cm",
+              "钢拱架排距1.5m，14#工字钢",
+              "间距0.5-1m，砂浆锚杆",
+              "间距0.6m",
+              "高度4-8m",
+              "高度5-9m",
+              "高度5m开始支护",
+              "高度6-8m"
+            ]
+          }
+        },
+        {
+          "name": "c_remark",
+          "ordinal": 7,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "备注信息",
+          "profile": {
+            "null_count": 72,
+            "null_ratio": 0.947368,
+            "distinct_count": 2,
+            "max_length": 51,
+            "low_cardinality_values": [
+              "",
+              "加强支护和掏空措施： 锚网喷+TH梁支护  增加两隧洞间距； 开展地应力测试；开展微震监测进行岩爆预警"
+            ]
+          }
+        },
+        {
+          "name": "i_serialid",
+          "ordinal": 8,
+          "data_type": "int",
+          "column_type": "int",
+          "nullable": false,
+          "default": null,
+          "auto_increment": true,
+          "comment": "序号",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 76,
+            "max_length": 2,
+            "min": "1",
+            "max": "94"
+          }
+        },
+        {
+          "name": "c_caseCode",
+          "ordinal": 9,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "案例编码",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 39,
+            "max_length": 20
+          }
+        },
+        {
+          "name": "c_mark",
+          "ordinal": 10,
+          "data_type": "char",
+          "column_type": "char(1)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "标记信息",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "1"
+            ]
+          }
+        }
+      ],
+      "row_count": 76
+    },
+    {
+      "name": "t_waveproject",
+      "engine": "InnoDB",
+      "collation": "utf8mb4_0900_ai_ci",
+      "comment": "",
+      "primary_key": [
+        "i_serialid"
+      ],
+      "indexes": [
+        {
+          "name": "IX_T_waveProject",
+          "unique": true,
+          "columns": [
+            "i_serialid"
+          ]
+        }
+      ],
+      "foreign_keys": [],
+      "columns": [
+        {
+          "name": "i_serialid",
+          "ordinal": 1,
+          "data_type": "int",
+          "column_type": "int",
+          "nullable": false,
+          "default": null,
+          "auto_increment": true,
+          "comment": "序号",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 3,
+            "max_length": 2,
+            "low_cardinality_values": [
+              "14",
+              "15",
+              "3"
+            ],
+            "min": "3",
+            "max": "15"
+          }
+        },
+        {
+          "name": "c_projectName",
+          "ordinal": 2,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "项目名称",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 7,
+            "low_cardinality_values": [
+              "川藏线巴玉隧道"
+            ]
+          }
+        },
+        {
+          "name": "c_digWay",
+          "ordinal": 3,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "开挖方式",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 3,
+            "low_cardinality_values": [
+              "钻爆法"
+            ]
+          }
+        },
+        {
+          "name": "c_lithology",
+          "ordinal": 4,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "岩性",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 3,
+            "low_cardinality_values": [
+              "花岗岩"
+            ]
+          }
+        },
+        {
+          "name": "c_wzSystem",
+          "ordinal": 5,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "监测系统",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 3,
+            "low_cardinality_values": [
+              "IMS"
+            ]
+          }
+        },
+        {
+          "name": "c_rate",
+          "ordinal": 6,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "监测频率",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 4,
+            "low_cardinality_values": [
+              "6000"
+            ]
+          }
+        },
+        {
+          "name": "i_sensor",
+          "ordinal": 7,
+          "data_type": "int",
+          "column_type": "int",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "传感器数量",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "8"
+            ],
+            "min": "8",
+            "max": "8"
+          }
+        },
+        {
+          "name": "c_sensorWay",
+          "ordinal": 8,
+          "data_type": "varchar",
+          "column_type": "varchar(30)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "传感器安装方式",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 9,
+            "low_cardinality_values": [
+              "孔内临时安装或锚杆"
+            ]
+          }
+        },
+        {
+          "name": "c_waveSort",
+          "ordinal": 9,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "波形类型",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 3,
+            "max_length": 4,
+            "low_cardinality_values": [
+              "机械振动",
+              "爆破波形",
+              "破裂波形"
+            ]
+          }
+        },
+        {
+          "name": "c_descPath",
+          "ordinal": 10,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "描述文件路径",
+          "profile": {
+            "null_count": 3,
+            "null_ratio": 1.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_opCode",
+          "ordinal": 11,
+          "data_type": "varchar",
+          "column_type": "varchar(3)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "操作代码",
+          "profile": {
+            "null_count": 3,
+            "null_ratio": 1.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_date",
+          "ordinal": 12,
+          "data_type": "varchar",
+          "column_type": "varchar(10)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "日期",
+          "profile": {
+            "null_count": 3,
+            "null_ratio": 1.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_time",
+          "ordinal": 13,
+          "data_type": "varchar",
+          "column_type": "varchar(10)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "时间",
+          "profile": {
+            "null_count": 3,
+            "null_ratio": 1.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_mark",
+          "ordinal": 14,
+          "data_type": "char",
+          "column_type": "char(1)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "标记信息",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "1"
+            ]
+          }
+        },
+        {
+          "name": "c_remark",
+          "ordinal": 15,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "备注信息",
+          "profile": {
+            "null_count": 3,
+            "null_ratio": 1.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        }
+      ],
+      "row_count": 3
+    },
+    {
+      "name": "t_waveproperty",
+      "engine": "InnoDB",
+      "collation": "utf8mb4_0900_ai_ci",
+      "comment": "",
+      "primary_key": [
+        "i_serialid",
+        "c_waveName"
+      ],
+      "indexes": [],
+      "foreign_keys": [],
+      "columns": [
+        {
+          "name": "i_serialid",
+          "ordinal": 1,
+          "data_type": "int",
+          "column_type": "int",
+          "nullable": false,
+          "default": null,
+          "auto_increment": false,
+          "comment": "序号",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_waveName",
+          "ordinal": 2,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": false,
+          "default": null,
+          "auto_increment": false,
+          "comment": "波姓名称",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_sensorSort",
+          "ordinal": 3,
+          "data_type": "varchar",
+          "column_type": "varchar(20)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "传感器类别",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_sensorWay",
+          "ordinal": 4,
+          "data_type": "varchar",
+          "column_type": "varchar(30)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "传感器安装方式",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "i_PWave",
+          "ordinal": 5,
+          "data_type": "int",
+          "column_type": "int",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "P波数量",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "i_SWave",
+          "ordinal": 6,
+          "data_type": "int",
+          "column_type": "int",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "S波数量",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "i_vibration",
+          "ordinal": 7,
+          "data_type": "int",
+          "column_type": "int",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "振动次数",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_ringRate",
+          "ordinal": 8,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "振铃率",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_maxSwing",
+          "ordinal": 9,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "最大摆幅",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "i_swingPosition",
+          "ordinal": 10,
+          "data_type": "int",
+          "column_type": "int",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "摆幅位置",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_PWaveValue",
+          "ordinal": 11,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "P波值",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_mainRate",
+          "ordinal": 12,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "主频率",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "img_waveFile",
+          "ordinal": 13,
+          "data_type": "blob",
+          "column_type": "blob",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "波形文件",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_mark",
+          "ordinal": 14,
+          "data_type": "char",
+          "column_type": "char(1)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "标记信息",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_remark",
+          "ordinal": 15,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "备注信息",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        }
+      ],
+      "row_count": 0
+    },
+    {
+      "name": "t_workarea",
+      "engine": "InnoDB",
+      "collation": "utf8mb4_0900_ai_ci",
+      "comment": "",
+      "primary_key": [
+        "c_areatCode"
+      ],
+      "indexes": [],
+      "foreign_keys": [],
+      "columns": [
+        {
+          "name": "c_areatCode",
+          "ordinal": 1,
+          "data_type": "varchar",
+          "column_type": "varchar(6)",
+          "nullable": false,
+          "default": null,
+          "auto_increment": false,
+          "comment": "工作区域代码",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 7,
+            "max_length": 4,
+            "low_cardinality_values": [
+              "1001",
+              "2001",
+              "2002",
+              "3001",
+              "3002",
+              "3003",
+              "3004"
+            ]
+          }
+        },
+        {
+          "name": "c_areatName",
+          "ordinal": 2,
+          "data_type": "varchar",
+          "column_type": "varchar(50)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "工作区域名称",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 7,
+            "max_length": 7,
+            "low_cardinality_values": [
+              "JPURL-Ⅱ",
+              "TBM696",
+              "TBM697",
+              "出口平导",
+              "出口正洞",
+              "进口平导",
+              "进口正洞"
+            ]
+          }
+        },
+        {
+          "name": "c_descPath",
+          "ordinal": 3,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "描述路径",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 7,
+            "max_length": 36,
+            "low_cardinality_values": [
+              "Neelum-Jhelum水电站引水隧洞\\TBM696\\工区描述.pdf",
+              "Neelum-Jhelum水电站引水隧洞\\TBM697\\工区描述.pdf",
+              "川藏线巴玉隧道\\出口平导\\工区描述.pdf",
+              "川藏线巴玉隧道\\出口正洞\\工区描述.pdf",
+              "川藏线巴玉隧道\\进口平导\\工区描述.pdf",
+              "川藏线巴玉隧道\\进口正洞\\工区描述.pdf",
+              "锦屏地下实验室\\JPURL-Ⅱ\\工区描述.pdf"
+            ]
+          }
+        },
+        {
+          "name": "c_opCode",
+          "ordinal": 4,
+          "data_type": "varchar",
+          "column_type": "varchar(3)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "操作人员代码",
+          "profile": {
+            "null_count": 7,
+            "null_ratio": 1.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_date",
+          "ordinal": 5,
+          "data_type": "varchar",
+          "column_type": "varchar(10)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "操作日期",
+          "profile": {
+            "null_count": 7,
+            "null_ratio": 1.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_time",
+          "ordinal": 6,
+          "data_type": "varchar",
+          "column_type": "varchar(10)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "操作时间",
+          "profile": {
+            "null_count": 7,
+            "null_ratio": 1.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_mark",
+          "ordinal": 7,
+          "data_type": "char",
+          "column_type": "char(1)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "标记信息",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 1,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "1"
+            ]
+          }
+        },
+        {
+          "name": "c_remark",
+          "ordinal": 8,
+          "data_type": "varchar",
+          "column_type": "varchar(255)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "备注信息",
+          "profile": {
+            "null_count": 7,
+            "null_ratio": 1.0,
+            "distinct_count": 0,
+            "max_length": 0,
+            "low_cardinality_values": []
+          }
+        },
+        {
+          "name": "c_projectCode",
+          "ordinal": 9,
+          "data_type": "varchar",
+          "column_type": "varchar(3)",
+          "nullable": true,
+          "default": null,
+          "auto_increment": false,
+          "comment": "项目编码",
+          "profile": {
+            "null_count": 0,
+            "null_ratio": 0.0,
+            "distinct_count": 3,
+            "max_length": 1,
+            "low_cardinality_values": [
+              "1",
+              "2",
+              "3"
+            ]
+          }
+        }
+      ],
+      "row_count": 7
+    }
+  ]
+}

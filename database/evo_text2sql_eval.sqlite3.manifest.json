@@ -1,0 +1,11 @@
+{
+  "contract_version": 1,
+  "dialect": "sqlite",
+  "database_snapshot_id": "dbs_57a4a4c99520477b1c8e",
+  "source_dump_sha256": "f4fff88ef9ba98c368bbe2d9f7daf34d9e943c22a1d344596e4c604bc1ad39c3",
+  "sqlite_sha256": "47c2ee9197e76e32ab1ed3a96220fcf463db9123f7eae810bb9266fd2db96049",
+  "sqlite_version": "3.45.3",
+  "table_count": 20,
+  "row_count": 562,
+  "open_mode": "file:<path>?mode=ro&immutable=1 + PRAGMA query_only=ON"
+}

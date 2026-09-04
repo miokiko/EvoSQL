@@ -1,0 +1,805 @@
+{
+  "purpose": "one-case-full-process-demo",
+  "note": "Contains auditable structured outputs, not hidden chain-of-thought.",
+  "public_result": {
+    "task_id": "text2sql-demo-3dd16c23c97d4b189f21d29148a94e9c",
+    "status": "success",
+    "question": "表 t_activeinfo 的累计事件数量（d_sumEvent）非空值的最大值是多少？结果保留六位小数。",
+    "standalone_question": "表 t_activeinfo 的累计事件数量（d_sumEvent）非空值的最大值是多少？结果保留六位小数。",
+    "query_type": "DATA_QUERY",
+    "parent_query_run_id": "",
+    "final_sql": "SELECT printf('%.6f', MAX(d_sumEvent)) FROM t_activeinfo WHERE d_sumEvent IS NOT NULL",
+    "answer": {
+      "columns": [
+        "PRINTF('%.6f', MAX(d_sumEvent))"
+      ],
+      "rows": [
+        [
+          "417.000000"
+        ]
+      ],
+      "row_count": 1,
+      "truncated": false,
+      "summary_text": ""
+    },
+    "gates": {
+      "accepted": true,
+      "errors": [],
+      "ast": {
+        "accepted": true,
+        "normalized_sql": "SELECT PRINTF('%.6f', MAX(d_sumEvent)) FROM t_activeinfo WHERE NOT d_sumEvent IS NULL",
+        "tables": [
+          "t_activeinfo"
+        ],
+        "columns": [
+          "d_sumEvent"
+        ],
+        "errors": [],
+        "fingerprint": "f78ccf527ebdabc2102aed64d3845fff672d48be5ed99568f815b32ef0a9e17f"
+      }
+    },
+    "version_pins": {
+      "database_snapshot_id": "dbs_57a4a4c99520477b1c8e",
+      "wiki_index_version": "stable-v2-2b44cc2f83",
+      "vanna_index_version": "stable-v2-2b44cc2f83",
+      "memory_snapshot_id": "memory-4f53cda18c2baa0c0354",
+      "policy_version": "policy-4cf60dcd275a1826c76a"
+    },
+    "release": {
+      "lane": "stable",
+      "shadow_sampled": false,
+      "candidate_output_used": false
+    },
+    "draft_link_pack": {
+      "contract": "DraftLinkPack/v1",
+      "trust": "untrusted_candidate_input_to_grounding",
+      "draft_sql": "SELECT ROUND(MAX(d_sumEvent), 6) FROM t_activeinfo WHERE d_sumEvent IS NOT NULL",
+      "draft_valid": true,
+      "draft_error": "",
+      "tables": [
+        "t_activeinfo"
+      ],
+      "columns": [
+        "t_activeinfo.d_sumEvent"
+      ],
+      "projection_columns": [
+        "t_activeinfo.d_sumEvent"
+      ],
+      "joins": [],
+      "coverage": {
+        "has_table": true,
+        "has_column": true,
+        "has_full_ddl": true,
+        "has_join": false,
+        "needs_grounding_decision": true
+      }
+    },
+    "agents": [
+      {
+        "role": "text2sql-lead",
+        "stage": "query-routing",
+        "status": "completed",
+        "summary": "DATA_QUERY · The question asks for a specific aggregate calculation (MAX) on a column in a specific table. It does not reference previous results or require clarification, so it is a new DATA_QUERY.",
+        "detail": {
+          "query_type": "DATA_QUERY",
+          "parent_query_run_id": ""
+        }
+      },
+      {
+        "role": "vanna-draft-planner",
+        "stage": "draft-schema-linking",
+        "status": "completed",
+        "summary": "Vanna 辅助草案已由 AST 反解析；随后用问题直连字段和完整 DDL 补齐",
+        "detail": {
+          "tables": [
+            "t_activeinfo"
+          ],
+          "columns": [
+            "t_activeinfo.d_sumEvent"
+          ],
+          "join_count": 0,
+          "has_full_ddl": true
+        }
+      },
+      {
+        "role": "schema-grounding",
+        "stage": "worker",
+        "status": "completed",
+        "summary": "已完成表、字段、Join 与结果粒度定位",
+        "detail": {
+          "tables": [
+            "t_activeinfo"
+          ],
+          "columns": [
+            "t_activeinfo.d_sumEvent"
+          ],
+          "join_count": 0
+        },
+        "evidence_count": 25
+      },
+      {
+        "role": "sql-strategy",
+        "stage": "worker",
+        "status": "completed",
+        "summary": "已生成只读 SQL 候选并执行 AST/EXPLAIN 检查",
+        "detail": {
+          "intent": "aggregate",
+          "candidate_count": 1
+        },
+        "evidence_count": 27
+      },
+      {
+        "role": "text2sql-critic",
+        "stage": "blind-review",
+        "status": "completed",
+        "summary": "Candidate 0 correctly implements the request. It selects the maximum value of `d_sumEvent` from `t_activeinfo`, filters for non-null values, and formats the result to six decimal places using `printf('%.6f', ...)`. This is valid SQLite syntax and semantically equivalent to the draft's `ROUND(..., 6)` but ensures string formatting as often expected by 'retain 6 decimal places' instructions in text-to-SQL contexts. No joins or unsupported features are used.",
+        "detail": {
+          "candidate_count": 1,
+          "accepted_count": 1
+        }
+      },
+      {
+        "role": "text2sql-lead",
+        "stage": "final-selection",
+        "status": "completed",
+        "summary": "Selected candidate c1 from sql-strategy worker. It correctly aggregates the maximum of `d_sumEvent` from `t_activeinfo`, filters out NULLs, and formats the result to exactly six decimal places using `printf`. Schema grounding and Critic review confirm validity and correctness.",
+        "detail": {
+          "final_candidate_index": 0
+        }
+      }
+    ],
+    "execution": {
+      "llm_calls": 8,
+      "tool_calls": 6,
+      "input_tokens": 52102,
+      "output_tokens": 2792,
+      "total_tokens": 54894,
+      "cost_usd": 0.0,
+      "duration_ms": 40172
+    }
+  },
+  "stored_trace": {
+    "task_id": "text2sql-demo-3dd16c23c97d4b189f21d29148a94e9c",
+    "status": "success",
+    "question": "表 t_activeinfo 的累计事件数量（d_sumEvent）非空值的最大值是多少？结果保留六位小数。",
+    "final_sql": "SELECT printf('%.6f', MAX(d_sumEvent)) FROM t_activeinfo WHERE d_sumEvent IS NOT NULL",
+    "recorded_at": "2026-09-04T07:09:56.143511+00:00",
+    "user_id": "local-user",
+    "session_id": "full-process-demo",
+    "original_question": "表 t_activeinfo 的累计事件数量（d_sumEvent）非空值的最大值是多少？结果保留六位小数。",
+    "standalone_question": "表 t_activeinfo 的累计事件数量（d_sumEvent）非空值的最大值是多少？结果保留六位小数。",
+    "query_type": "DATA_QUERY",
+    "parent_task_id": "",
+    "feedback_status": "",
+    "gates": {
+      "accepted": true,
+      "ast": {
+        "accepted": true,
+        "columns": [
+          "d_sumEvent"
+        ],
+        "errors": [],
+        "fingerprint": "f78ccf527ebdabc2102aed64d3845fff672d48be5ed99568f815b32ef0a9e17f",
+        "normalized_sql": "SELECT PRINTF('%.6f', MAX(d_sumEvent)) FROM t_activeinfo WHERE NOT d_sumEvent IS NULL",
+        "tables": [
+          "t_activeinfo"
+        ]
+      },
+      "errors": []
+    },
+    "agents": [
+      {
+        "detail": {
+          "parent_query_run_id": "",
+          "query_type": "DATA_QUERY"
+        },
+        "role": "text2sql-lead",
+        "stage": "query-routing",
+        "status": "completed",
+        "summary": "DATA_QUERY · The question asks for a specific aggregate calculation (MAX) on a column in a specific table. It does not reference previous results or require clarification, so it is a new DATA_QUERY."
+      },
+      {
+        "detail": {
+          "columns": [
+            "t_activeinfo.d_sumEvent"
+          ],
+          "has_full_ddl": true,
+          "join_count": 0,
+          "tables": [
+            "t_activeinfo"
+          ]
+        },
+        "role": "vanna-draft-planner",
+        "stage": "draft-schema-linking",
+        "status": "completed",
+        "summary": "Vanna 辅助草案已由 AST 反解析；随后用问题直连字段和完整 DDL 补齐"
+      },
+      {
+        "detail": {
+          "columns": [
+            "t_activeinfo.d_sumEvent"
+          ],
+          "join_count": 0,
+          "tables": [
+            "t_activeinfo"
+          ]
+        },
+        "evidence_count": 25,
+        "role": "schema-grounding",
+        "stage": "worker",
+        "status": "completed",
+        "summary": "已完成表、字段、Join 与结果粒度定位"
+      },
+      {
+        "detail": {
+          "candidate_count": 1,
+          "intent": "aggregate"
+        },
+        "evidence_count": 27,
+        "role": "sql-strategy",
+        "stage": "worker",
+        "status": "completed",
+        "summary": "已生成只读 SQL 候选并执行 AST/EXPLAIN 检查"
+      },
+      {
+        "detail": {
+          "accepted_count": 1,
+          "candidate_count": 1
+        },
+        "role": "text2sql-critic",
+        "stage": "blind-review",
+        "status": "completed",
+        "summary": "Candidate 0 correctly implements the request. It selects the maximum value of `d_sumEvent` from `t_activeinfo`, filters for non-null values, and formats the result to six decimal places using `printf('%.6f', ...)`. This is valid SQLite syntax and semantically equivalent to the draft's `ROUND(..., 6)` but ensures string formatting as often expected by 'retain 6 decimal places' instructions in text-to-SQL contexts. No joins or unsupported features are used."
+      },
+      {
+        "detail": {
+          "final_candidate_index": 0
+        },
+        "role": "text2sql-lead",
+        "stage": "final-selection",
+        "status": "completed",
+        "summary": "Selected candidate c1 from sql-strategy worker. It correctly aggregates the maximum of `d_sumEvent` from `t_activeinfo`, filters out NULLs, and formats the result to exactly six decimal places using `printf`. Schema grounding and Critic review confirm validity and correctness."
+      }
+    ],
+    "execution": {
+      "cost_usd": 0.0,
+      "duration_ms": 40172,
+      "input_tokens": 52102,
+      "llm_calls": 8,
+      "output_tokens": 2792,
+      "tool_calls": 6,
+      "total_tokens": 54894
+    },
+    "version_pins": {
+      "database_snapshot_id": "dbs_57a4a4c99520477b1c8e",
+      "memory_snapshot_id": "memory-4f53cda18c2baa0c0354",
+      "policy_version": "policy-4cf60dcd275a1826c76a",
+      "vanna_index_version": "stable-v2-2b44cc2f83",
+      "wiki_index_version": "stable-v2-2b44cc2f83"
+    },
+    "answer": {
+      "columns": [
+        "PRINTF('%.6f', MAX(d_sumEvent))"
+      ],
+      "row_count": 1,
+      "summary_text": "",
+      "truncated": false
+    },
+    "schema_plan": {
+      "columns": [
+        "t_activeinfo.d_sumEvent"
+      ],
+      "evidence_ids": [
+        "db:078fd86d5797ceecc229b500",
+        "db:0b98d47774226437756c3b89",
+        "db:0bec733bd61f0ad73bb047c4",
+        "db:161dc5bef7159f0d3fd08306",
+        "db:1812595077abedb047683642",
+        "db:2cc71465138e1093fad17fd8",
+        "db:2d6831cf72861fbb086f3482",
+        "db:390e030f26c9c55602bb42b1",
+        "db:3f6735b0638d203344131e48",
+        "db:425824188f21a99804df8d7b",
+        "db:451795c3bb69042dbd8bbe94",
+        "db:5038d357bf2e1e364d9c3d4c",
+        "db:67c241ddd19b057847ca011c",
+        "db:89809743fca7e4cf33fd360e",
+        "db:89f1c259821ef38c225ddca1",
+        "db:981f2e1f294a36665393f8da",
+        "db:9a3427eef4e6da40348593a6",
+        "db:9d066df561ceabd76b662bb2",
+        "db:a9a44acba9db0765a016aee8",
+        "db:ad3619982923a7dd9d79dbc9",
+        "db:c4d118697add05f5cf4aa207",
+        "db:d2cd3f9fc50340a48611293e",
+        "db:ddfcc3c19bb1c06debc8910e",
+        "db:ea781aed987cee2ae10ab7ec",
+        "text2sql-tool:73b12cc1739d31441484"
+      ],
+      "joins": [],
+      "result_grain": [
+        "t_activeinfo.d_sumEvent"
+      ],
+      "tables": [
+        "t_activeinfo"
+      ]
+    },
+    "query_spec": {
+      "dimensions": [],
+      "expected_shape": "scalar",
+      "filters": [
+        {
+          "column": "d_sumEvent",
+          "operator": "IS NOT NULL"
+        }
+      ],
+      "intent": "aggregate",
+      "limit": 1,
+      "measures": [
+        {
+          "column": "d_sumEvent",
+          "function": "MAX"
+        }
+      ],
+      "order_by": [],
+      "subject": "t_activeinfo.d_sumEvent",
+      "version": 1
+    },
+    "collaboration": {
+      "critic_result": {
+        "action": "final",
+        "decisions": [
+          {
+            "accepted": true,
+            "candidate_index": 0,
+            "objections": [],
+            "supporting_evidence_ids": [
+              "db:078fd86d5797ceecc229b500",
+              "db:0b98d47774226437756c3b89",
+              "db:0bec733bd61f0ad73bb047c4",
+              "db:161dc5bef7159f0d3fd08306",
+              "db:1812595077abedb047683642",
+              "db:2cc71465138e1093fad17fd8",
+              "db:2d6831cf72861fbb086f3482",
+              "db:390e030f26c9c55602bb42b1",
+              "db:3f6735b0638d203344131e48",
+              "db:425824188f21a99804df8d7b",
+              "db:451795c3bb69042dbd8bbe94",
+              "db:5038d357bf2e1e364d9c3d4c",
+              "db:67c241ddd19b057847ca011c",
+              "db:89809743fca7e4cf33fd360e",
+              "db:89f1c259821ef38c225ddca1",
+              "db:981f2e1f294a36665393f8da",
+              "db:9a3427eef4e6da40348593a6",
+              "db:9d066df561ceabd76b662bb2",
+              "db:a9a44acba9db0765a016aee8",
+              "db:ad3619982923a7dd9d79dbc9",
+              "db:c4d118697add05f5cf4aa207",
+              "db:d2cd3f9fc50340a48611293e",
+              "db:ddfcc3c19bb1c06debc8910e",
+              "db:ea781aed987cee2ae10ab7ec",
+              "text2sql-tool:1626c3682e15dda7f4df",
+              "text2sql-tool:61dad8fae9a7a7c0d58e",
+              "text2sql-tool:73b12cc1739d31441484"
+            ]
+          }
+        ],
+        "summary": "Candidate 0 correctly implements the request. It selects the maximum value of `d_sumEvent` from `t_activeinfo`, filters for non-null values, and formats the result to six decimal places using `printf('%.6f', ...)`. This is valid SQLite syntax and semantically equivalent to the draft's `ROUND(..., 6)` but ensures string formatting as often expected by 'retain 6 decimal places' instructions in text-to-SQL contexts. No joins or unsupported features are used."
+      },
+      "delegations": [
+        {
+          "assignment_id": "grounding_t_activeinfo_d_sumEvent",
+          "objective": "Verify that table 't_activeinfo' exists and contains a column named 'd_sumEvent'. Confirm the data type of 'd_sumEvent' to ensure numeric operations are valid.",
+          "required_evidence": [
+            "table_exists",
+            "column_exists",
+            "data_type"
+          ],
+          "worker": "schema-grounding"
+        },
+        {
+          "assignment_id": "strategy_max_rounded",
+          "objective": "Construct a SQL query to calculate the MAX(d_sumEvent) from t_activeinfo where d_sumEvent IS NOT NULL, and format/round the result to 6 decimal places. Ensure the query is compatible with SQLite.",
+          "required_evidence": [
+            "valid_sql_syntax",
+            "correct_aggregation_logic",
+            "rounding_method"
+          ],
+          "worker": "sql-strategy"
+        }
+      ],
+      "draft_link_pack": {
+        "columns": [
+          "t_activeinfo.d_sumEvent"
+        ],
+        "contract": "DraftLinkPack/v1",
+        "coverage": {
+          "has_column": true,
+          "has_full_ddl": true,
+          "has_join": false,
+          "has_table": true,
+          "needs_grounding_decision": true
+        },
+        "draft_error": "",
+        "draft_output": {
+          "action": "final",
+          "claimed_columns": [
+            "t_activeinfo.d_sumEvent"
+          ],
+          "claimed_tables": [
+            "t_activeinfo"
+          ],
+          "confidence": 0.95,
+          "draft_sql": "SELECT ROUND(MAX(d_sumEvent), 6) FROM t_activeinfo WHERE d_sumEvent IS NOT NULL",
+          "reasoning_summary": "The user asks for the maximum value of 'd_sumEvent' from table 't_activeinfo', specifically for non-null values, rounded to six decimal places. The evidence confirms that 't_activeinfo' exists and contains the column 'd_sumEvent' (decimal(8,2)). The query uses MAX() aggregate function with a WHERE clause to filter out NULLs, and ROUND() to format the result."
+        },
+        "draft_sql": "SELECT ROUND(MAX(d_sumEvent), 6) FROM t_activeinfo WHERE d_sumEvent IS NOT NULL",
+        "draft_valid": true,
+        "full_ddl": [
+          {
+            "ddl": "CREATE TABLE \"t_activeinfo\" (\n  \"d_sumEvent\" decimal(8, 2) /* 累计事件数量 */,\n  \"d_sumLogarithm\" decimal(8, 2) /* 累计对数值 */,\n  \"c_sumBulk\" decimal(8, 2) /* 累计体积 */,\n  \"d_sumEventRate\" decimal(8, 2) /* 累计事件增速 */,\n  \"d_sumLogarithmRate\" decimal(8, 2) /* 累计对数增速 */,\n  \"d_sumBulkRate\" decimal(8, 2) /* 累计体积增速 */,\n  \"d_event\" decimal(8, 2) /* 当前事件数量 */,\n  \"d_logarithm\" decimal(8, 2) /* 当前对数值 */,\n  \"d_bulk\" decimal(8, 2) /* 当前体积 */,\n  \"d_fate\" decimal(8, 2) /* 事件命运值 */,\n  \"c_continuity\" varchar(10) /* 是否连续性 */,\n  \"c_energy\" varchar(20) /* 能量值 */,\n  \"c_time\" varchar(20) /* 时间描述 */,\n  \"c_position\" varchar(255) /* 位置描述 */,\n  \"c_remark\" varchar(255) /* 备注信息 */,\n  \"c_caseCode\" varchar(20) NOT NULL /* 案件编码 */,\n  \"c_mark\" char(1) /* 标注信息 */\n);",
+            "table": "t_activeinfo"
+          }
+        ],
+        "joins": [],
+        "links": [
+          {
+            "identifier": "t_activeinfo.d_sumEvent",
+            "sources": [
+              "question_direct",
+              "draft_ast"
+            ]
+          }
+        ],
+        "projection_columns": [
+          "t_activeinfo.d_sumEvent"
+        ],
+        "retrieval_evidence_ids": [
+          "db:a9a44acba9db0765a016aee8",
+          "db:5038d357bf2e1e364d9c3d4c",
+          "db:0b98d47774226437756c3b89",
+          "db:2cc71465138e1093fad17fd8",
+          "db:390e030f26c9c55602bb42b1",
+          "db:0bec733bd61f0ad73bb047c4",
+          "db:1812595077abedb047683642",
+          "db:981f2e1f294a36665393f8da",
+          "db:ad3619982923a7dd9d79dbc9",
+          "db:3f6735b0638d203344131e48",
+          "db:c4d118697add05f5cf4aa207",
+          "db:89809743fca7e4cf33fd360e",
+          "db:451795c3bb69042dbd8bbe94",
+          "db:9d066df561ceabd76b662bb2",
+          "db:ea781aed987cee2ae10ab7ec",
+          "db:d2cd3f9fc50340a48611293e",
+          "db:67c241ddd19b057847ca011c",
+          "db:078fd86d5797ceecc229b500",
+          "db:89f1c259821ef38c225ddca1",
+          "db:161dc5bef7159f0d3fd08306",
+          "db:9a3427eef4e6da40348593a6",
+          "db:ddfcc3c19bb1c06debc8910e",
+          "db:2d6831cf72861fbb086f3482",
+          "db:425824188f21a99804df8d7b"
+        ],
+        "tables": [
+          "t_activeinfo"
+        ],
+        "trust": "untrusted_candidate_input_to_grounding",
+        "value_links": []
+      },
+      "lead_assessment": {
+        "action": "final",
+        "critic_objective": "Validate that the SQL query `SELECT ROUND(MAX(d_sumEvent), 6) FROM t_activeinfo WHERE d_sumEvent IS NOT NULL` correctly implements the user's request for the maximum non-null value of `d_sumEvent` from `t_activeinfo`, rounded to 6 decimal places. Confirm that `ROUND` in SQLite behaves as expected for this data type and that no other columns or joins are inadvertently included.",
+        "reasoning_summary": "Schema grounding confirmed table `t_activeinfo` and column `d_sumEvent` (decimal(8,2)). The strategy worker proposed `SELECT ROUND(MAX(d_sumEvent), 6) FROM t_activeinfo WHERE d_sumEvent IS NOT NULL`. This logic is sound: `MAX` ignores NULLs by default, but the explicit filter ensures robustness. `ROUND(..., 6)` handles the precision requirement. Since the source column has only 2 decimal places, rounding to 6 preserves the value numerically. I am requesting a minor clarification/confirmation on the output format expectation (numeric vs string) from the strategy worker, though the current candidate is likely final. The Critic will perform the final validation.",
+        "revision_requests": [
+          {
+            "assignment_id": "strategy_max_rounded",
+            "guidance": "The current draft SQL is logically correct for the intent. However, to ensure strict compliance with the 'six decimal places' requirement in SQLite (which may truncate trailing zeros depending on client rendering), verify if explicit casting or string formatting is needed. Given `d_sumEvent` is `decimal(8,2)`, `ROUND(MAX(d_sumEvent), 6)` will return a numeric value. If the downstream consumer expects exactly 6 decimal digits in string representation, consider `printf('%.6f', ROUND(MAX(d_sumEvent), 6))`. For now, assume standard numeric output is acceptable as per typical Text2SQL evaluation metrics, but confirm no syntax errors exist.",
+            "required_evidence": [
+              "valid_sql_syntax"
+            ],
+            "worker": "sql-strategy"
+          }
+        ]
+      },
+      "lead_final": {
+        "action": "final",
+        "final_candidate_index": 0,
+        "resolution_summary": "Selected candidate c1 from sql-strategy worker. It correctly aggregates the maximum of `d_sumEvent` from `t_activeinfo`, filters out NULLs, and formats the result to exactly six decimal places using `printf`. Schema grounding and Critic review confirm validity and correctness.",
+        "resolved_objections": [
+          "The Critic accepted Candidate 0 (c1) which uses `printf('%.6f', MAX(d_sumEvent))`. This satisfies the 'retain six decimal places' requirement by ensuring fixed-point string formatting, which is stricter and more robust for reporting than `ROUND()` alone in SQLite contexts where trailing zeros might be dropped. The schema grounding confirmed `t_activeinfo` and `d_sumEvent` exist with correct types. No joins are needed. The query is valid and safe."
+        ]
+      },
+      "protocol": "lead-workers-text2sql-v1",
+      "revisions_applied": 1,
+      "route": {
+        "parent_query_run_id": "",
+        "reason": "The question asks for a specific aggregate calculation (MAX) on a column in a specific table. It does not reference previous results or require clarification, so it is a new DATA_QUERY.",
+        "standalone_question": "表 t_activeinfo 的累计事件数量（d_sumEvent）非空值的最大值是多少？结果保留六位小数。",
+        "type": "DATA_QUERY"
+      },
+      "worker_results": [
+        {
+          "assignment_id": "grounding_t_activeinfo_d_sumEvent",
+          "error": "",
+          "observed_evidence_ids": [
+            "db:078fd86d5797ceecc229b500",
+            "db:0b98d47774226437756c3b89",
+            "db:0bec733bd61f0ad73bb047c4",
+            "db:161dc5bef7159f0d3fd08306",
+            "db:1812595077abedb047683642",
+            "db:2cc71465138e1093fad17fd8",
+            "db:2d6831cf72861fbb086f3482",
+            "db:390e030f26c9c55602bb42b1",
+            "db:3f6735b0638d203344131e48",
+            "db:425824188f21a99804df8d7b",
+            "db:451795c3bb69042dbd8bbe94",
+            "db:5038d357bf2e1e364d9c3d4c",
+            "db:67c241ddd19b057847ca011c",
+            "db:89809743fca7e4cf33fd360e",
+            "db:89f1c259821ef38c225ddca1",
+            "db:981f2e1f294a36665393f8da",
+            "db:9a3427eef4e6da40348593a6",
+            "db:9d066df561ceabd76b662bb2",
+            "db:a9a44acba9db0765a016aee8",
+            "db:ad3619982923a7dd9d79dbc9",
+            "db:c4d118697add05f5cf4aa207",
+            "db:d2cd3f9fc50340a48611293e",
+            "db:ddfcc3c19bb1c06debc8910e",
+            "db:ea781aed987cee2ae10ab7ec",
+            "text2sql-tool:73b12cc1739d31441484"
+          ],
+          "output": {
+            "grounding_notes": [
+              "Verified table 't_activeinfo' exists in the pinned database snapshot (dbs_57a4a4c99520477b1c8e).",
+              "Verified column 'd_sumEvent' exists in 't_activeinfo' with MySQL type decimal(8, 2) and comment '累计事件数量'.",
+              "The column is nullable, so the query logic must handle non-null values as requested.",
+              "No joins are required for this single-table aggregation query.",
+              "Draft SQL provided by Vanna is structurally correct but schema grounding confirms the specific table and column identifiers."
+            ],
+            "schema_plan": {
+              "columns": [
+                "t_activeinfo.d_sumEvent"
+              ],
+              "evidence_ids": [
+                "db:078fd86d5797ceecc229b500",
+                "db:0b98d47774226437756c3b89",
+                "db:0bec733bd61f0ad73bb047c4",
+                "db:161dc5bef7159f0d3fd08306",
+                "db:1812595077abedb047683642",
+                "db:2cc71465138e1093fad17fd8",
+                "db:2d6831cf72861fbb086f3482",
+                "db:390e030f26c9c55602bb42b1",
+                "db:3f6735b0638d203344131e48",
+                "db:425824188f21a99804df8d7b",
+                "db:451795c3bb69042dbd8bbe94",
+                "db:5038d357bf2e1e364d9c3d4c",
+                "db:67c241ddd19b057847ca011c",
+                "db:89809743fca7e4cf33fd360e",
+                "db:89f1c259821ef38c225ddca1",
+                "db:981f2e1f294a36665393f8da",
+                "db:9a3427eef4e6da40348593a6",
+                "db:9d066df561ceabd76b662bb2",
+                "db:a9a44acba9db0765a016aee8",
+                "db:ad3619982923a7dd9d79dbc9",
+                "db:c4d118697add05f5cf4aa207",
+                "db:d2cd3f9fc50340a48611293e",
+                "db:ddfcc3c19bb1c06debc8910e",
+                "db:ea781aed987cee2ae10ab7ec",
+                "text2sql-tool:73b12cc1739d31441484"
+              ],
+              "joins": [],
+              "result_grain": [
+                "t_activeinfo.d_sumEvent"
+              ],
+              "tables": [
+                "t_activeinfo"
+              ]
+            }
+          },
+          "retrieval": [
+            {
+              "backend": "vanna-chromadb",
+              "ddl_count": 4,
+              "documentation_count": 8,
+              "evidence_ids": [
+                "db:151c3b17b5dda6a23bde208e",
+                "db:5038d357bf2e1e364d9c3d4c",
+                "db:cfb72c71a44e8ba01427bb05",
+                "db:2b7aacd2d3d3f46321f79e9a",
+                "db:a9a44acba9db0765a016aee8",
+                "db:2cc71465138e1093fad17fd8",
+                "db:981f2e1f294a36665393f8da",
+                "db:c4d118697add05f5cf4aa207",
+                "db:ad3619982923a7dd9d79dbc9",
+                "db:9d066df561ceabd76b662bb2",
+                "db:ea781aed987cee2ae10ab7ec",
+                "db:89809743fca7e4cf33fd360e"
+              ],
+              "index_version": "stable-v2-2b44cc2f83",
+              "question_sql_count": 0
+            }
+          ],
+          "status": "completed",
+          "worker": "schema-grounding"
+        },
+        {
+          "assignment_id": "strategy_max_rounded",
+          "error": "",
+          "observed_evidence_ids": [
+            "db:078fd86d5797ceecc229b500",
+            "db:0b98d47774226437756c3b89",
+            "db:0bec733bd61f0ad73bb047c4",
+            "db:161dc5bef7159f0d3fd08306",
+            "db:1812595077abedb047683642",
+            "db:2cc71465138e1093fad17fd8",
+            "db:2d6831cf72861fbb086f3482",
+            "db:390e030f26c9c55602bb42b1",
+            "db:3f6735b0638d203344131e48",
+            "db:425824188f21a99804df8d7b",
+            "db:451795c3bb69042dbd8bbe94",
+            "db:5038d357bf2e1e364d9c3d4c",
+            "db:67c241ddd19b057847ca011c",
+            "db:89809743fca7e4cf33fd360e",
+            "db:89f1c259821ef38c225ddca1",
+            "db:981f2e1f294a36665393f8da",
+            "db:9a3427eef4e6da40348593a6",
+            "db:9d066df561ceabd76b662bb2",
+            "db:a9a44acba9db0765a016aee8",
+            "db:ad3619982923a7dd9d79dbc9",
+            "db:c4d118697add05f5cf4aa207",
+            "db:d2cd3f9fc50340a48611293e",
+            "db:ddfcc3c19bb1c06debc8910e",
+            "db:ea781aed987cee2ae10ab7ec",
+            "text2sql-tool:1626c3682e15dda7f4df",
+            "text2sql-tool:61dad8fae9a7a7c0d58e",
+            "text2sql-tool:73b12cc1739d31441484"
+          ],
+          "output": {
+            "query_spec": {
+              "dimensions": [],
+              "expected_shape": "scalar",
+              "filters": [
+                {
+                  "column": "d_sumEvent",
+                  "operator": "IS NOT NULL"
+                }
+              ],
+              "intent": "aggregate",
+              "limit": 1,
+              "measures": [
+                {
+                  "column": "d_sumEvent",
+                  "function": "MAX"
+                }
+              ],
+              "order_by": [],
+              "subject": "t_activeinfo.d_sumEvent",
+              "version": 1
+            },
+            "sql_candidates": [
+              {
+                "candidate_id": "c1",
+                "database_snapshot_id": "dbs_57a4a4c99520477b1c8e",
+                "evidence_ids": [
+                  "db:078fd86d5797ceecc229b500",
+                  "db:0b98d47774226437756c3b89",
+                  "db:0bec733bd61f0ad73bb047c4",
+                  "db:161dc5bef7159f0d3fd08306",
+                  "db:1812595077abedb047683642",
+                  "db:2cc71465138e1093fad17fd8",
+                  "db:2d6831cf72861fbb086f3482",
+                  "db:390e030f26c9c55602bb42b1",
+                  "db:3f6735b0638d203344131e48",
+                  "db:425824188f21a99804df8d7b",
+                  "db:451795c3bb69042dbd8bbe94",
+                  "db:5038d357bf2e1e364d9c3d4c",
+                  "db:67c241ddd19b057847ca011c",
+                  "db:89809743fca7e4cf33fd360e",
+                  "db:89f1c259821ef38c225ddca1",
+                  "db:981f2e1f294a36665393f8da",
+                  "db:9a3427eef4e6da40348593a6",
+                  "db:9d066df561ceabd76b662bb2",
+                  "db:a9a44acba9db0765a016aee8",
+                  "db:ad3619982923a7dd9d79dbc9",
+                  "db:c4d118697add05f5cf4aa207",
+                  "db:d2cd3f9fc50340a48611293e",
+                  "db:ddfcc3c19bb1c06debc8910e",
+                  "db:ea781aed987cee2ae10ab7ec",
+                  "text2sql-tool:1626c3682e15dda7f4df",
+                  "text2sql-tool:61dad8fae9a7a7c0d58e",
+                  "text2sql-tool:73b12cc1739d31441484"
+                ],
+                "memory_snapshot_id": "memory-4f53cda18c2baa0c0354",
+                "policy_version": "policy-4cf60dcd275a1826c76a",
+                "query_spec_version": 1,
+                "revision": 1,
+                "sql": "SELECT printf('%.6f', MAX(d_sumEvent)) FROM t_activeinfo WHERE d_sumEvent IS NOT NULL",
+                "vanna_index_version": "stable-v2-2b44cc2f83",
+                "wiki_index_version": "stable-v2-2b44cc2f83"
+              }
+            ],
+            "strategy_notes": [
+              "The previous draft used `ROUND(MAX(d_sumEvent), 6)`. While mathematically correct for the value, SQLite's default numeric output may not display trailing zeros (e.g., `417` instead of `417.000000`). The requirement '保留六位小数' (keep six decimal places) typically implies a string format with fixed precision in reporting contexts. Using `printf('%.6f', ...)` ensures exactly six decimal digits are returned as a string, satisfying the formatting constraint strictly. The table `t_activeinfo` and column `d_sumEvent` are confirmed via DDL. No joins are needed."
+            ]
+          },
+          "retrieval": [
+            {
+              "backend": "vanna-chromadb",
+              "ddl_count": 4,
+              "documentation_count": 8,
+              "evidence_ids": [
+                "db:151c3b17b5dda6a23bde208e",
+                "db:5038d357bf2e1e364d9c3d4c",
+                "db:cfb72c71a44e8ba01427bb05",
+                "db:2b7aacd2d3d3f46321f79e9a",
+                "db:a9a44acba9db0765a016aee8",
+                "db:2cc71465138e1093fad17fd8",
+                "db:981f2e1f294a36665393f8da",
+                "db:c4d118697add05f5cf4aa207",
+                "db:ad3619982923a7dd9d79dbc9",
+                "db:9d066df561ceabd76b662bb2",
+                "db:ea781aed987cee2ae10ab7ec",
+                "db:89809743fca7e4cf33fd360e"
+              ],
+              "index_version": "stable-v2-2b44cc2f83",
+              "question_sql_count": 0
+            }
+          ],
+          "status": "completed",
+          "worker": "sql-strategy"
+        }
+      ]
+    },
+    "retrieval": [
+      {
+        "backend": "vanna-chromadb",
+        "ddl_count": 4,
+        "documentation_count": 8,
+        "evidence_ids": [
+          "db:151c3b17b5dda6a23bde208e",
+          "db:5038d357bf2e1e364d9c3d4c",
+          "db:cfb72c71a44e8ba01427bb05",
+          "db:2b7aacd2d3d3f46321f79e9a",
+          "db:a9a44acba9db0765a016aee8",
+          "db:2cc71465138e1093fad17fd8",
+          "db:981f2e1f294a36665393f8da",
+          "db:c4d118697add05f5cf4aa207",
+          "db:ad3619982923a7dd9d79dbc9",
+          "db:9d066df561ceabd76b662bb2",
+          "db:ea781aed987cee2ae10ab7ec",
+          "db:89809743fca7e4cf33fd360e"
+        ],
+        "index_version": "stable-v2-2b44cc2f83",
+        "question_sql_count": 0,
+        "role": "schema-grounding"
+      },
+      {
+        "backend": "vanna-chromadb",
+        "ddl_count": 4,
+        "documentation_count": 8,
+        "evidence_ids": [
+          "db:151c3b17b5dda6a23bde208e",
+          "db:5038d357bf2e1e364d9c3d4c",
+          "db:cfb72c71a44e8ba01427bb05",
+          "db:2b7aacd2d3d3f46321f79e9a",
+          "db:a9a44acba9db0765a016aee8",
+          "db:2cc71465138e1093fad17fd8",
+          "db:981f2e1f294a36665393f8da",
+          "db:c4d118697add05f5cf4aa207",
+          "db:ad3619982923a7dd9d79dbc9",
+          "db:9d066df561ceabd76b662bb2",
+          "db:ea781aed987cee2ae10ab7ec",
+          "db:89809743fca7e4cf33fd360e"
+        ],
+        "index_version": "stable-v2-2b44cc2f83",
+        "question_sql_count": 0,
+        "role": "sql-strategy"
+      }
+    ],
+    "result_rows": [
+      [
+        "417.000000"
+      ]
+    ]
+  }
+}

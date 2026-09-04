@@ -1,0 +1,15 @@
+{
+  "contract": "evoagent-vanna-retriever-v1",
+  "state": "stable",
+  "index_version": "stable-v2-2b44cc2f83",
+  "database_snapshot_id": "dbs_57a4a4c99520477b1c8e",
+  "source_fingerprint": "1b6efcb34315df8e1118ee3e429de01340b86110e19b4314c0fadd94460f53df",
+  "item_count": 395,
+  "counts": {
+    "ddl": 20,
+    "documentation": 375,
+    "sql": 0
+  },
+  "generation_enabled": false,
+  "sql_execution_enabled": false
+}

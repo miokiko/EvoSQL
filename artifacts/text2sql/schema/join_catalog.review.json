@@ -1,0 +1,2267 @@
+{
+  "contract_version": 1,
+  "database_snapshot_id": "dbs_57a4a4c99520477b1c8e",
+  "status": "pending_review",
+  "instructions": "Set decision to approved or rejected; fill cardinality, result_grain, fanout_risk, reviewer and notes.",
+  "relationships": [
+    {
+      "candidate_id": "join_dbcaa23d9f0b3852",
+      "left": "t_activeevent.i_serialid",
+      "right": "t_casetimeinfo.i_serialid",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_one_candidate",
+      "data_overlap": null,
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_681cf8915c0fd411",
+      "left": "t_activeevent.i_serialid",
+      "right": "t_event.i_serialid",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_one_candidate",
+      "data_overlap": null,
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_b9312279479269a9",
+      "left": "t_activeevent.i_serialid",
+      "right": "t_support.i_serialid",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_one_candidate",
+      "data_overlap": null,
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_ccf853473a080233",
+      "left": "t_activeevent.i_serialid",
+      "right": "t_supportnew.i_serialid",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_one_candidate",
+      "data_overlap": null,
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_bea0918f1b9fdd76",
+      "left": "t_activeevent.i_serialid",
+      "right": "t_waveproject.i_serialid",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_one_candidate",
+      "data_overlap": null,
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_14b130763bec5244",
+      "left": "t_activeevent.i_serialid",
+      "right": "t_waveproperty.i_serialid",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": null,
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_aa5ae290b6731974",
+      "left": "t_activeinfo.c_caseCode",
+      "right": "t_activeinfoevent.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": null,
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_37cdc982cbdce0fd",
+      "left": "t_activeinfo.c_caseCode",
+      "right": "t_casedesc.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": {
+        "intersection_count": 23,
+        "left_coverage": 1.0,
+        "right_coverage": 0.638889,
+        "jaccard": 0.638889
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_ee45497288277742",
+      "left": "t_activeinfo.c_caseCode",
+      "right": "t_casefile.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": {
+        "intersection_count": 23,
+        "left_coverage": 1.0,
+        "right_coverage": 0.589744,
+        "jaccard": 0.589744
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_5dd45ba0d50a1e76",
+      "left": "t_activeinfo.c_caseCode",
+      "right": "t_caseinfo.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": {
+        "intersection_count": 22,
+        "left_coverage": 0.956522,
+        "right_coverage": 0.564103,
+        "jaccard": 0.55
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_ba0c6c14f8cc774c",
+      "left": "t_activeinfo.c_caseCode",
+      "right": "t_casetimeinfo.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name"
+      ],
+      "confidence": 0.75,
+      "cardinality": "many_to_many_or_unknown",
+      "data_overlap": {
+        "intersection_count": 2,
+        "left_coverage": 0.086957,
+        "right_coverage": 0.125,
+        "jaccard": 0.054054
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_c50aa80a0e8ec1d1",
+      "left": "t_activeinfo.c_caseCode",
+      "right": "t_geology.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "many_to_many_or_unknown",
+      "data_overlap": {
+        "intersection_count": 18,
+        "left_coverage": 0.782609,
+        "right_coverage": 0.782609,
+        "jaccard": 0.642857
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_61c3a70704a61bec",
+      "left": "t_activeinfo.c_caseCode",
+      "right": "t_harm.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": {
+        "intersection_count": 23,
+        "left_coverage": 1.0,
+        "right_coverage": 0.605263,
+        "jaccard": 0.605263
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_83c41d71aa7af4cc",
+      "left": "t_activeinfo.c_caseCode",
+      "right": "t_rockdesc.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "many_to_many_or_unknown",
+      "data_overlap": {
+        "intersection_count": 21,
+        "left_coverage": 0.913043,
+        "right_coverage": 0.567568,
+        "jaccard": 0.538462
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_62b97ee2c05c6c73",
+      "left": "t_activeinfo.c_caseCode",
+      "right": "t_stress.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": {
+        "intersection_count": 23,
+        "left_coverage": 1.0,
+        "right_coverage": 0.589744,
+        "jaccard": 0.589744
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_9fa8b8f669306524",
+      "left": "t_activeinfo.c_caseCode",
+      "right": "t_support.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name"
+      ],
+      "confidence": 0.75,
+      "cardinality": "many_to_many_or_unknown",
+      "data_overlap": {
+        "intersection_count": 13,
+        "left_coverage": 0.565217,
+        "right_coverage": 0.464286,
+        "jaccard": 0.342105
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_5a01d86dc27bf57e",
+      "left": "t_activeinfo.c_caseCode",
+      "right": "t_supportnew.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name"
+      ],
+      "confidence": 0.75,
+      "cardinality": "many_to_many_or_unknown",
+      "data_overlap": {
+        "intersection_count": 17,
+        "left_coverage": 0.73913,
+        "right_coverage": 0.435897,
+        "jaccard": 0.377778
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_da756c789d464d7d",
+      "left": "t_activeinfoevent.c_caseCode",
+      "right": "t_casedesc.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_one_candidate",
+      "data_overlap": null,
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_bc0a42afe9f35c2d",
+      "left": "t_activeinfoevent.c_caseCode",
+      "right": "t_casefile.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_one_candidate",
+      "data_overlap": null,
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_559584bef19b1ac2",
+      "left": "t_activeinfoevent.c_caseCode",
+      "right": "t_caseinfo.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_one_candidate",
+      "data_overlap": null,
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_95c31e7651ce1f86",
+      "left": "t_activeinfoevent.c_caseCode",
+      "right": "t_casetimeinfo.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": null,
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_4c7ea3d1692dda3b",
+      "left": "t_activeinfoevent.c_caseCode",
+      "right": "t_geology.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": null,
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_dce3c99240da6e57",
+      "left": "t_activeinfoevent.c_caseCode",
+      "right": "t_harm.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_one_candidate",
+      "data_overlap": null,
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_7a1c9aa8e31c1d1c",
+      "left": "t_activeinfoevent.c_caseCode",
+      "right": "t_rockdesc.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": null,
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_68ddd600b219a9ef",
+      "left": "t_activeinfoevent.c_caseCode",
+      "right": "t_stress.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_one_candidate",
+      "data_overlap": null,
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_c462d737cfb01d5c",
+      "left": "t_activeinfoevent.c_caseCode",
+      "right": "t_support.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": null,
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_a8a733be3a59f745",
+      "left": "t_activeinfoevent.c_caseCode",
+      "right": "t_supportnew.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": null,
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_0d68c3cb5e98fd1b",
+      "left": "t_casedesc.c_caseCode",
+      "right": "t_casefile.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key",
+        "high_observed_value_overlap"
+      ],
+      "confidence": 0.9500000000000001,
+      "cardinality": "one_to_one_candidate",
+      "data_overlap": {
+        "intersection_count": 36,
+        "left_coverage": 1.0,
+        "right_coverage": 0.923077,
+        "jaccard": 0.923077
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_4e7daaae06e62138",
+      "left": "t_casedesc.c_caseCode",
+      "right": "t_caseinfo.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key",
+        "high_observed_value_overlap"
+      ],
+      "confidence": 0.9500000000000001,
+      "cardinality": "one_to_one_candidate",
+      "data_overlap": {
+        "intersection_count": 35,
+        "left_coverage": 0.972222,
+        "right_coverage": 0.897436,
+        "jaccard": 0.875
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_a3c6f34ca5ab2056",
+      "left": "t_casedesc.c_caseCode",
+      "right": "t_casetimeinfo.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": {
+        "intersection_count": 13,
+        "left_coverage": 0.361111,
+        "right_coverage": 0.8125,
+        "jaccard": 0.333333
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_df5edf06d5b5bc33",
+      "left": "t_casedesc.c_caseCode",
+      "right": "t_geology.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": {
+        "intersection_count": 21,
+        "left_coverage": 0.583333,
+        "right_coverage": 0.913043,
+        "jaccard": 0.552632
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_5acce0ecbd1e2416",
+      "left": "t_casedesc.c_caseCode",
+      "right": "t_harm.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key",
+        "high_observed_value_overlap"
+      ],
+      "confidence": 0.9500000000000001,
+      "cardinality": "one_to_one_candidate",
+      "data_overlap": {
+        "intersection_count": 35,
+        "left_coverage": 0.972222,
+        "right_coverage": 0.921053,
+        "jaccard": 0.897436
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_95cd2527e72b97d9",
+      "left": "t_casedesc.c_caseCode",
+      "right": "t_rockdesc.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key",
+        "high_observed_value_overlap"
+      ],
+      "confidence": 0.9500000000000001,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": {
+        "intersection_count": 33,
+        "left_coverage": 0.916667,
+        "right_coverage": 0.891892,
+        "jaccard": 0.825
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_8778484a53c6ace2",
+      "left": "t_casedesc.c_caseCode",
+      "right": "t_stress.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key",
+        "high_observed_value_overlap"
+      ],
+      "confidence": 0.9500000000000001,
+      "cardinality": "one_to_one_candidate",
+      "data_overlap": {
+        "intersection_count": 36,
+        "left_coverage": 1.0,
+        "right_coverage": 0.923077,
+        "jaccard": 0.923077
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_4443492b679e8b3d",
+      "left": "t_casedesc.c_caseCode",
+      "right": "t_support.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": {
+        "intersection_count": 25,
+        "left_coverage": 0.694444,
+        "right_coverage": 0.892857,
+        "jaccard": 0.641026
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_c8309105d7d81292",
+      "left": "t_casedesc.c_caseCode",
+      "right": "t_supportnew.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": {
+        "intersection_count": 19,
+        "left_coverage": 0.527778,
+        "right_coverage": 0.487179,
+        "jaccard": 0.339286
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_1b3cb87b57a3a4cb",
+      "left": "t_casefile.c_caseCode",
+      "right": "t_caseinfo.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key",
+        "high_observed_value_overlap"
+      ],
+      "confidence": 0.9500000000000001,
+      "cardinality": "one_to_one_candidate",
+      "data_overlap": {
+        "intersection_count": 38,
+        "left_coverage": 0.974359,
+        "right_coverage": 0.974359,
+        "jaccard": 0.95
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_7ef3a6e5abb91fde",
+      "left": "t_casefile.c_caseCode",
+      "right": "t_casetimeinfo.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": {
+        "intersection_count": 15,
+        "left_coverage": 0.384615,
+        "right_coverage": 0.9375,
+        "jaccard": 0.375
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_88be6db2d1f0a116",
+      "left": "t_casefile.c_caseCode",
+      "right": "t_geology.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": {
+        "intersection_count": 23,
+        "left_coverage": 0.589744,
+        "right_coverage": 1.0,
+        "jaccard": 0.589744
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_3b01d4afc39f8b7f",
+      "left": "t_casefile.c_caseCode",
+      "right": "t_harm.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key",
+        "high_observed_value_overlap"
+      ],
+      "confidence": 0.9500000000000001,
+      "cardinality": "one_to_one_candidate",
+      "data_overlap": {
+        "intersection_count": 38,
+        "left_coverage": 0.974359,
+        "right_coverage": 1.0,
+        "jaccard": 0.974359
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_a2771c6a1e439b23",
+      "left": "t_casefile.c_caseCode",
+      "right": "t_rockdesc.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key",
+        "high_observed_value_overlap"
+      ],
+      "confidence": 0.9500000000000001,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": {
+        "intersection_count": 36,
+        "left_coverage": 0.923077,
+        "right_coverage": 0.972973,
+        "jaccard": 0.9
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_5774b6416c32d88b",
+      "left": "t_casefile.c_caseCode",
+      "right": "t_stress.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key",
+        "high_observed_value_overlap"
+      ],
+      "confidence": 0.9500000000000001,
+      "cardinality": "one_to_one_candidate",
+      "data_overlap": {
+        "intersection_count": 39,
+        "left_coverage": 1.0,
+        "right_coverage": 1.0,
+        "jaccard": 1.0
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_39c64b899de13f62",
+      "left": "t_casefile.c_caseCode",
+      "right": "t_support.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": {
+        "intersection_count": 28,
+        "left_coverage": 0.717949,
+        "right_coverage": 1.0,
+        "jaccard": 0.717949
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_15950c7d8706235a",
+      "left": "t_casefile.c_caseCode",
+      "right": "t_supportnew.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": {
+        "intersection_count": 22,
+        "left_coverage": 0.564103,
+        "right_coverage": 0.564103,
+        "jaccard": 0.392857
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_6d62516878699c7f",
+      "left": "t_caseinfo.c_areatCode",
+      "right": "t_workarea.c_areatCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "right_primary_key",
+        "high_observed_value_overlap"
+      ],
+      "confidence": 0.9500000000000001,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": {
+        "intersection_count": 7,
+        "left_coverage": 1.0,
+        "right_coverage": 1.0,
+        "jaccard": 1.0
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_b8da6c3298d5dd45",
+      "left": "t_caseinfo.c_caseCode",
+      "right": "t_casetimeinfo.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": {
+        "intersection_count": 15,
+        "left_coverage": 0.384615,
+        "right_coverage": 0.9375,
+        "jaccard": 0.375
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_794fd2534fb71d53",
+      "left": "t_caseinfo.c_caseCode",
+      "right": "t_geology.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": {
+        "intersection_count": 22,
+        "left_coverage": 0.564103,
+        "right_coverage": 0.956522,
+        "jaccard": 0.55
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_a99b84f470d3a23b",
+      "left": "t_caseinfo.c_caseCode",
+      "right": "t_harm.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key",
+        "high_observed_value_overlap"
+      ],
+      "confidence": 0.9500000000000001,
+      "cardinality": "one_to_one_candidate",
+      "data_overlap": {
+        "intersection_count": 37,
+        "left_coverage": 0.948718,
+        "right_coverage": 0.973684,
+        "jaccard": 0.925
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_eb930c4f5db39a42",
+      "left": "t_caseinfo.c_caseCode",
+      "right": "t_rockdesc.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key",
+        "high_observed_value_overlap"
+      ],
+      "confidence": 0.9500000000000001,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": {
+        "intersection_count": 35,
+        "left_coverage": 0.897436,
+        "right_coverage": 0.945946,
+        "jaccard": 0.853659
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_5df273001f03a83c",
+      "left": "t_caseinfo.c_caseCode",
+      "right": "t_stress.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key",
+        "high_observed_value_overlap"
+      ],
+      "confidence": 0.9500000000000001,
+      "cardinality": "one_to_one_candidate",
+      "data_overlap": {
+        "intersection_count": 38,
+        "left_coverage": 0.974359,
+        "right_coverage": 0.974359,
+        "jaccard": 0.95
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_0b17ca08627d9409",
+      "left": "t_caseinfo.c_caseCode",
+      "right": "t_support.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": {
+        "intersection_count": 28,
+        "left_coverage": 0.717949,
+        "right_coverage": 1.0,
+        "jaccard": 0.717949
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_a059519252ebfd68",
+      "left": "t_caseinfo.c_caseCode",
+      "right": "t_supportnew.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": {
+        "intersection_count": 21,
+        "left_coverage": 0.538462,
+        "right_coverage": 0.538462,
+        "jaccard": 0.368421
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_3420e31f5d55da1a",
+      "left": "t_caseinfo.c_poleBeginNo",
+      "right": "t_casetimeinfo.c_poleBeginNo",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name"
+      ],
+      "confidence": 0.75,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": {
+        "intersection_count": 12,
+        "left_coverage": 0.315789,
+        "right_coverage": 0.75,
+        "jaccard": 0.285714
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_fadeb3aa269bb694",
+      "left": "t_caseinfo.c_poleEndNo",
+      "right": "t_casetimeinfo.c_poleEndNo",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name"
+      ],
+      "confidence": 0.75,
+      "cardinality": "many_to_many_or_unknown",
+      "data_overlap": {
+        "intersection_count": 13,
+        "left_coverage": 0.361111,
+        "right_coverage": 0.8125,
+        "jaccard": 0.333333
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_78d9880306415d74",
+      "left": "t_caseinfo.c_supportNo",
+      "right": "t_casetimeinfo.c_supportNo",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name"
+      ],
+      "confidence": 0.75,
+      "cardinality": "many_to_many_or_unknown",
+      "data_overlap": {
+        "intersection_count": 11,
+        "left_coverage": 0.333333,
+        "right_coverage": 0.6875,
+        "jaccard": 0.289474
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_6056e1c5ff472d3b",
+      "left": "t_casetimeinfo.c_caseCode",
+      "right": "t_geology.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "many_to_many_or_unknown",
+      "data_overlap": {
+        "intersection_count": 5,
+        "left_coverage": 0.3125,
+        "right_coverage": 0.217391,
+        "jaccard": 0.147059
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_89daa4f3ff862c3b",
+      "left": "t_casetimeinfo.c_caseCode",
+      "right": "t_harm.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": {
+        "intersection_count": 15,
+        "left_coverage": 0.9375,
+        "right_coverage": 0.394737,
+        "jaccard": 0.384615
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_13451c417b469486",
+      "left": "t_casetimeinfo.c_caseCode",
+      "right": "t_rockdesc.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "many_to_many_or_unknown",
+      "data_overlap": {
+        "intersection_count": 15,
+        "left_coverage": 0.9375,
+        "right_coverage": 0.405405,
+        "jaccard": 0.394737
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_624918dd50b67cdd",
+      "left": "t_casetimeinfo.c_caseCode",
+      "right": "t_stress.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": {
+        "intersection_count": 15,
+        "left_coverage": 0.9375,
+        "right_coverage": 0.384615,
+        "jaccard": 0.375
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_4198aba4220297ef",
+      "left": "t_casetimeinfo.c_caseCode",
+      "right": "t_support.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name"
+      ],
+      "confidence": 0.75,
+      "cardinality": "many_to_many_or_unknown",
+      "data_overlap": {
+        "intersection_count": 15,
+        "left_coverage": 0.9375,
+        "right_coverage": 0.535714,
+        "jaccard": 0.517241
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_a7fb4bc12adf9232",
+      "left": "t_casetimeinfo.c_caseCode",
+      "right": "t_supportnew.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name"
+      ],
+      "confidence": 0.75,
+      "cardinality": "many_to_many_or_unknown",
+      "data_overlap": {
+        "intersection_count": 3,
+        "left_coverage": 0.1875,
+        "right_coverage": 0.076923,
+        "jaccard": 0.057692
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_7aa89af453fa766d",
+      "left": "t_casetimeinfo.c_projectCode",
+      "right": "t_project.c_projectCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": {
+        "intersection_count": 2,
+        "left_coverage": 1.0,
+        "right_coverage": 0.666667,
+        "jaccard": 0.666667
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_6c115f4a4d606fa0",
+      "left": "t_casetimeinfo.c_projectCode",
+      "right": "t_workarea.c_projectCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name"
+      ],
+      "confidence": 0.75,
+      "cardinality": "many_to_many_or_unknown",
+      "data_overlap": {
+        "intersection_count": 2,
+        "left_coverage": 1.0,
+        "right_coverage": 0.666667,
+        "jaccard": 0.666667
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_34e778fed4dd21f5",
+      "left": "t_casetimeinfo.i_serialid",
+      "right": "t_event.i_serialid",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_one_candidate",
+      "data_overlap": {
+        "intersection_count": 17,
+        "left_coverage": 0.944444,
+        "right_coverage": 0.186813,
+        "jaccard": 0.184783
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_1d41ebc294770fa0",
+      "left": "t_casetimeinfo.i_serialid",
+      "right": "t_support.i_serialid",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key",
+        "no_observed_value_overlap"
+      ],
+      "confidence": 0.25,
+      "cardinality": "one_to_one_candidate",
+      "data_overlap": {
+        "intersection_count": 0,
+        "left_coverage": 0.0,
+        "right_coverage": 0.0,
+        "jaccard": 0.0
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_65d678c3f1964ef9",
+      "left": "t_casetimeinfo.i_serialid",
+      "right": "t_supportnew.i_serialid",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_one_candidate",
+      "data_overlap": {
+        "intersection_count": 18,
+        "left_coverage": 1.0,
+        "right_coverage": 0.236842,
+        "jaccard": 0.236842
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_393547ccaed7f99f",
+      "left": "t_casetimeinfo.i_serialid",
+      "right": "t_waveproject.i_serialid",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_one_candidate",
+      "data_overlap": {
+        "intersection_count": 3,
+        "left_coverage": 0.166667,
+        "right_coverage": 1.0,
+        "jaccard": 0.166667
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_7381c83f08070227",
+      "left": "t_casetimeinfo.i_serialid",
+      "right": "t_waveproperty.i_serialid",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": null,
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_e98f67753b05195f",
+      "left": "t_event.i_serialid",
+      "right": "t_support.i_serialid",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_one_candidate",
+      "data_overlap": {
+        "intersection_count": 54,
+        "left_coverage": 0.593407,
+        "right_coverage": 0.9,
+        "jaccard": 0.556701
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_770928c2e682e95f",
+      "left": "t_event.i_serialid",
+      "right": "t_supportnew.i_serialid",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key",
+        "high_observed_value_overlap"
+      ],
+      "confidence": 0.9500000000000001,
+      "cardinality": "one_to_one_candidate",
+      "data_overlap": {
+        "intersection_count": 73,
+        "left_coverage": 0.802198,
+        "right_coverage": 0.960526,
+        "jaccard": 0.776596
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_460317790e38526a",
+      "left": "t_event.i_serialid",
+      "right": "t_waveproject.i_serialid",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_one_candidate",
+      "data_overlap": {
+        "intersection_count": 3,
+        "left_coverage": 0.032967,
+        "right_coverage": 1.0,
+        "jaccard": 0.032967
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_574d853851056125",
+      "left": "t_event.i_serialid",
+      "right": "t_waveproperty.i_serialid",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": null,
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_f6a8b7eb320bd5da",
+      "left": "t_geology.c_caseCode",
+      "right": "t_harm.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": {
+        "intersection_count": 23,
+        "left_coverage": 1.0,
+        "right_coverage": 0.605263,
+        "jaccard": 0.605263
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_2deeb68cbaeffea2",
+      "left": "t_geology.c_caseCode",
+      "right": "t_rockdesc.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "many_to_many_or_unknown",
+      "data_overlap": {
+        "intersection_count": 23,
+        "left_coverage": 1.0,
+        "right_coverage": 0.621622,
+        "jaccard": 0.621622
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_fd362a4f44bebb29",
+      "left": "t_geology.c_caseCode",
+      "right": "t_stress.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": {
+        "intersection_count": 23,
+        "left_coverage": 1.0,
+        "right_coverage": 0.589744,
+        "jaccard": 0.589744
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_ddcec6daefbf92f5",
+      "left": "t_geology.c_caseCode",
+      "right": "t_support.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "many_to_many_or_unknown",
+      "data_overlap": {
+        "intersection_count": 14,
+        "left_coverage": 0.608696,
+        "right_coverage": 0.5,
+        "jaccard": 0.378378
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_6e213beca2f3ead3",
+      "left": "t_geology.c_caseCode",
+      "right": "t_supportnew.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "many_to_many_or_unknown",
+      "data_overlap": {
+        "intersection_count": 18,
+        "left_coverage": 0.782609,
+        "right_coverage": 0.461538,
+        "jaccard": 0.409091
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_b66005dd0cb8aeef",
+      "left": "t_harm.c_caseCode",
+      "right": "t_rockdesc.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key",
+        "high_observed_value_overlap"
+      ],
+      "confidence": 0.9500000000000001,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": {
+        "intersection_count": 36,
+        "left_coverage": 0.947368,
+        "right_coverage": 0.972973,
+        "jaccard": 0.923077
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_4ab2fce388c39528",
+      "left": "t_harm.c_caseCode",
+      "right": "t_stress.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key",
+        "high_observed_value_overlap"
+      ],
+      "confidence": 0.9500000000000001,
+      "cardinality": "one_to_one_candidate",
+      "data_overlap": {
+        "intersection_count": 38,
+        "left_coverage": 1.0,
+        "right_coverage": 0.974359,
+        "jaccard": 0.974359
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_9e2227087f1bfa1f",
+      "left": "t_harm.c_caseCode",
+      "right": "t_support.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": {
+        "intersection_count": 28,
+        "left_coverage": 0.736842,
+        "right_coverage": 1.0,
+        "jaccard": 0.736842
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_1b71362f82c2726d",
+      "left": "t_harm.c_caseCode",
+      "right": "t_supportnew.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": {
+        "intersection_count": 21,
+        "left_coverage": 0.552632,
+        "right_coverage": 0.538462,
+        "jaccard": 0.375
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_85e5072d9c8fb574",
+      "left": "t_project.c_opCode",
+      "right": "t_waveproject.c_opCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name"
+      ],
+      "confidence": 0.75,
+      "cardinality": "many_to_many_or_unknown",
+      "data_overlap": null,
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_b6f8fce67fdad31c",
+      "left": "t_project.c_opCode",
+      "right": "t_workarea.c_opCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name"
+      ],
+      "confidence": 0.75,
+      "cardinality": "many_to_many_or_unknown",
+      "data_overlap": null,
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_f721e0be9cffc333",
+      "left": "t_project.c_projectCode",
+      "right": "t_workarea.c_projectCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "high_observed_value_overlap"
+      ],
+      "confidence": 0.9500000000000001,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": {
+        "intersection_count": 3,
+        "left_coverage": 1.0,
+        "right_coverage": 1.0,
+        "jaccard": 1.0
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_b01bbfdc195e24fa",
+      "left": "t_rockdesc.c_caseCode",
+      "right": "t_stress.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key",
+        "high_observed_value_overlap"
+      ],
+      "confidence": 0.9500000000000001,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": {
+        "intersection_count": 36,
+        "left_coverage": 0.972973,
+        "right_coverage": 0.923077,
+        "jaccard": 0.9
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_a216e93c7aa20f27",
+      "left": "t_rockdesc.c_caseCode",
+      "right": "t_support.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "many_to_many_or_unknown",
+      "data_overlap": {
+        "intersection_count": 27,
+        "left_coverage": 0.72973,
+        "right_coverage": 0.964286,
+        "jaccard": 0.710526
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_b95351439230c50b",
+      "left": "t_rockdesc.c_caseCode",
+      "right": "t_supportnew.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "many_to_many_or_unknown",
+      "data_overlap": {
+        "intersection_count": 20,
+        "left_coverage": 0.540541,
+        "right_coverage": 0.512821,
+        "jaccard": 0.357143
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_e0138239368a13dc",
+      "left": "t_stress.c_caseCode",
+      "right": "t_support.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": {
+        "intersection_count": 28,
+        "left_coverage": 0.717949,
+        "right_coverage": 1.0,
+        "jaccard": 0.717949
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_7c755f187accc5e8",
+      "left": "t_stress.c_caseCode",
+      "right": "t_supportnew.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": {
+        "intersection_count": 22,
+        "left_coverage": 0.564103,
+        "right_coverage": 0.564103,
+        "jaccard": 0.392857
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_131caa6fb69d40ba",
+      "left": "t_support.c_caseCode",
+      "right": "t_supportnew.c_caseCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name"
+      ],
+      "confidence": 0.75,
+      "cardinality": "many_to_many_or_unknown",
+      "data_overlap": {
+        "intersection_count": 12,
+        "left_coverage": 0.428571,
+        "right_coverage": 0.307692,
+        "jaccard": 0.218182
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_d72faabf377eab97",
+      "left": "t_support.i_serialid",
+      "right": "t_supportnew.i_serialid",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_one_candidate",
+      "data_overlap": {
+        "intersection_count": 44,
+        "left_coverage": 0.733333,
+        "right_coverage": 0.578947,
+        "jaccard": 0.478261
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_ff1ffb68fc2a0a0d",
+      "left": "t_support.i_serialid",
+      "right": "t_waveproject.i_serialid",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key",
+        "no_observed_value_overlap"
+      ],
+      "confidence": 0.25,
+      "cardinality": "one_to_one_candidate",
+      "data_overlap": {
+        "intersection_count": 0,
+        "left_coverage": 0.0,
+        "right_coverage": 0.0,
+        "jaccard": 0.0
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_60cb7a42a94e06b2",
+      "left": "t_support.i_serialid",
+      "right": "t_waveproperty.i_serialid",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": null,
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_2ba92c2ad6f68b72",
+      "left": "t_supportnew.i_serialid",
+      "right": "t_waveproject.i_serialid",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_one_candidate",
+      "data_overlap": {
+        "intersection_count": 3,
+        "left_coverage": 0.039474,
+        "right_coverage": 1.0,
+        "jaccard": 0.039474
+      },
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_9765ed8c8906d801",
+      "left": "t_supportnew.i_serialid",
+      "right": "t_waveproperty.i_serialid",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": null,
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_e8ff1db3f04e2005",
+      "left": "t_waveproject.c_opCode",
+      "right": "t_workarea.c_opCode",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name"
+      ],
+      "confidence": 0.75,
+      "cardinality": "many_to_many_or_unknown",
+      "data_overlap": null,
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    },
+    {
+      "candidate_id": "join_de07788271776100",
+      "left": "t_waveproject.i_serialid",
+      "right": "t_waveproperty.i_serialid",
+      "basis": [
+        "matching_normalized_column_name",
+        "matching_exact_column_name",
+        "left_primary_key",
+        "right_primary_key"
+      ],
+      "confidence": 0.9,
+      "cardinality": "one_to_many_candidate",
+      "data_overlap": null,
+      "decision": "pending",
+      "result_grain": "",
+      "fanout_risk": "unknown",
+      "reviewer": "",
+      "reviewed_at": "",
+      "notes": ""
+    }
+  ]
+}

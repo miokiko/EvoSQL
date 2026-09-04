@@ -1,0 +1,16 @@
+---
+page_id: replace-with-stable-id
+title: 页面标题
+owner_id: owner-open-id
+allowed_principals:
+  - "*"
+knowledge_type: business_glossary
+database_snapshot_id: dbs_57a4a4c99520477b1c8e
+---
+# 定义
+
+填写业务定义。显式表字段引用使用 `table.column`，同步时会绑定当前 Schema Snapshot。
+
+# 口径与限制
+
+填写粒度、聚合方式、过滤、NULL、去重、负责人和已知限制。

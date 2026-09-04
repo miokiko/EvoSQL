@@ -1,0 +1,201 @@
+{
+  "contract_version": 1,
+  "status": "complete",
+  "created_at": "2026-09-04T02:38:00.182196+00:00",
+  "dataset_id": "text2sql-eval-v1-661d4c396c97a3d4",
+  "dataset_sha256": "661d4c396c97a3d4f93fea820c5d1544d71a55f9d663168f98cd6289bfc10fa6",
+  "evaluated_splits": [
+    "validation"
+  ],
+  "evaluated_case_count": 3,
+  "model": {
+    "provider": "aliyun-dashscope",
+    "model": "qwen3.7-plus",
+    "temperature": 0
+  },
+  "checkpoint": "/Users/tyl/Desktop/EvoAgent-Text2SQL/artifacts/text2sql/evaluation/stratified-12-failed3-rerun-qwen3.7-plus-20260904.checkpoint.jsonl",
+  "resume_from": "",
+  "budget": {
+    "enforcement": "between_completed_cases_with_in_flight_overshoot",
+    "workers": 3,
+    "max_cases": 3,
+    "max_total_tokens": 0,
+    "max_llm_calls": 30,
+    "max_estimated_cost_usd": 0.0,
+    "input_cost_per_million": 0.0,
+    "output_cost_per_million": 0.0,
+    "measured": {
+      "cases": 3,
+      "llm_calls": 21,
+      "input_tokens": 123354,
+      "output_tokens": 6220,
+      "total_tokens": 129574,
+      "reported_cost_usd": 0.0,
+      "estimated_cost_usd": 0.0,
+      "budget_cost_usd": 0.0
+    }
+  },
+  "report": {
+    "version_pins": {
+      "database_snapshot_id": "dbs_57a4a4c99520477b1c8e",
+      "wiki_index_version": "stable-v2-2b44cc2f83",
+      "vanna_index_version": "stable-v2-2b44cc2f83",
+      "memory_snapshot_id": "memory-4f53cda18c2baa0c0354",
+      "policy_version": "policy-4cf60dcd275a1826c76a"
+    },
+    "overall": {
+      "cases": 3,
+      "execution_accuracy": 1.0,
+      "executable_rate": 1.0,
+      "ast_parse_rate": 1.0,
+      "readonly_safety_rate": 1.0,
+      "table_recall": 1.0,
+      "column_recall": 1.0,
+      "join_edge_recall": null,
+      "value_grounding_accuracy": 1.0,
+      "framework_errors": 0,
+      "llm_calls": 21,
+      "input_tokens": 123354,
+      "output_tokens": 6220,
+      "total_tokens": 129574,
+      "reported_cost_usd": 0.0,
+      "failure_counts": {},
+      "p50_latency_ms": 59189.8,
+      "p95_latency_ms": 60294.708,
+      "skeleton_buckets": {
+        "group_count:t_activeinfo:d_sumEvent": {
+          "cases": 1,
+          "execution_accuracy": 1.0
+        },
+        "projection_eq:t_activeinfo:d_sumLogarithmRate:d_sumEvent": {
+          "cases": 2,
+          "execution_accuracy": 1.0
+        }
+      }
+    },
+    "splits": {
+      "validation": {
+        "cases": 3,
+        "execution_accuracy": 1.0,
+        "executable_rate": 1.0,
+        "ast_parse_rate": 1.0,
+        "readonly_safety_rate": 1.0,
+        "table_recall": 1.0,
+        "column_recall": 1.0,
+        "join_edge_recall": null,
+        "value_grounding_accuracy": 1.0,
+        "framework_errors": 0,
+        "llm_calls": 21,
+        "input_tokens": 123354,
+        "output_tokens": 6220,
+        "total_tokens": 129574,
+        "reported_cost_usd": 0.0,
+        "failure_counts": {},
+        "p50_latency_ms": 59189.8,
+        "p95_latency_ms": 60294.708,
+        "skeleton_buckets": {
+          "group_count:t_activeinfo:d_sumEvent": {
+            "cases": 1,
+            "execution_accuracy": 1.0
+          },
+          "projection_eq:t_activeinfo:d_sumLogarithmRate:d_sumEvent": {
+            "cases": 2,
+            "execution_accuracy": 1.0
+          }
+        }
+      }
+    },
+    "outcomes": [
+      {
+        "case_id": "t2sql_1e695d5e5cb952b9e43d",
+        "split": "validation",
+        "category": "projection_filter",
+        "difficulty": "easy",
+        "sql_skeleton": "projection_eq:t_activeinfo:d_sumLogarithmRate:d_sumEvent",
+        "execution_accuracy": true,
+        "executable": true,
+        "ast_valid": true,
+        "safe": true,
+        "table_recall": 1.0,
+        "column_recall": 1.0,
+        "join_edge_recall": null,
+        "value_grounding_accuracy": 1.0,
+        "failure_kind": "",
+        "duration_ms": 59189.8,
+        "candidate_sql_fingerprint": "5dff764e554254d2f76884aeee2cd18dd4523ec2c548428da70de6fe5b048c6f",
+        "framework_error": "",
+        "llm_calls": 7,
+        "input_tokens": 41550,
+        "output_tokens": 2269,
+        "total_tokens": 43819,
+        "reported_cost_usd": 0.0,
+        "question": "在表 t_activeinfo 中，列出累计对数增速等于“3.52”的d_sumEvent，去重后按字段升序排列，最多 50 条。",
+        "candidate_sql": "SELECT DISTINCT d_sumEvent FROM t_activeinfo WHERE d_sumLogarithmRate = 3.52 ORDER BY d_sumEvent ASC LIMIT 50",
+        "gate_errors": [],
+        "schema_worker_status": "completed",
+        "schema_worker_error": "",
+        "planned_relationships": []
+      },
+      {
+        "case_id": "t2sql_3c6b8955aa0e6e143767",
+        "split": "validation",
+        "category": "projection_filter",
+        "difficulty": "easy",
+        "sql_skeleton": "projection_eq:t_activeinfo:d_sumLogarithmRate:d_sumEvent",
+        "execution_accuracy": true,
+        "executable": true,
+        "ast_valid": true,
+        "safe": true,
+        "table_recall": 1.0,
+        "column_recall": 1.0,
+        "join_edge_recall": null,
+        "value_grounding_accuracy": 1.0,
+        "failure_kind": "",
+        "duration_ms": 49878.47,
+        "candidate_sql_fingerprint": "bca7b34095007d447d11d8cdd1c765e518729228438c05ee73ec75d6484294ff",
+        "framework_error": "",
+        "llm_calls": 7,
+        "input_tokens": 41368,
+        "output_tokens": 1861,
+        "total_tokens": 43229,
+        "reported_cost_usd": 0.0,
+        "question": "在表 t_activeinfo 中，列出累计对数增速等于“4.97”的d_sumEvent，去重后按字段升序排列，最多 50 条。",
+        "candidate_sql": "SELECT DISTINCT d_sumEvent FROM t_activeinfo WHERE d_sumLogarithmRate = 4.97 ORDER BY d_sumEvent ASC LIMIT 50",
+        "gate_errors": [],
+        "schema_worker_status": "completed",
+        "schema_worker_error": "",
+        "planned_relationships": []
+      },
+      {
+        "case_id": "t2sql_4e6ba247654d59076ba0",
+        "split": "validation",
+        "category": "count_group",
+        "difficulty": "medium",
+        "sql_skeleton": "group_count:t_activeinfo:d_sumEvent",
+        "execution_accuracy": true,
+        "executable": true,
+        "ast_valid": true,
+        "safe": true,
+        "table_recall": 1.0,
+        "column_recall": 1.0,
+        "join_edge_recall": null,
+        "value_grounding_accuracy": null,
+        "failure_kind": "",
+        "duration_ms": 60294.708,
+        "candidate_sql_fingerprint": "6c191b350f318297dbc869e5d2b9690734f64d139b21028ba666fd46c291f912",
+        "framework_error": "",
+        "llm_calls": 7,
+        "input_tokens": 40436,
+        "output_tokens": 2090,
+        "total_tokens": 42526,
+        "reported_cost_usd": 0.0,
+        "question": "统计表 t_activeinfo 按累计事件数量（d_sumEvent）分组的记录数，并按该字段升序排列。",
+        "candidate_sql": "SELECT d_sumEvent, COUNT(*) AS record_count FROM t_activeinfo GROUP BY d_sumEvent ORDER BY d_sumEvent ASC",
+        "gate_errors": [],
+        "schema_worker_status": "completed",
+        "schema_worker_error": "",
+        "planned_relationships": []
+      }
+    ]
+  }
+}

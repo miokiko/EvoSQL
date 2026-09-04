@@ -1,0 +1,75 @@
+services:
+  text2sql-mysql:
+    image: mysql:8.4
+    ports:
+      - "127.0.0.1:${EVOAGENT_TEXT2SQL_DB_PORT:-3307}:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${EVOAGENT_TEXT2SQL_ADMIN_PASSWORD:-evo-text2sql-local-root}
+      MYSQL_DATABASE: evo_text2sql_eval
+      MYSQL_USER: evo_text2sql_ro
+      MYSQL_PASSWORD: ${EVOAGENT_TEXT2SQL_DB_PASSWORD:-evo-text2sql-local-readonly}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+    volumes:
+      - text2sql_mysql_data:/var/lib/mysql
+      - ./database/test1_full_20241118.sql:/docker-entrypoint-initdb.d/10-test1.sql:ro
+      - ./database/init/99-readonly.sql:/docker-entrypoint-initdb.d/99-readonly.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: evoagent
+      POSTGRES_USER: evoagent
+      POSTGRES_PASSWORD: evoagent-local
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U evoagent"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+  evoagent:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      EVOAGENT_HOST: 0.0.0.0
+      EVOAGENT_DATABASE_URL: postgresql://evoagent:evoagent-local@postgres:5432/evoagent
+      EVOAGENT_REDIS_URL: redis://redis:6379/0
+      EVOAGENT_ASYNC_WORKERS: 4
+      EVOAGENT_SKILLS_DIR: /app/skills
+      EVOAGENT_AUTH_REQUIRED: "true"
+      EVOAGENT_AUTH_SECRET: ${EVOAGENT_AUTH_SECRET:-local-only-change-this-secret-123456}
+      EVOAGENT_BOOTSTRAP_ADMIN_USERNAME: ${EVOAGENT_BOOTSTRAP_ADMIN_USERNAME:-admin}
+      EVOAGENT_BOOTSTRAP_ADMIN_PASSWORD: ${EVOAGENT_BOOTSTRAP_ADMIN_PASSWORD:-evoagent-local-admin}
+    env_file:
+      - path: .env
+        required: false
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  text2sql_mysql_data:
+  postgres_data:
+  redis_data:

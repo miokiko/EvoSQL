@@ -1,0 +1,3391 @@
+{
+  "contract_version": 1,
+  "certificate_kind": "text2sql_dataset_human_review",
+  "dataset_id": "text2sql-eval-v1-661d4c396c97a3d4",
+  "dataset_sha256": "661d4c396c97a3d4f93fea820c5d1544d71a55f9d663168f98cd6289bfc10fa6",
+  "database_snapshot_id": "dbs_57a4a4c99520477b1c8e",
+  "review_store_id": "dataset-review-b6e298435c094941bd2a78e694512a31",
+  "review_policy": {
+    "required_approvals_per_case": 1,
+    "required_checks": [
+      "question_sql_match",
+      "result_semantics",
+      "schema_grounding",
+      "join_correctness"
+    ]
+  },
+  "case_count": 240,
+  "approved_case_count": 240,
+  "reviewers": [
+    "匿名审核员"
+  ],
+  "review_chain_head": "86f8e97831f2c1ee35f40ba40fdaa97e99d402347ae0f662c0b76893990a0396",
+  "created_at": "2026-09-03T10:37:13.432469+00:00",
+  "case_attestations": [
+    {
+      "case_id": "t2sql_002f9c09f668e444a39b",
+      "case_sha256": "290719bc963103d4ea2f8488f3247307a3ab6698da0f08ecf9f5c832ab141b7b",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.214753+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "6cd7213235562613463317050bc02cd20340b476117d5d257dc61bba36528fa1"
+    },
+    {
+      "case_id": "t2sql_003c5c258e17b261b330",
+      "case_sha256": "9e89918f4bde17184386e4ae9e7dcbc5b1d7f57e3168e71c10817ae6574fb382",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.215388+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "2bfb80d6d9b0d5eccd5f747d069a670c01e23c1496f79bfb2fe615e6ea1893b3"
+    },
+    {
+      "case_id": "t2sql_00b3afcaa1067a9750cb",
+      "case_sha256": "62a3638072d687982c853309ab971ff245cbb2a5d749f390007fdea0a840d993",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.215643+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "27de3f1ebad3a3cc0e62895462d654a55e1ee120878019ce520bd347f31b28bf"
+    },
+    {
+      "case_id": "t2sql_01a49ee32ed3f204a94e",
+      "case_sha256": "c84e936cc5cabebdfb95fb9085d23703fe0ef8fd27e2e23466e0460d2c38f4ef",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.215872+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "1f7210cf599793eb15f04ddfec6137fdbf4d06b0b123dc21fec48aa3de781d9c"
+    },
+    {
+      "case_id": "t2sql_01a9c499d0734f0ed6e3",
+      "case_sha256": "d80a77df0a056cea74672314e33c8e7ab39aa4852b1f1daf5733c774a8064f29",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.216099+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "cd920068bf21c4c64ef5f25b4f032de6efc60a2ef437aef5c748e2f03a1edf67"
+    },
+    {
+      "case_id": "t2sql_03608847f171516a5b0d",
+      "case_sha256": "a1b9a06d3dbe8400fc866e0335859a0f7c6dbd72ed586e5032cb868a8f88e2c4",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.216423+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "4a766f63988b76748a4a4fcc6db9d6042757d9dcdda086d03336ac6e53cad9f9"
+    },
+    {
+      "case_id": "t2sql_065c85948d0c7d7b2591",
+      "case_sha256": "e178c517a573712aa39716f03fa46af6ca0ba5393cf482d58fe4773f84d2c797",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.216726+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "d215455f99a9f87db3603664cadc8ffc0f3a21f2a04b62c519083a5f658132fa"
+    },
+    {
+      "case_id": "t2sql_07523e5722f9a4c88240",
+      "case_sha256": "502712730f7c92edcd5c93369bf7888ecfc6466e2b2125ef181eb297690494db",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.217007+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "a497234b4253c9b0347729fa98a747846f5672bd0917a2828a54cb8e4a0c88c4"
+    },
+    {
+      "case_id": "t2sql_078a0384e62df099f2f7",
+      "case_sha256": "7144aca73a16e1f551878421a1ee7dee0d4c983c84aee8c47e6ab9f3acbdcc12",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.217291+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "58d5b217011d6912f0dafa42efae3e48ad0666062672d8045d6d918afe2ecee7"
+    },
+    {
+      "case_id": "t2sql_09b0363075a34e7b04b5",
+      "case_sha256": "952345c4c4eb8648d0e40d099af07720ae7bba08e0a96afaf16e192c49da37a5",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.217573+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "a6a284c94f2663c8ebd4f75cfaa5c04edfedf23376c1b1da0ec56aa6dc8594ae"
+    },
+    {
+      "case_id": "t2sql_0cd84b97ab211820768e",
+      "case_sha256": "a2a3a281dc0ce24ca2f16b40f8c1e62edd7fd930269f16db66c6527bd53652c6",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.217866+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "660637fabb72fecfd4ce5b8a980ae94f116e642ebc5a5b17e81798cfbabb2741"
+    },
+    {
+      "case_id": "t2sql_0e056bd51431b314c320",
+      "case_sha256": "86575d77862be505ff73b401f00ba10424cfd886f22f0a62aa66ddf3cd533474",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.218340+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "09e3ff2f203de228b6d0beeab1fff9b4d81cf4b6fbf4588031b2714802304b14"
+    },
+    {
+      "case_id": "t2sql_0eb3ffe7db17b234a766",
+      "case_sha256": "bab04c04c61f62d8d9b7030f69cdc28e0874d0146eac2738cfd6482da9cbc2f7",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.218675+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "20c18cbfeaee976eceabe1f32b4061f76715ef3a20098f990ca677b4496721ed"
+    },
+    {
+      "case_id": "t2sql_0ed2a565be46301595c3",
+      "case_sha256": "f85283720f6f6b73970fef89f9ee12160c5fbededa145f3e94045107c3924d32",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.219040+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "1192446ec7fd9f6db325067e98465e4fc10a12af472d121c0ca35eeefb3345e2"
+    },
+    {
+      "case_id": "t2sql_12787353249bade50382",
+      "case_sha256": "cacfee9b64b4c056e1a2eb2a24ace3105cbb0a114e4e1e34eb4db2ced76ce61e",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.219373+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "0b14e7555b8b098fd23021d0e888daead2f20b393f9920ff2beb8a637ed96c44"
+    },
+    {
+      "case_id": "t2sql_12b93030a5682b5b52dd",
+      "case_sha256": "a42356e0a5562dfe0814d2dc8ab8a8dc8521b067b2b92c7c0edcd831be4950e2",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.219690+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "20102ae47afddbdedee9cf3422d0311748cd02d8f13b87d0bcfed7cfe5f5d122"
+    },
+    {
+      "case_id": "t2sql_1385feccf2398b5d1854",
+      "case_sha256": "1e2271f85f59a7f06e87ee0da22f25d502b94b31e45073f23e5a2c6ed98d7346",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.220031+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "ddd2b3c263974c34d71fdec7779b5ddc88808abc7560dbc20438851d50470e8d"
+    },
+    {
+      "case_id": "t2sql_1466de0f7e41826fece8",
+      "case_sha256": "8fb6858638b07ace31922e7eeb973d43581dba00af8a7629e3ed5da5b637c9c7",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.220355+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "bb6d39e4b761f05ef3e6c5be5cd5e06780ec311d6f5adb8ea0219651c55e6888"
+    },
+    {
+      "case_id": "t2sql_148ae687c86b9ff59cc0",
+      "case_sha256": "f5b689eb450d6302d353f468ca020c77b6a5fdc418fd8dabf300f4a0820a49c2",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.220699+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "3efa343a666809dfefd5fc278bd8ce47ff484f4703165c42b2e5435df19769fd"
+    },
+    {
+      "case_id": "t2sql_149b0dab494decb25177",
+      "case_sha256": "7b18471eebcb870096e1587ae059281a8651530c0b3d38322978d9db2ddb4d3d",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.221056+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "591dc97f24c2bc182bda051ef591a163fa04f26a20d3b9d6a03861a491dd57a4"
+    },
+    {
+      "case_id": "t2sql_16ce8d3845633b38700e",
+      "case_sha256": "52e3646fc50769f5165bb39acb6729ff4d971a4e36f32517428443e0b30c928f",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.221420+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "cf1b8c21b77f6ea73e33854ac6894ccc7732f3cdf37f9763aef7d92d5f1e3a3a"
+    },
+    {
+      "case_id": "t2sql_17efcd896cfdcadb1315",
+      "case_sha256": "ebe648fb8be308ed52b10b0643d016d1986e55d6fb9289b61d2a82b2b6b0a722",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.221780+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "a8e604e1494e4420df231d3fd0c4c4c10e4ed421110925c2c9212c9153c35c26"
+    },
+    {
+      "case_id": "t2sql_1836eb4ff2161e283062",
+      "case_sha256": "593f4da6e1118649f786999d4c43fc461417ddcc9522e56737b976824a73a669",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.222157+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "1bf1292f6f6ca8dec1fdb713b864d6fa3e32f6fef6af14a59b69f8091ceaf88d"
+    },
+    {
+      "case_id": "t2sql_19017e55e6292acccaab",
+      "case_sha256": "3d0911e39554a6c0881298a13d293d12743c4ea7aebc29ff816c3fbe4adc73a9",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.222534+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "b4e71cbc3858b23ac570a769dfaa1cfc5e89bc5ec623dd272678076d67073f14"
+    },
+    {
+      "case_id": "t2sql_1959500ce99e4ff70d78",
+      "case_sha256": "963f556d3ff003597273aba135df2e8c3cad1962f94f6e2225037256c94b703b",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.222928+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "887ad795996d609c1b28824cf0d5c65bdfc98f2d31cf9d61e7660d32b23f59ba"
+    },
+    {
+      "case_id": "t2sql_1a7eeab86eb45e34c879",
+      "case_sha256": "19c466eba12626731db4b6656b072874224c36decca12e85fdc4b40374865dcc",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.223324+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "4d781b849547cd44ee18dfa5e5a07c31b6a7a90eeaac457e3ae85d872244141e"
+    },
+    {
+      "case_id": "t2sql_1b17301f2a508317e4c4",
+      "case_sha256": "4030e7c90ffa991c8fedf9612f3e13b7470715d91ae69230fd03aac19557ca34",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.223727+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "c6465231c37be302d2b29d44a10f9fa4c43cd31c671f92f5cf4fb5f64e30e0cc"
+    },
+    {
+      "case_id": "t2sql_1bbde4888472ff7e10cc",
+      "case_sha256": "5c0a50327d420c848e8212d10890d225330324fc44261c72ba34e77cc04c4c44",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.224182+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "7bb9279ed05989af0874a37f1c1999f84861237e58d24718013e2eb05efc1dc1"
+    },
+    {
+      "case_id": "t2sql_1cb2fdb1c2a68a0fc5ab",
+      "case_sha256": "16276e0f63c27b3058d4dec0be519ebcff2c13bcbaf1c9a076d757b2fc332f5d",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.224631+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "614821615cd30ba90f65241987d55c42f985b95ecff3051aac32aba58a83d9ae"
+    },
+    {
+      "case_id": "t2sql_1d03b8da0c528885120f",
+      "case_sha256": "bf4ed56b58bb69df090bac55939e3d75fbf234432e8ad6b3a5d87835d64707b7",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.225055+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "9e4340a29e0cfa0ec5584d42580a7ed8670270dda2894db63ccd8c1af1f507a4"
+    },
+    {
+      "case_id": "t2sql_1e695d5e5cb952b9e43d",
+      "case_sha256": "f314ea766f33c1919296aa4228d5767f1d198fa9c23766fcae4ff6e252160414",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.225477+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "45f2af3eebeedd4f5cf912b7999bccec93acac37f976192a17f73aeefd954e1e"
+    },
+    {
+      "case_id": "t2sql_1ee8be06c9588ebcfdf3",
+      "case_sha256": "52fee6266cf243b1fd005c1f6c8da45ff256286adb43e5d6b15fceabbee44668",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.225927+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "6ac65a7c6ae4e15bab1ecd3629f0b69b4f97d0cc344e5764d5d710ff4b4e6415"
+    },
+    {
+      "case_id": "t2sql_1ffffa5d2d69d625b596",
+      "case_sha256": "3651a5296409599f75cd31e5bc9fc15742976b893f965087e81f11bfb9baef99",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.226489+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "ab7473df47fa7f2e471295692b9f7048eae36dee9c04fb1b635177c5aa0191ac"
+    },
+    {
+      "case_id": "t2sql_23bf979a5c51923c2448",
+      "case_sha256": "ff3ffdac8b3c486443c426a4b974aa212e8aa0af04f81fb824484d6ba0f04e45",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.226987+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "5135a6d49349b612589845c6c62c38d50515737c5d4c2a1e11f2c9cf6456d630"
+    },
+    {
+      "case_id": "t2sql_23f2e43ffb4452edb2ce",
+      "case_sha256": "4c00bf5395b4b9115d2247986b867375ccc3649c0b5b6c0f599189aed6e9eea6",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.227444+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "b3f4a1954b38361ea48dc68895ed767e40a8f6bb8c36f275b24627865f3dbf96"
+    },
+    {
+      "case_id": "t2sql_253b40ec9f6a9d27c58f",
+      "case_sha256": "2d50305bfc7584bdd4d048967ba038de5a63eeedd855682d2825feb65a5f0489",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.227932+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "41e935fde52e4dfe7614bc831377e4460e90cf2d36dd83e50372e517e6fddc5f"
+    },
+    {
+      "case_id": "t2sql_254263a988fb065cdc7e",
+      "case_sha256": "62e179788a8468a26dadfbdd54c32fb3429bec62280ee88417684f30c52c03f9",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.228410+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "a84021389a0415b2315abf94c2fc61e638c441c0213f851f6ced5297e4210247"
+    },
+    {
+      "case_id": "t2sql_2560b9138b7b5e56821a",
+      "case_sha256": "c8c35014317525abdc17d9f3a9a0827333a65a67d7571b43305b15887afe4afe",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.228905+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "7cb37a584e729b583da557ed1d6728e135fa5baccbdbd6419d21f68c7afceb4f"
+    },
+    {
+      "case_id": "t2sql_26d3b99215c258f6e448",
+      "case_sha256": "2706c01595d2f2fa7af8afe6d5a67fdf1915afa0b682e8f1a9d95d99122a2299",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.229398+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "0b9733301924815c3afd51b71f5739f5df396808e97704a8764a97ca3b6d0e8a"
+    },
+    {
+      "case_id": "t2sql_274197574c76ee670213",
+      "case_sha256": "f51985793102289ebb770c08d2b8bf385384dce4cba1ba6e5976be5682858876",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.229901+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "29a511d03a57a13f865deb2e01d80e3e45a67c8ca8d7d48857794c59a6eb6b70"
+    },
+    {
+      "case_id": "t2sql_29c3aafb6b3082fb5891",
+      "case_sha256": "0f1c7fcbe47cb706c38c82279a8e026dfefda988d3434c9cdf20f2a241f25e8c",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.230406+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "75c00adb8e25efcc519ed6a4dc99147d54ae06816fdf46c19b3fdbbffe921cf1"
+    },
+    {
+      "case_id": "t2sql_2c23f142ca19c3b9248d",
+      "case_sha256": "f94eee73cc6b3dc2dd7bef65f92847c4c9bd709ba30a349f9a4501d56e72ec17",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.230916+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "2b1beb8eee8fe2139557a4d5aaa9e4c9f1ad4c7330a0a0be612eb64b249d8028"
+    },
+    {
+      "case_id": "t2sql_2ccabbc91a7ffa6e9412",
+      "case_sha256": "d1977f47777681cda1211ee7d2525acdfc19fbc7d042efb13ddb113355917387",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.231436+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "ada460d5cc5dc6f0980bff8fe42d956a38a16f2a6b6f1426bc5db829247b1700"
+    },
+    {
+      "case_id": "t2sql_2e265d58b0fec3228954",
+      "case_sha256": "d1d110967ff5e7f8c20b253ada8d80b3fb2ac6b7d1ec697e280201513d8d3fc2",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.231975+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "216f00d109a346c1720670b7f39e6dad006be59a4c318ff483860124338e10bf"
+    },
+    {
+      "case_id": "t2sql_2e26dab06cff41e3056b",
+      "case_sha256": "df0061869548d2b3ccaa7bf567828e40f3fbdf1edc35a526c6bd193f6345cc20",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.232522+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "a5c1182ff27c522654a7c2cd088e38d6d122b76a4f7cee4a36c9c6f7765350e5"
+    },
+    {
+      "case_id": "t2sql_2f3b158e1407ee16f6c6",
+      "case_sha256": "f33770423399836957107af4b3706052dac785879049041a14311b77aacca953",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.233068+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "f16fcc4ee7f970e1f56d47fb96de9a73c7a0275677b6f342c35760e9998ca7ad"
+    },
+    {
+      "case_id": "t2sql_3084a1b20daed5a0ffb3",
+      "case_sha256": "f92970d0cf1e831d0e653ba52bcf67cee40321fbadc9cd4443cbc15c5e144333",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.233646+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "f1d618101d2ae90f3355cff3f31d45f5caeeaf869e5f4335e05b8826a5161ca8"
+    },
+    {
+      "case_id": "t2sql_32a1cd934b284dc3f67f",
+      "case_sha256": "7c786c33c201f89b03886eff96d42425084a71ac0f8907ee2add454b3dc28215",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.234207+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "90e761cab5cdce6df7988f5a117646d418ea42a8464fd833b504a757061de8f6"
+    },
+    {
+      "case_id": "t2sql_32f9629b4321dd7c57cb",
+      "case_sha256": "585c15e352c96b9f3781639c31b3041998e447c0522a6a76ecd9d514331fc3fc",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.234873+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "bdc0866105e8c0cb68423a85dc0bc8c70b73cbd2e3f96c3804835e8f2bb59548"
+    },
+    {
+      "case_id": "t2sql_34299d48dee89b12354b",
+      "case_sha256": "981dde6b64aeffa6563c4393c6ca77771dc23f0fcc2d57baa3df2123d637a2ec",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.235480+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "0c1a169966ba9a481518d4ede74c2dd0bbc017075d3ca78fa69d86a3c810dbf1"
+    },
+    {
+      "case_id": "t2sql_354a294ed5eb1638dfbd",
+      "case_sha256": "40c1442f297747fe62b8987a9c0f26066f7a48fbb92a98a52f234428d674ac32",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.236091+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "255212c85cd5e3d913d35aee3460b75786cae73e1f15e04b99ee1ecc53994e20"
+    },
+    {
+      "case_id": "t2sql_3629bafab1f5a8bf0021",
+      "case_sha256": "2e19bf19b85d52cc2feefa4c8ac3cda43ccd62c40f17930d4fbf76ed43f9abc1",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.236683+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "815559c2a735c8f56b3bace424ad8fe11f4e9403c59fceb75118c19dc78afcae"
+    },
+    {
+      "case_id": "t2sql_38b0ffe8a5b43dc60ae7",
+      "case_sha256": "6942494085fb3d99452f9c903c04dac72ba99afd14cc36f5df5e6b4829aa2d1a",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.237295+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "061bec3217f8e23e9257653ad3a71ae4fc9fbe95ab95f2a4d534a01427a0e0bb"
+    },
+    {
+      "case_id": "t2sql_391755b579a4dea967df",
+      "case_sha256": "1cecdcc6c5a2bab2287a51a1a03348aa8e15630e7fb7d51032aae4dcea8e9249",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.237919+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "f4b7a1c631f27ba0cadce9661b66074d6104f3017c87099e70819e2c4c13b831"
+    },
+    {
+      "case_id": "t2sql_39e7ef1fb08362c01840",
+      "case_sha256": "3434b9d600b1193f43c7f9e9da3a0cd6f37d67ba4af3d9c82981ae8019d47c8a",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.238584+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "ad5700348851b549015c64ee6cbd99c31008054c2ae12d54abeb67af4adad3b0"
+    },
+    {
+      "case_id": "t2sql_3a6a84e5e165af76c602",
+      "case_sha256": "067e6fe6b9a23c6f4b362eb3c6ccfd7dc623b0c991db1c0b2ad9473bbf85199a",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.239232+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "c18ef78a9816e7e7f9f925fc850f5389a9847382080d151c243528c0c28f6925"
+    },
+    {
+      "case_id": "t2sql_3acf3b4e2a83d6e8ec4a",
+      "case_sha256": "9cded06794cf2f4a0fd39ce5433f9df9de73afa063b1ec19ebf2ad54f7e8cc1d",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.239871+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "967fb7cf24ce4dbf8df558c700d5896c13a4d99dce0c7f666e7aca06c07d3002"
+    },
+    {
+      "case_id": "t2sql_3b748ec1d7e063750fa5",
+      "case_sha256": "8fca70f8a26f32599535f3b17208817c24295e82de2de95fb95d82cbd3179fb7",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.240503+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "97c8005139b6e88871a47633cac69c2cf49c4de53b453093ae830b8fdd3c946a"
+    },
+    {
+      "case_id": "t2sql_3c6b8955aa0e6e143767",
+      "case_sha256": "57e44d35e5484bcdbb1a87f086b0071276c9420ea3ce6ab0693a566265d6ed5c",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.241141+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "ddf188ec886c759cb933d648968bf272c4228e5c3981040c642f0e5fcf299044"
+    },
+    {
+      "case_id": "t2sql_3d965051962098f41229",
+      "case_sha256": "84caf50d35a1b7211c2b2a2baff534d33c0e7e186a536ba810c7f49ae21971c2",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.241796+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "b819b2922d5f80978f8ac092691980ed716105dbc4db237eed9af38ecf345333"
+    },
+    {
+      "case_id": "t2sql_3debe311802bb3dfa564",
+      "case_sha256": "8bd336a95a3178be19c3b20266d40fe29eb7eab7f6a6e5f91bdbbb664b99d57f",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.242459+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "ddab25f1bd3c04af87e07607cd5347621d034bf9fbf2e695a877e64f0eaaa0e5"
+    },
+    {
+      "case_id": "t2sql_3eff3cfe04516ad37748",
+      "case_sha256": "d57861629abe5761ea9872fdcd830ce69501b8a5f92ceb6e4bbf30222bf03132",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.243279+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "cc1bce14f5846281054d33f1a2db0b4249ce047ac4a32d78c06a18aff7f1f3c4"
+    },
+    {
+      "case_id": "t2sql_3f277a37bd4a25ba7dd0",
+      "case_sha256": "9ff585e6ce4159588b2902328588c0c415097069c31a71e3adabf9488acda38f",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.244005+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "77a5706a15cd1bfaf15a198a1a2cf330b2095d16a3e4b8013ed3a83982afb555"
+    },
+    {
+      "case_id": "t2sql_40e1cea69355ae5453bb",
+      "case_sha256": "de7c2643f3143cec17a0be383c5bc6249bc6a00aa1a81d5e5092030bef493938",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.244708+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "f999d9cd2f578e1f81561558f1cdd0c4a426f4b224dcf4cb4cc7fab74d52fdb0"
+    },
+    {
+      "case_id": "t2sql_4433243f621da383335a",
+      "case_sha256": "e478ef3a7fcfa31e37ff1bf8e0b6a32ff066e77954a4958d41ae5dbccc77807a",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.245392+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "3397d702f7fa4194365b1443b736baa43bfc67c220bfe12b0b3d405bd3fd923c"
+    },
+    {
+      "case_id": "t2sql_446f1dfdebe34bed6494",
+      "case_sha256": "4ca15d187979ae9f86da98b9a39b04e6a5abf9ab2d96bd76ce987ccc07ef423d",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.246093+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "c08c49ce082f0b9a59f2bba706dc893058aeb4b05bc4db2d32d8cd20112d484c"
+    },
+    {
+      "case_id": "t2sql_4529cc09f40da5b07ba4",
+      "case_sha256": "cc479a24fa50906600708002d37459fb0230cee5103974127933b74a0ec46e81",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.246770+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "92cd831878ac7b0fb9a9db7486b08f04b1f11f390bd82647ad0710942869b8b1"
+    },
+    {
+      "case_id": "t2sql_4866f559295234a54245",
+      "case_sha256": "fcd8d8d526e5046599c5efc029b8352eee12f55fe01edf93d17a7f464a534edb",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.247466+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "f37cee02ff3708915b5eeb658408d581b166d5c2c5ba7d8960f6d5d367ebed04"
+    },
+    {
+      "case_id": "t2sql_48ec5c89bc5b717911e1",
+      "case_sha256": "545d74dff2737ba0c3c4e7dcfeda8eb261752355299c06ad7c1e0c12df27e186",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.248157+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "368ce1b9f82978d3cae50ed6d87495902ea87c8908b020ead9e5db6a8aafd2a0"
+    },
+    {
+      "case_id": "t2sql_4914ae46cb6d8ccc301f",
+      "case_sha256": "04a58b5c8c21fd0bedfc589737b2b850426cfe78c24ef74610dea9e1adb466d3",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.248898+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "36390d5ba27c00d4eb8489d988db55240934284a37d7773b298d9f6e61803674"
+    },
+    {
+      "case_id": "t2sql_495e3c4d271bcda0c015",
+      "case_sha256": "7d6f85e9ac46a23e6d2cc8d9553f918ce280fc6cefa4f49af1aa6073f37f2cf7",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.249639+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "80aa429264c7d8b98431057ec5cb48437aa804627dca1543d39f65a5bb3bcdc3"
+    },
+    {
+      "case_id": "t2sql_4ad209a7bf0cdefefbe4",
+      "case_sha256": "5e8567915b25c91af3358566818aa9e604fb9a791e3c1ecb8c675bc0e507a876",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.250360+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "0e8d9447fd3ccf5efaee8d25672dd68999672b9aa08454aa0656557f662b5e73"
+    },
+    {
+      "case_id": "t2sql_4b1bc2065c8e38a8869f",
+      "case_sha256": "2478befb59d0a0c65df4ffb4e485d702c47cdf158ccfbceeb44f11e3f9c9346c",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.251100+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "c2bafb957935bd24563939ab2fb9e8df9dbd3fc83bff886ec9d44fd661fc9317"
+    },
+    {
+      "case_id": "t2sql_4ba71bddd0c2e20993de",
+      "case_sha256": "35c43995baae96c0f7c474c4ab0172a22e9ac79464ed385645a5192fe1afd6bb",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.251940+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "6de24f0be84b3edb510d2006e999a8510a4ba030a32c273e52fca787a0fb00db"
+    },
+    {
+      "case_id": "t2sql_4e52fbe000ccb1567bd7",
+      "case_sha256": "89ea187ee8adfa58fd84cbe3d6843f1c9a07205051147c9d50f2739ab611504b",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.252718+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "f147d31e527ddebb650e025e680f1385b11af1b5ff0040fee0c07d75f77d376c"
+    },
+    {
+      "case_id": "t2sql_4e6ba247654d59076ba0",
+      "case_sha256": "1dadd00207e73aed5ce5de3fc1f71504212cca23ace4b196eff024ef04d5c954",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.253471+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "841f665016905830e021628d0648430da55f7b310879f3b4fb52967fa6e0d3ed"
+    },
+    {
+      "case_id": "t2sql_4eb50aa7263879771fe2",
+      "case_sha256": "2155e9c4373d0ee1d4cb98e5035f254aa7981cfa9d86e78d067ab9e0d56ff759",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.254251+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "56211f7ca05561feeab6597ca952ec5e7ecdeafd573c816808e7cddb7f8b5062"
+    },
+    {
+      "case_id": "t2sql_4efc2ddf8d63576d0002",
+      "case_sha256": "5f581429bea0647225c92d09040a03069f1ad123afcf5a4a4077d139235ca44f",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.255025+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "096879c5bbc95e66e7538bcac6f59af5cff488197fe91026b44abaca919d8073"
+    },
+    {
+      "case_id": "t2sql_506e8f289151448d5164",
+      "case_sha256": "bcf34045769150a0e3e431c1dea9e9081c4a5fb72e7f2e8056a0ed2979637f12",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.255789+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "71fa14f3497a40c0fcc197724ba8ab062c5bb4437e5c0ab84d72fa3dea29e672"
+    },
+    {
+      "case_id": "t2sql_508a331febc6db3fb20c",
+      "case_sha256": "26eb07bd4cd9a62a69a1b29d28f33b9f83f7c13644f707ac868e48d4e8530eb7",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.256596+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "93b0b466678b55a08289f59143e1cd0828d5f99f45c5204af49e682e83bf7502"
+    },
+    {
+      "case_id": "t2sql_523e027faf2d0457dee1",
+      "case_sha256": "35e06858f4959bb1194622eedcd46025492a76c55319fdfd827955e1e58fd495",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.257417+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "5bfb8dc63590f5daa060bbd4d07d68f9217acf863d9375577abb7b6b8e84dc2b"
+    },
+    {
+      "case_id": "t2sql_5320b46dbc2725fb6225",
+      "case_sha256": "9cf09bf12bd26c43edd2b27cbae2d7e151ae115c1d486ec5cef225b48744b0f4",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.258262+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "744093539b1926b145a61faeb66b1b48bdf2097146384beb46e8619684a1a0c5"
+    },
+    {
+      "case_id": "t2sql_5320cd60423cb892dcb3",
+      "case_sha256": "045f7cba358739b825e9bf00c01562dc9afae8d470afab441e8507957462afec",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.259119+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "c904cab6e73acfc176b45fa56d7f5089f955471abd10ea72b47ea2f0d164bb5c"
+    },
+    {
+      "case_id": "t2sql_53e01fe74e1f8e6fdda2",
+      "case_sha256": "0b7d668ca8f390e9181e45071b52d2e5a5a4fba976abb34ac4e4252cf3e83026",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.260070+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "abbc9d5c06a39c4b2bedcb8fe87697e3eddf892c24384b3dd6f71a96d2c4d966"
+    },
+    {
+      "case_id": "t2sql_54ac9df3efdcefc7a433",
+      "case_sha256": "9f5ea530b7e2a0cb9fe0f1b28d8808896db0055b4d28a2859569eadb1e343980",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.260923+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "fe3689e505454551e0b4c1222b4c507799fa54a9f2644e6a06bcf7e8918adc4d"
+    },
+    {
+      "case_id": "t2sql_54ebe6e136d9d663981d",
+      "case_sha256": "6e7a7e55083cfc699f274b40caf22d07431d5424380bbeafb904e283fa199327",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.261745+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "05668658f10366495cf94194d99f72bba9e755eace5d98a183edef2fbd1c5b81"
+    },
+    {
+      "case_id": "t2sql_582dc90fc6573e7a6cb3",
+      "case_sha256": "da4da5061e4df3522230c5023c7d32d87253e58f2fb565bdb9933aa62668aaa3",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.262584+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "c5a40b1933b55fea6a407c629d775dfef3846c0ca2b276c947c429be21c837f1"
+    },
+    {
+      "case_id": "t2sql_58dee4ed1581aea35a00",
+      "case_sha256": "fe0644538d0ae69e5551ea80438c387dce014edbe17f83063c44a8dfb333f315",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.263444+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "96701680516bc77f6443f2b0d16332d7d7f47718ae93b258cee465e1d485ae9b"
+    },
+    {
+      "case_id": "t2sql_5a4451cff47b7b83363a",
+      "case_sha256": "3b7cb440b1b71862a615a8b033470a19f84ba6d9c03ecb71c9514adc7ed757bb",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.264325+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "17cb1e1ca8226c8a43f328b84a32ac534b0f3e02a0771e0208ba9718792e9be1"
+    },
+    {
+      "case_id": "t2sql_5afee6b55c81fbe0737f",
+      "case_sha256": "cada92051cf7c0eae1fcda40bf2c0a2027688bb6c963e71c7183bc5e442ebde7",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.265215+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "11d7cefac5222eaa98c472743c8c0cacf67842f2fa75e5026bdd098794a7f4fc"
+    },
+    {
+      "case_id": "t2sql_5b0f580bd8f753239d46",
+      "case_sha256": "19edd52ae128e50141a26f77b27819594f2182273ff10d08c00b099798137a6d",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.266124+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "2264b854389374d19419bb792ff59438e6ba2a8943e2a64febbbf71e3a2cc91d"
+    },
+    {
+      "case_id": "t2sql_5c8f6aa73d22bd448a3b",
+      "case_sha256": "7f9d9b4c30070a16725971a5d7f54d9bebf543ec7ddc384e4fd5cf9d6cbd207c",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.267013+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "3b2df0adc6ff2cccac417b5bf3fbb2551db3c130fff35ecd6788d06b27b7c06f"
+    },
+    {
+      "case_id": "t2sql_5e1e38b3023fcfd97ed5",
+      "case_sha256": "448f3a6cb5f578b4d1cbfa743192a6d89b82f696325df7d0bb255a92e582efb3",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.267987+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "0c368978d26811d559e6542c9875019784ba970c134e6c4da505e261ddceecb3"
+    },
+    {
+      "case_id": "t2sql_61102dacb2a079b71df4",
+      "case_sha256": "a384a615672f28e9915ba0ccf9efe9c52b06a558dd7213ceb96b0cf7dc748de9",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.268927+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "4fb9fa230d8afeabe7818e95e42f0bc54bc66a48c28434d4d17dd9f438846dd6"
+    },
+    {
+      "case_id": "t2sql_624127e8910c851318b6",
+      "case_sha256": "20258f23880121bf9b530f909609a760ccdd8a6b476ff6d07af0693c527724bb",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.269859+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "c72d95421ae4d6546ff513306ac48924ae2bb064b7c391da017489a657a1714a"
+    },
+    {
+      "case_id": "t2sql_649c54b41fb7db1f65ef",
+      "case_sha256": "21c8e1178db7ffb4c242bea31aef87f5f4d7c44a400896c42236dd419fd57a3a",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.270791+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "7db778b1a7c8aa344e994fa1daf87946d12cd8898725f04b9ed0e188a4b058e3"
+    },
+    {
+      "case_id": "t2sql_65120f6f183431519aaa",
+      "case_sha256": "0c68c6e2feab1054670697c72ad9acfcabcee48e728b1d600ddc112f094baa30",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.271748+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "f4e68630976b0580c2a6cef0b8ade40a1fd36718c7c9020fcac9c449e19ac083"
+    },
+    {
+      "case_id": "t2sql_6722f363cc2e700e03a7",
+      "case_sha256": "dd119668d47b480c9213cf3895e397c74b0c37836730db762f8d122de5faf892",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.272667+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "99ef1dee4f49b41fa57fc3d6490c14ff5f50bbade465227043f34a91c625d3cf"
+    },
+    {
+      "case_id": "t2sql_69d59cacf04d411a2069",
+      "case_sha256": "c5141e0efa812d7794997d2ce394119f418441d7964bc1011ad7e819c77d1e62",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.273606+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "0a28914105c63496f986a709d5124eb2f1276690e5f5e9b30e03101f981f6f37"
+    },
+    {
+      "case_id": "t2sql_6a4e94e5236b6316c85f",
+      "case_sha256": "0fb4d77c6a709a9b3522f5cb59c7ad5016258328148c7bc6113f501317ee2d65",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.274557+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "5132dcd10bfd2151da3117bf737cedaeac53ca1f674e9b7a3d10dc4231ef27be"
+    },
+    {
+      "case_id": "t2sql_6a7431ebedeeba7a4ea8",
+      "case_sha256": "184da781111944f764c6d2551329a065128ae7fc8e3bdeed0621e6505366b60a",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.275551+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "eaaa38808da6091523af2a59744ef99c0308ed417501f4e5359aa9234e41f6e0"
+    },
+    {
+      "case_id": "t2sql_6acafd7f00a8d00863ce",
+      "case_sha256": "aa7956b1440a7eabd900598b460b1de1348a1fa8dfd8deebcaf06c62567c9dda",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.276615+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "e46418de00f7ae18c83fb0626bdb8cbd056bc4513d0e51e57d5e61be73714d96"
+    },
+    {
+      "case_id": "t2sql_6ae8993902a201f87882",
+      "case_sha256": "2de26b5af7f801ab99ee801b25cd25e91f92d36475234c99c35dac8f376d0505",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.277583+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "3e9ac0a3303a1db3c19882a5b57ee87a6974f46d5ae15fa5a1c7ef49faf81f54"
+    },
+    {
+      "case_id": "t2sql_6b3c559ea6bd02ec1c0c",
+      "case_sha256": "9d3b0b082477e22500b3ddf74f91b44e40f17374b78ff94bb0f1f1438685c74f",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.278531+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "bad3396582cce2fb69f36d06dc3211c7034f177eb6a5e5138774b5db18660158"
+    },
+    {
+      "case_id": "t2sql_6b8b2d314f2edeb2024b",
+      "case_sha256": "ca04e8bc5c83f05ed13c87aa99489cf98b9122370fc703f80e582e2849b77360",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.279519+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "acd9bf8dabd00306f9887131f77cdac232a9cfbcc68eac5bdbca8ad28449908c"
+    },
+    {
+      "case_id": "t2sql_6df4ccad1f532c0241d8",
+      "case_sha256": "d22083e794e9c1ef13545c128ce7d6f8ff4320e8e5c93fe90239a03861b58aa5",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.280507+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "99488855a9f7786b78461475f579ea479f8c88616f00c883d8d63326d6ecdb56"
+    },
+    {
+      "case_id": "t2sql_6f0a7dcb572129358b41",
+      "case_sha256": "4b50e0d0efadd0dfdd22707d0e749f653c0efa564bc1efc51c0d43ea5086c966",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.281507+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "39759756779938c706b10db556ff0f56858c3c8fe3f6fffcf3beabc1fc220ab2"
+    },
+    {
+      "case_id": "t2sql_70826a7fd7e1c096397b",
+      "case_sha256": "d06425bf5ff087e2cd7a0b2156670a3a2d2a8d4e0b6b5c7d7de47fa430b30116",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.282496+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "b8892dffb67cd264b258614915ab2f09d2b57458fce314aeb3ac2347269ca02d"
+    },
+    {
+      "case_id": "t2sql_71a9b806022f2dca816e",
+      "case_sha256": "d05122b32ec7e45ac53329a4261ec31fdcbb803d10d27fa934f8518d4d34f8d8",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.283533+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "45b54e18863ae7096a60883c684dce44b4be31367eb58d1f7ce86587ebd8927f"
+    },
+    {
+      "case_id": "t2sql_7407b9afda130ff58bd3",
+      "case_sha256": "b035487152b77760074edcb03335fa4c26d74ad15db75daa2b8835b210672572",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.284648+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "aef922419bb8d914023e63d8bcb98e600d95c8b8d58622742db66942d1c6b05a"
+    },
+    {
+      "case_id": "t2sql_7640432294db8f1ba355",
+      "case_sha256": "fbdabd25a23937e94bdc40dce48b0538cc332f7c6e3fe39895b8d07c6ffcdae6",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.285747+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "2c9d647e943cffcca1f6bef98938d2813e876c8ac981f2b75ddee89931a55a09"
+    },
+    {
+      "case_id": "t2sql_773ce0b4de869309108d",
+      "case_sha256": "25931650ef77d80c259c1d8dc296a95252a2d57da81a4c94102e062d02c9940b",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.286868+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "abecc0631e271b5282919a7f67e278bdf625be301e3a9b0426437f3190954c30"
+    },
+    {
+      "case_id": "t2sql_77f877237386d1ae079f",
+      "case_sha256": "788bd9a7dba6d9c5ce94755668b599de9d4c7831e36a9fc54d3f0395c7469575",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.287924+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "50f26dcde1f6d88b5661947202989b7efe8c416eaadfc823780573243e714f76"
+    },
+    {
+      "case_id": "t2sql_782088f32719ca52199a",
+      "case_sha256": "e6a3eec738f4da8979dea35537453a895b5837425f1b762e4791f98a646a687b",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.289001+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "03d889eae834938879606f5eab67b9cdefe976224a84988c95e931f08e644f1d"
+    },
+    {
+      "case_id": "t2sql_791e2fd985276dd555db",
+      "case_sha256": "457321e44d48d483b5e3388284cfbdf8148883ae88c34d8316d7dea29da2bab4",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.290089+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "44be5fba4ea6e56dcc042acbb984c820345568b88d6d019e38b184a847eaaf15"
+    },
+    {
+      "case_id": "t2sql_7a7c8d162f8a71a2b5e2",
+      "case_sha256": "4580f3c2db71b9b59ef27f5110a12e0da9c007102ca79042d610b22fd989f4b1",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.291167+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "2f004f207eab6a96e0c973fe182cac05b0b573db9f1633bb0b9167290ecea0ee"
+    },
+    {
+      "case_id": "t2sql_7d3322c4bfafb77953e4",
+      "case_sha256": "6dfe78ffb813eb80479bd6b795394670cd0f877f478e83ff22b365772c061ef6",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.292240+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "e12a2c0e250520f54450f42f790687480d749630572807480f53c013819d0359"
+    },
+    {
+      "case_id": "t2sql_7d79468d888d1035f608",
+      "case_sha256": "7b25d689f43623a50e6c5e2dd5911bc7ea87f39ce8d827f49799e1d857f2dbd1",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.293494+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "0eea07568f0246f042112c09494257824f54a367f2dfe6bd0759411d087c451f"
+    },
+    {
+      "case_id": "t2sql_7d86cbf57b609aeb3c6b",
+      "case_sha256": "937ca1c293391a8384a2056a4c7f981d8ca43b5de50748f0d6241484d3060f1f",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.294619+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "18633584c7a4a8cc8c63a19b5dbcf7cc40a2c6c514a2f7efc4d773c836507b81"
+    },
+    {
+      "case_id": "t2sql_7e5c37bd13bdabe94bef",
+      "case_sha256": "1f0a214db3898e8fc4bfa5c733b49424e256e60fd0930b259d349b34186da0cd",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.295735+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "5aeefa8e60b15a504d31523cd86f99de193c4cbd22d652be659d3901cf60f703"
+    },
+    {
+      "case_id": "t2sql_7e78ef7b77b34856e89a",
+      "case_sha256": "d3a2c81e164b46b15c6555e38350c2abf67888b211f00ea4faee04e6b6b1b186",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.296834+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "4f23d8ad2039d1f4751c73c7bf507033842d422f74061fd00f090bf3aef22244"
+    },
+    {
+      "case_id": "t2sql_7fa0bd3296f35511bdaf",
+      "case_sha256": "b70cc28c65978264c5cbdf1e20fbd6eef10f59c268e7befd7702ff7194892b21",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.297958+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "e6ead5d80b9a25e8b4708728bb221c42982a851e1017a4cb12531cb46140044b"
+    },
+    {
+      "case_id": "t2sql_80221acb46977ad78d98",
+      "case_sha256": "cd76cc1dcaef7183ef4773d8a09e087ef7ad239a030835fc4a1bcdeb65cb8f61",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.299090+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "9989fbef0c820255412cae4c8a9028b7dc40df04238a3bbbdbf836066a577b8b"
+    },
+    {
+      "case_id": "t2sql_808deae6f4d56b5fa8b7",
+      "case_sha256": "77f7b1fc51c0a02b92de4d5af506916a2c820edfad4247d776966ca83eaa691c",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.300241+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "f1608e4f3eedd4470f3d79f34db3551fc465078762e420fe57ba07cdf8425686"
+    },
+    {
+      "case_id": "t2sql_82e706a670c39cb6c79e",
+      "case_sha256": "c2cbf8077de8d346af3ba3cfac064520e9df1217c0c1e937f4be979227f58a9d",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.301477+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "b37169fbbf725c9c32af8537c3a3b712128d47f3663a4df2e458838773cdbd84"
+    },
+    {
+      "case_id": "t2sql_857cda575827f6e4a95c",
+      "case_sha256": "a289fae9480a10a24593c846037ce754b515384320a3177b4aaa5bc559502c84",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.302640+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "fb06b8cb35604e573149bfd1594c119620314ca4c8dd47f9a69667d72896696c"
+    },
+    {
+      "case_id": "t2sql_88ba52accbf1948a29ab",
+      "case_sha256": "853d1fccefbe18532ef625edecbd786779e6a92d64feed06aabf3d168ec2253a",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.303824+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "48a5dc9f4a7eabdd9377fbf6b0d31cdcb93c1f2a27bb2f994a666f44484e85d8"
+    },
+    {
+      "case_id": "t2sql_88cdca375826bd731b15",
+      "case_sha256": "948291875536f9a2efc9c31899b0307d70e74fef24a7eb8c068d3056be552c41",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.304978+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "1229453985373eb7f71e1e928f45f73779b4813d811408773ba08b1aaefbaede"
+    },
+    {
+      "case_id": "t2sql_890701517b2fc126ebee",
+      "case_sha256": "bbd6f0ec14ca7511e46794fda2bee6f42512d48db709df462ad4b03b471866de",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.306150+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "6779e7397bb1e5c570296aa415d6f88502d2e6a3c1eb6cec086009f637b67302"
+    },
+    {
+      "case_id": "t2sql_8a1e726cf81cc0667dd7",
+      "case_sha256": "a43da7f047b50e293236de98b4cc153a6444b3780d81741f6ae54db6c159b16b",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.307314+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "940861a52241f9314046241374c191c645653e793a787194dc891a93b5c63411"
+    },
+    {
+      "case_id": "t2sql_8c63327388b77a26c06f",
+      "case_sha256": "27fe21fc49ee3ea1b61d12c0097cfc66eba8bd4503de842e61f4003ab9e1967f",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.308519+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "00e63b8dac8c4554a3b5849b2d35072625bd7ec139f97ed9cdfc0edb85f4ff25"
+    },
+    {
+      "case_id": "t2sql_8e095477f340a647e706",
+      "case_sha256": "d6bb9777607293f1fde07db63854ebf7e970af6883a2087efb63e0141db9840a",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.309821+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "7bf97525a9e27ca51462ba35691d36356385ef85187acfeea46e188628bb0367"
+    },
+    {
+      "case_id": "t2sql_8e38577c968bdaa37559",
+      "case_sha256": "87efe704f06dc7366d19e0c0d5bd98d174a92176075d609729c02f3c986dd969",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.311049+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "82ba824eb6ef7ab36090419776ba3db44b13b06a0ea6d94c347c8984a0c8554a"
+    },
+    {
+      "case_id": "t2sql_8e3c246c5912c62c8f1c",
+      "case_sha256": "5a8959c292a0ba826ba593c36ffa9e823bff61072e5adc74c5acfdad78683b0a",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.312261+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "8927d97191f13687fdf8517c75e4e1b6d94903bf237bc604544f54133c87bcfa"
+    },
+    {
+      "case_id": "t2sql_8ee30ec0a7029199bfc3",
+      "case_sha256": "83bfc8f6214bf94ab6d2ec1bd04a6421439ee81fb0f066f7a5d8bd3b72d4f285",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.313468+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "98067ed3c97cde250938871cf17efc443bcbbd3cc780f9873b7003a12e5fe274"
+    },
+    {
+      "case_id": "t2sql_91aab0d2c0a836228aab",
+      "case_sha256": "bacecff1baf61434f3a1443dfa2e67f4d71e7a75a95dc21e87516960bae73cf0",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.314692+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "3f8a928a1723f1b9bd54527833758d70fac82abbb6727518ce8c70ca63a41e26"
+    },
+    {
+      "case_id": "t2sql_91dc7697dbcc9ed74ff2",
+      "case_sha256": "715fa58d4c180919759467a7fad6c77783021266ce473db60adb0ca765d5e2bc",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.315921+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "7cf9bdb06afae460b2a6de482e2c864c03ad69f7608255f15ee1541a35110071"
+    },
+    {
+      "case_id": "t2sql_9213c6bae7ef26a3fc3d",
+      "case_sha256": "afc753006c7143d3782b899f0825004b7f272dde9af22186d8be3895993c4ed6",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.317172+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "d531f12f76fd66b4610c0b36564e043c717b6fb45f91d57b7e9b33c2a16275b7"
+    },
+    {
+      "case_id": "t2sql_95b31e575b2a16425b61",
+      "case_sha256": "922f338d55653793bc45f0fb63901801525a4a83816d4fde57595ec401562629",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.318567+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "1b147f58f149aac9bd956febf4a01eeb9ade0bb9710b310cb1ea218b524f34cc"
+    },
+    {
+      "case_id": "t2sql_95f67d1f0ae7b8bd901f",
+      "case_sha256": "c7fbaf7425cb9d61254ee354d49b4089c2f0afdba46f529e43c6382c4a01f50d",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.319829+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "d3cc2ba18c9760dfb443c40fabf401c979352ea9f88d7f5c0a9266972b5d96ca"
+    },
+    {
+      "case_id": "t2sql_981f52da52fb4394b775",
+      "case_sha256": "53706ef422d5252bc82e7d0037c71d5eaeabc32f7be612d50a402233787da8d0",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.321077+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "74d32b8d473a3435515c741b9114021c6e01c12ca9a7e77e7fb1773cb10a991c"
+    },
+    {
+      "case_id": "t2sql_982c0355e068b3a3060f",
+      "case_sha256": "1b14d9231638a34ca9595e382a3b752346524d323bd7ed212b7a22a9f7e0c22d",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.322340+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "89eef910d4ae57ebed2dc202d255a0b89215c4103f080978865dea93e9e5fd65"
+    },
+    {
+      "case_id": "t2sql_98d8229b78951ab49be9",
+      "case_sha256": "ac85dcfa41a794cdd1df9836fce386c01479274f0340bba4e3af242897a7b737",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.323618+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "751e154320f4ad58092bbafb98bc84d192f5055186afbe7af3fdcba751e36469"
+    },
+    {
+      "case_id": "t2sql_99b2a7e6539258936500",
+      "case_sha256": "b82f7eb5bbb4824ed5c78a0389acb0006d6e38ba3d56a759ff082a7d337b011f",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.324896+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "89690de1612b9c7f98ce54e88706fcba0d9fea017ba85bcf3d1dd120ed80876d"
+    },
+    {
+      "case_id": "t2sql_9a5d44a5688cdfb71a46",
+      "case_sha256": "33bee5955cf54a4650cbfb6c354b09fd1f241f1abbb24c78e55f8250a619e45d",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.326325+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "4014b669293032a7f9454961193e46624fcea6784d3a7570221054f109d51542"
+    },
+    {
+      "case_id": "t2sql_9a86f9891819d0042978",
+      "case_sha256": "46e65c7d9b4ae8010fb2a0f29e24c6fc93afa0a3d6669fd8c3bb25d12a46bcc0",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.327666+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "d1e82573c689426b1e973ceea81e091659e325cb08f843dbf9f6cf5ed4041848"
+    },
+    {
+      "case_id": "t2sql_9b4876d179faab16fe44",
+      "case_sha256": "0c133617850c41d2c039b326fc5d69ef32a6cfab806cf361501a6281492cf791",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.328942+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "5d7ffb448fb675a7c11adc6f7c8f460ba9ae6213542b0eb9682942125eea3017"
+    },
+    {
+      "case_id": "t2sql_9b8d991b86db4cba0f3f",
+      "case_sha256": "55eb5409081e1d3bbabdea22050b40fc31bc05fe3e115d51f04df30aef8947b4",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.330273+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "4fdedfc0e46748629fac83d91c1578dccd92d66e55874b10d5d735c951e549d4"
+    },
+    {
+      "case_id": "t2sql_9bc559e9015b03d82b6d",
+      "case_sha256": "5d347ee492b35a565441290b4778892bab9f620629b92e1c6b76574bd720e231",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.331552+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "8cf7b72bff94cb90b3070f4a0cce4735b7ea90100e82544ee257def02073c184"
+    },
+    {
+      "case_id": "t2sql_9c57a5a5478a9f137f15",
+      "case_sha256": "f61b3e95a664e0e3d6c052af8e02da96c56f6470eb10b9e67b7d6f4f47e62946",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.332912+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "2a514ad357ad343f281e05c8f573bbe59992b5035eb068d23c355e199018e1c3"
+    },
+    {
+      "case_id": "t2sql_9d594e483e59543b8548",
+      "case_sha256": "48383a609b3578cc56e70f90bad24dfe3ebabcb514713d02758f1d9b997ec854",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.334242+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "29743cc9a0516ad99bd45906a8ee975fd95e59284cb107b4a7ab41a4378d5390"
+    },
+    {
+      "case_id": "t2sql_9e007082a38fe7513780",
+      "case_sha256": "5eb12427246cadbfb6c9fd7db865e7001963299a14cc0dcd043a868492cc5d09",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.335694+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "9ef5d571c794e80daca8fbebc9ac9e3662ba6a1b38c638972b28cab4287f50b5"
+    },
+    {
+      "case_id": "t2sql_a2984f2a70b035521715",
+      "case_sha256": "8d00a93fd1953b2ca40e4ef594986aca6a64e6e8b111db72d285b60b20e9e344",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.337025+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "2ebf88e16de702387dbd19a973ef61a5b669660f11507c593a11b92768651b6f"
+    },
+    {
+      "case_id": "t2sql_a2e155e0ac0fca02db0e",
+      "case_sha256": "3fd102f503013a0e857ee53c14a77a7c6a395d0710f2c73762035dedf63a1e57",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.338399+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "57112c289681c85e134956b1d0724daae0b7155da32c7d712b8be889f2852933"
+    },
+    {
+      "case_id": "t2sql_a2f5106034ed7e19098c",
+      "case_sha256": "6984206ce785f6e983851fadf447e849367e8f8fa803c4779cbf9b0c3f9cde07",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.339738+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "8516b305cd0b4195ec05d553fd3416804b03b910fc7a374f8148929ade7dd9cb"
+    },
+    {
+      "case_id": "t2sql_a301bf3ba4941ae3676f",
+      "case_sha256": "e3c984892e7f98fbb7a6ac9452f798ed422481242f62672e83361e0e6a1d5d2d",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.341086+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "aa77ded6cae533e9cda025fb4340ff293880239a0e31771be33497848ea4f1c8"
+    },
+    {
+      "case_id": "t2sql_a4df57b4b6c6f2b3926a",
+      "case_sha256": "6e6bc6028e07e15e10d1ce71c026cf74c82a3ecccf8d7651bc49b860cd724ca4",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.342439+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "7ca84e4a5481575657e3483d43deb627508371635aacc9f814c1bd51f4a6e0f7"
+    },
+    {
+      "case_id": "t2sql_a9d956ac7bcb35bc24d9",
+      "case_sha256": "38170c1f4505b623cabe1914f20b24e56a7c0565e4f3ffcce46bd35ebc4dc921",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.343931+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "50ad287f2a44677eeaed2bb1a5f0a68426719250019a3bee8270670dadce4831"
+    },
+    {
+      "case_id": "t2sql_aa420f031e00b28a505d",
+      "case_sha256": "71eeecd8658249411e026530450ddb79fccfd5804ed0dce3355ce4bbafabe4a0",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.345280+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "96c8c4a76517fc00b0aff432a91d95463b0177b6a35aee695a21d9c4fb111dbf"
+    },
+    {
+      "case_id": "t2sql_ab8b11b362bb22b4d3a5",
+      "case_sha256": "eecadae47b114bd6613b6284804e9f35e4cbd80a79492e3e17297605765c8fea",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.346667+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "c40894f25a536e852f572bca177dd15bebfd27062bbba85f68fbadcb74fc57db"
+    },
+    {
+      "case_id": "t2sql_abeede4148c7cd5118c4",
+      "case_sha256": "b4f0862f4a14fcc60bb676cd3871f741719bb7842eba6761666f4e54418c2835",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.348031+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "39fad427b612023646fefaba567038b73516db560926b512ab55a66be8bba553"
+    },
+    {
+      "case_id": "t2sql_acd9e564c21858818fa3",
+      "case_sha256": "2718e7f13338eb2baf6de2b7b8dfffca2119fea0bb9ca8afef97f2b9edba29c5",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.349442+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "9d87f5bd0a097252f637ccb206110a2377e9119ee1ccf810daa9469d945b4775"
+    },
+    {
+      "case_id": "t2sql_ad2086dc8e99969b56df",
+      "case_sha256": "c8a615ba300c6dd899e876803e7c58a4cb8f46050d27b64d679f8c79cfbe4a6d",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.350855+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "6bf696fb8a242caa6380f1cb714ad776bae7b791172a92298394027f4bcf799f"
+    },
+    {
+      "case_id": "t2sql_ae8fab4577ddf672d511",
+      "case_sha256": "2f89795498356c959f1a4be7bd60c677e8b5c03e1741f1e38e174d77ddf4eb5a",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.352363+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "f025aa997fa871738a295cbc65ba34306ba0e4b11759580a60f572b00e7dcb0e"
+    },
+    {
+      "case_id": "t2sql_b036e021376091af3b6d",
+      "case_sha256": "e5324c3f4d5219e2b922c4002cd541d80c02e72d37921df82805154e37cf9ecf",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.353792+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "69fef511be7b2c1bc0d94a863e48f0788fc90ef62d5ee3ad3da1f205d09f0324"
+    },
+    {
+      "case_id": "t2sql_b4cb236a011b8e357ccb",
+      "case_sha256": "be4bea4c0cada5483b38d1130a74d34845c0711d27c77a79a929fab4ddda5016",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.355240+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "e185617d855b74cf08b5249ce686633ecf1fff7e431b9757c9595febce37ed1a"
+    },
+    {
+      "case_id": "t2sql_b5a1a20f392087f604f3",
+      "case_sha256": "e5834ea306aa15ca342f5dd0210173a43322ea1788bb26511bf90063efef4960",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.356654+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "ddde32e893cfe61b4a129699a90e7d86faf81925fa5cd8948da5c881bb9a0445"
+    },
+    {
+      "case_id": "t2sql_b69fed2016c1fd0e5d8a",
+      "case_sha256": "22baf1835f9367cbed24df344a4b0b489ed873a9061cc70f443f6a0127a33692",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.358092+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "cceee9fc6509ac790d5ec5771f4fbce77f5b42f3186c131e85cad4b062e5ba68"
+    },
+    {
+      "case_id": "t2sql_b8f9169fb2b615251e86",
+      "case_sha256": "bf92ab2190595c99e9c3ac7371feaf22cda9e0ab0757eadf301f5f1838572372",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.359640+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "0ae8bc419f8056429e045420908d3904640eded693a96ffcde0a94b211b559e8"
+    },
+    {
+      "case_id": "t2sql_b9300f0dfd6cc76d0ac2",
+      "case_sha256": "18f4ac632650522e782c678476e84c3a78f5cbd9640f2b4a54a99b8b96ffee3c",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.361120+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "0490fe39bca49ae0c9bf5e45b8d19b5a942e2e1d7ca5a55bd6206f10377a7dcc"
+    },
+    {
+      "case_id": "t2sql_baba91a63bf10db86b4a",
+      "case_sha256": "089c8fc8f879bfb7aee7d8c095159962d480aa2102387f60167cfaf129b9ec97",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.362580+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "a2db270b9ba75ee4c403d0d11e9ae9f5b282d45483560c2056b3658f72dca1f4"
+    },
+    {
+      "case_id": "t2sql_bc038ee1afecdcbe8c78",
+      "case_sha256": "3583194f82e75ad86b5ee6295e3479e90a2bd124585347be9b5389c639ae85de",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.364082+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "83a01cb9fc07b0c994366ebfb3efc39f852ab79c846ad227936abc265b316855"
+    },
+    {
+      "case_id": "t2sql_bdc4d59bf952ff3b62e8",
+      "case_sha256": "4f5a1a2033b1ac119f32f9dc029f2e618e89e7cefaa350ba740b72bcf27fb928",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.365568+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "e2d4a2d9a8cf5d9fa0e1947890fd0f38c9c7286c739ef1efededc151da9bcf1d"
+    },
+    {
+      "case_id": "t2sql_bf1121564537b1a62e6c",
+      "case_sha256": "f166421c550baeb899bc02aea33937ce246e6e78f4aaa65ad4cd3aaae42ff509",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.367056+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "ac4eb39a024ceb5d8af9580d4ec3f8f59db36632de38ef835aeb9437441c26ab"
+    },
+    {
+      "case_id": "t2sql_bff00eeba7dc2bb3c461",
+      "case_sha256": "41a7d1d2df762b5b1f6ca07616ffecabec8e8162e3c5a52a6a9d1bc0603c0f87",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.368707+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "a327b169f58e71cb031b43dbfe6b07b61a3a854f7d75dc1c1b360870f39cff52"
+    },
+    {
+      "case_id": "t2sql_c1807c912194188f89fe",
+      "case_sha256": "413ac2384beb094d6db510a569f4ff3d4226e3ba640b1834921902312e1a0b2e",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.370219+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "393ec4c8a112a238bd81aea934971a09968b91e1b84694c43155e894565f782d"
+    },
+    {
+      "case_id": "t2sql_c34073fe6c916bc68f2c",
+      "case_sha256": "b3183d42f7f52735f59b159b9612f2c99f9ea60e265d5bab353e8bb401bbc2b7",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.371744+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "9c2e4fb280e4be747b5c1165fa0f81d5dd7e19a71f5649d40274a7e6e4289ab4"
+    },
+    {
+      "case_id": "t2sql_c4066bdf5c296b32bcac",
+      "case_sha256": "6811451b72002993a5fae725958828328fddb2c80638e341923b4d05e0cac9ad",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.373262+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "85a4342faf8fc0fc80a5c9153124a1ef2966b61824385d4fb545e9892b695734"
+    },
+    {
+      "case_id": "t2sql_c4870da696d5e62ac08d",
+      "case_sha256": "6ff690149aeba214ecd8e5982b8639331681b3db3d11ad33944012eac704b4c1",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.374797+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "d6501ffaecddf7f80e289122512e2068e6850f437fb2bb66512a37e118f96fd7"
+    },
+    {
+      "case_id": "t2sql_c4a161c1f5ca3dca6201",
+      "case_sha256": "35d8e41713dd486b37c430f711c51282953a7bd40d1a4d0ab5408c2d67405bf5",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.376468+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "6281363e92d1afa1bc90e9884493b5a0718c06aee159f1e61df690b03c7e7cb0"
+    },
+    {
+      "case_id": "t2sql_c4b14fbe18f6b6aebc08",
+      "case_sha256": "802a204bfead35e6e7285965c897b4f7507d7d3b9a1075da36c6045d34406e20",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.378067+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "b2bcaf3c30e62819c3a31a866ed39cd5112e811c376a2a70d4dd5851464c6175"
+    },
+    {
+      "case_id": "t2sql_c50045eebbf47a2a2bf2",
+      "case_sha256": "34414e7b74799936666773fe85816e0847cdf7be5ac9388a744201f0bd8c61df",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.379594+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "8a9b5319f885f4e106cde921e5aba73b9125bb6519946c51dbea0668d80b5919"
+    },
+    {
+      "case_id": "t2sql_c661bfc8d55a277267fb",
+      "case_sha256": "c8858a7d7729c57574b7da5c614c911273094e425b023a426b6ff061998cb170",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.381164+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "c27abe5538b6cc3852792515d5acd203178a15076357b035eaec81f720a22ac8"
+    },
+    {
+      "case_id": "t2sql_c7e9f8d2d0a12de772cb",
+      "case_sha256": "e010699882a223b4d6cd576b19ce717920fbaca56cfe3d391317ebc4b10644c0",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.382751+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "41d103ba187fc90554ad691abc91f77ee32549119775b887cc35cf5b67cfb129"
+    },
+    {
+      "case_id": "t2sql_c84764707bce46334ccb",
+      "case_sha256": "5fd1e16fc79c81d2a61dae621ffe08f18ceb88f69f5557c944fa86106c956cef",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.384395+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "06d2aec25c1d736b392f89657ac68801b3dcd8fb4722a99e942dee631fc4debf"
+    },
+    {
+      "case_id": "t2sql_c88133b6f3fc813058f7",
+      "case_sha256": "cc8ee03a50ef64825549a7096302a4c1047e06321a465f64c34bd5c9e3260bbf",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.386088+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "ed77aa4906d89c769de7cac769b95f94e8802f5edffed986642d379e4b8b697f"
+    },
+    {
+      "case_id": "t2sql_c89b6105a186ef7bac63",
+      "case_sha256": "6b28a0ead86b62e2cd33f4ff169b3588d3a53f4b6ff07c0ff2aa61020419edb6",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.387723+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "8ac7f3ee0dca9c94cf5ef2fdbf18d4e307c5bda1e1cd18be44d56ff6cd8fb390"
+    },
+    {
+      "case_id": "t2sql_c96fd1524591b55b2d99",
+      "case_sha256": "ecd6c4dc0a2d7fa9e89e52a301416a1007521c4b1b015f533af1961977c86d45",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.389324+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "ed351122443822a6d1a4fd19cad25c942036a6cdbfc94dfa6f3f09d4da325518"
+    },
+    {
+      "case_id": "t2sql_caa4fc04323a64281d9c",
+      "case_sha256": "7cb041fd7d1654b6f2e3aa92b9a8dd54c4285ee68593c2c4e90f25fe2dbb59be",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.390964+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "72804cf8d3dbea7cc9c166fc271a9108b9e4e678729b4dddfb8d3338e0cb216f"
+    },
+    {
+      "case_id": "t2sql_cb03e337f9784d724939",
+      "case_sha256": "fa27509f1d32c626cd9fdd9147f27ccb69791439c962cd2f8b421e245682d8e1",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.392635+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "e38949b5c3950380e130bec1f3873818307eb29d6018fba6d20a51d146607a92"
+    },
+    {
+      "case_id": "t2sql_cb9583bc77a9072ef21b",
+      "case_sha256": "a28512d9d940d8b81eff1f108a36635307aa3670f5d1224f005024abfb3a046d",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.394367+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "9c082ff5734b37f7a938d536f46bf559952912f065aa49b45bbba9ab92dadc49"
+    },
+    {
+      "case_id": "t2sql_cc3f7b97f0ad83e90456",
+      "case_sha256": "b1a3690a083310ec6a25b6ad66650c14c55b27670c478b5138bb397931c151a5",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.395958+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "8fdb12e0f0deca11f62f920cf1321f99b80f1c1ab4be1785bf5213a900efab6b"
+    },
+    {
+      "case_id": "t2sql_cd80b850eb2ec5f89a9d",
+      "case_sha256": "a5e3e6ff333eda0fa0a4401dbfadc902808982bcd707b83bb7e9ae677f288369",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.397599+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "d7354fd1fb1279b2a4754f6c5b0a58851c621754c103bfea5706f7f715572899"
+    },
+    {
+      "case_id": "t2sql_cdac3f27d05a0c315b68",
+      "case_sha256": "8bcd97c4fd8f5c27f68a2a0140d5c99851ba53bff8d8ebf948a6822b237c593e",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.399261+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "4fcca47290c85d6dda10f6ee1f98990b21ec6dcbe990e34506300d55ad03cc28"
+    },
+    {
+      "case_id": "t2sql_d054e74f08821a7edb49",
+      "case_sha256": "324761f11495dcde1c83ad1fb263a524b79fbd919c14b65e5346e187f9f352a3",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.400938+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "9e2b88738eef2c9290b881870e8d940203cb1cad1b7119f62fcee15a271c8117"
+    },
+    {
+      "case_id": "t2sql_d17a0c447424a96389bd",
+      "case_sha256": "cc226f24bb12a586b3e51aa3878ca14234b5064e02d5b229c4d9a13235f06cda",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.402757+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "cf7c702c5ee7dfcb652bff5ab59fb8de7ae620071bd07b35f741231314fb3439"
+    },
+    {
+      "case_id": "t2sql_d1d42a6fc77cf9f13855",
+      "case_sha256": "a6e98c6bd02dfe2c42e8220b6b802fd6606ed1c0092f0164a62d9144e2cd2447",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.404430+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "02f2ebc1e3d4ccd037330f6d11bd084f60a89346797b654a44d6f95b31af1715"
+    },
+    {
+      "case_id": "t2sql_d34cae45f4c014043769",
+      "case_sha256": "eb094cbd2cae58ed41bbbc58f4c64284a7df7d29741da67c543da21120d903bd",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.406128+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "0081e0ce7238ba033170a671dcf593166ef5db4d6c409919f7f9462895485ed2"
+    },
+    {
+      "case_id": "t2sql_d46fe1395ada4975511d",
+      "case_sha256": "49d8b8d975edd15c6f2af71991ecd3f0993dd802c90b6364aa1148647d24623b",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.407835+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "3e3159dbf1b3e62a7768f9b14b6036d0f570d592683aebc2e6eab7d45be43562"
+    },
+    {
+      "case_id": "t2sql_d472d361a3eab53ed7ad",
+      "case_sha256": "2f659e79995e0e22e91e10fc47c8e3e8317e1ccc49ef92701e3a5e5778902ce2",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.409730+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "c128fff37010b6653084dc8ef320cbf8d005a764bfb8a714b4e9f474868c4cb1"
+    },
+    {
+      "case_id": "t2sql_d4ab8d4ccd73009205c4",
+      "case_sha256": "18fe6560e44d402f0f7fa9307165f13e1ad37b9f06300aacb2234e51e7a319cd",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.411478+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "02d4db7334c23c4c5aa13fbe4db6ba8bd18595c8a636b7cdcdd34b6330a6d385"
+    },
+    {
+      "case_id": "t2sql_d501c63c8b1778b17449",
+      "case_sha256": "0c3ccf80072161e78e2a5525ac705ea82a398c3e4607de2dbc3a7e35482bde10",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.413212+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "15d510e148add5cb0534f8bf13fab7db848376f8b3e1e1a22f462c33db6b02aa"
+    },
+    {
+      "case_id": "t2sql_d5ecc041aab248d6689d",
+      "case_sha256": "79377df5bb06400d0715005b0faaf79fb38c8ccce467eda134b8523d809311f3",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.414978+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "ca6a8ef6c695da9674e015ad9969da338d9f3394399a601a2937fa0b92c48c43"
+    },
+    {
+      "case_id": "t2sql_d83f0a4d32df15056e94",
+      "case_sha256": "6d892c9acfff75ee992816deaaeefd0a3be32d2db226e643c6c4e8f5ccd66724",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.416700+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "9c3d016550bd733014dc4d0b6cbc5b329aea9be1df0a55f975d8612a85d0262b"
+    },
+    {
+      "case_id": "t2sql_d8d5ec74684f01657882",
+      "case_sha256": "09fc08a9f15afc7b2148a2e00888c802ca92f6f74b8c4b6d17968b94d9fe3e3f",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.418574+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "46067cb193dedd8a4a2821102942a5df55461aadfa5318db5a0aed47f8591fc5"
+    },
+    {
+      "case_id": "t2sql_d8e86e2eed739263d268",
+      "case_sha256": "a2ebb5fad4c7c4f481007acf3d753b82fbe85aeeb20a9421f5dde8e74fff6441",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.420358+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "b5acaf7c4f6d7c1ddaca50688a83d2157b357b9c7fee30b74e03562259220a5b"
+    },
+    {
+      "case_id": "t2sql_d93097d475270263f175",
+      "case_sha256": "9cc599c221167fd9bb39b887dbff79765f250dbb5213e15018862f731544ff5d",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.422133+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "8cb2d79fb6c6d46407f32509b148bfefe7910c0e7318a66ed578f4546426ee93"
+    },
+    {
+      "case_id": "t2sql_da5835f90a4da21eb21c",
+      "case_sha256": "075108a9037ff6a691ceafb5337c52a46a928188c700301c08a5e233c0fead1e",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.423890+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "6c4981646f395d9c3624151ea94239e8ea16d07447440b40a5d93e2db5f3e06f"
+    },
+    {
+      "case_id": "t2sql_da8c3e2946d252e589dd",
+      "case_sha256": "bb108703c9010e7fc39cb6fc3791d5b912061fe3fcdef73dfa5e0c9938d723b2",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.425690+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "f1ad7efd530a01b71f3fb1e7cef80e42f0969b7760ae47d0d443461e7427281c"
+    },
+    {
+      "case_id": "t2sql_da9e6700f6b197ea5956",
+      "case_sha256": "3cacdb2dc7a4123db39008282ffe5fa0d52f79f5e076d4d4ffe3dda9ee9f8ac3",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.427574+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "fcc7f85d7aa0745e3584645ff0a956cc081e3df9c641433bebea368e756d6f1c"
+    },
+    {
+      "case_id": "t2sql_db0142d1e20a5ee5e242",
+      "case_sha256": "b6c50eb12b9b4ce58280830e13f18fcfddfb7fd87bacaa733086a3e1f86fd4ae",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.429344+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "94627c7204274a7110d7d544983a298ad2d56a2698f1ab559b864f43d7145372"
+    },
+    {
+      "case_id": "t2sql_dbed656870fc3cce1147",
+      "case_sha256": "87baf076790843d1bd18e8736b6eb0a2dc590f6d76fed1c12e7ef91dd0f80b10",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.431103+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "b94ae546fb1f5f92e41544f610b57e54bcdd267f15fdaae95b51984c4ceb739c"
+    },
+    {
+      "case_id": "t2sql_de6d030997113e86e2db",
+      "case_sha256": "c59f7fa7ca3828c27559187582575b5fe2761dda9d41cb258089873678afc26d",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.432876+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "b3c1eb96510205f8a9831b498d820765f6a1b00e3f8baaa88625e6c58a75bef1"
+    },
+    {
+      "case_id": "t2sql_df0d3849611691b8c211",
+      "case_sha256": "5f6c502b552c2e20eab28ac5ef6061e7848332940030cbab5487a53e602f0286",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.434734+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "9d556f5d8ec4696f0ffd217295db1f9e69c56de6187c8fb436c635f0dfc7cf38"
+    },
+    {
+      "case_id": "t2sql_df6cc1dd915aa1689cb0",
+      "case_sha256": "321adf89628de2e0f3015d981c65d4ac65f5684688b79ce6abcbd3194bbfb252",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.436497+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "0327fdd99c22759bf808076c86cd9aa24bd86d87c9e5594506de28454c953a68"
+    },
+    {
+      "case_id": "t2sql_e054e35c1f430a27447c",
+      "case_sha256": "0a05de2a654dd09d1c4b695ab782ef48b466d723f38dcb0c24803fee31f8da17",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.438296+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "c9fd45f166ccf6138dec308588f3712b2c00e2fae6a6222dbecac8e2f64c9745"
+    },
+    {
+      "case_id": "t2sql_e10a448290131c344828",
+      "case_sha256": "11d36356feb191e265db6cec1bc9f95a48c9cba0a07c56681d420a2b52adc2d7",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.440096+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "b4f369cccb10b18141c04ac91529be1f668865aea7dccf9543b0a55f31d471ff"
+    },
+    {
+      "case_id": "t2sql_e120505a33d091c2d7e8",
+      "case_sha256": "a906caa49d0ee83c85761f3096f705a6a5d8489f74367852fabf0472b75f8a75",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.441904+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "72f008f0f33adce473e69d402c8e5bd98bd90df6b6987320109a47afef3f367a"
+    },
+    {
+      "case_id": "t2sql_e1ae99eccff0da1f267c",
+      "case_sha256": "170b6d05962eb2ad9eabd0ab68b31cd92c2b4dcc4007d30e08e0c9b757b569a1",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.443921+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "d25cd8811c3cc99e6365ef82d0364ea103a52933b1ceebcea966f880d943c201"
+    },
+    {
+      "case_id": "t2sql_e43847a699aadfef1821",
+      "case_sha256": "95f214f7b95797ce147f6e1a012e49056224f376c27f608c181644822412594b",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.445754+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "4416472674c56d371ab8f933f6fc8cb5ca6bfd8ffc089e0bab8660269505d4d1"
+    },
+    {
+      "case_id": "t2sql_e541b98c1b08c1841001",
+      "case_sha256": "7d2a9b29c005ea5eec4601755601197ce47a63ac8762909845a566e8507e77d7",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.447594+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "4787d99e2b34cc2a763eab9dc1af64abed849a0ca58654bb630a58bd27f20431"
+    },
+    {
+      "case_id": "t2sql_e8076e0fe6b174b29fc2",
+      "case_sha256": "86b14da7055e8af6525b30e00c290c2a69be29459dad1ae01ecd7106f168e92e",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.449452+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "2e6be81bccca3a77227fa52be5fee6fcdea302afce71074094609b47630db84b"
+    },
+    {
+      "case_id": "t2sql_e8856eea9d05423a7fbd",
+      "case_sha256": "66a45e944171e322e28cd34e07d5fb044409482950c671ee62e958d7d9fb183a",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.451474+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "d16fbdb3fabe5380a1e09c9529b2c3875709c7d8efbd61068be4a2d2bf8273fb"
+    },
+    {
+      "case_id": "t2sql_e95a62d49449dc3b47e1",
+      "case_sha256": "03e8d0ec752808b94571f3437d82077adc2a3bb82e99a388f9c6acd989335cfc",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.453402+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "21cd3ac02d1fec3b81ae122a2f525a943832c5baf9d4f478c82ddb7018bc5d23"
+    },
+    {
+      "case_id": "t2sql_ed103658c84de78092e6",
+      "case_sha256": "8957e0acb5355fb6a4c8ad54098fb67c5bbc978333e8dd111b7b0d5763dc5a8d",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.455317+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "a1c883b3eb167f75ca03c829684b6dbb12bbfdf62a2898e58ed9d7a60ceefecd"
+    },
+    {
+      "case_id": "t2sql_f012e098cd6eb964df21",
+      "case_sha256": "0188fa326a34da9e2defaf8988f1ea0b9d5291080c18e959f9a288c44623dddc",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.457184+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "2a3c559cca02229f8d375e30e2264f7dce0d923cd2eb309fb3f802f040b370d7"
+    },
+    {
+      "case_id": "t2sql_f2e39baadc7c73d70b37",
+      "case_sha256": "e0b95dbea441f5597cc90df9e3ea1d3aaeac03eba3a6a789512decac6edb3ef4",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.459050+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "9b929090cd3e057c17f1b5c14e5f153c6957c09a438eeb51bc878d795cdfba86"
+    },
+    {
+      "case_id": "t2sql_f354583e57c45d04e955",
+      "case_sha256": "99e5d5a0a5a1b0de2a5353e3bd7aacb1448c23728b884d869002858fc507965b",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.461063+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "479c8eebe494698e707e97a74dd927de50f9ba6223d73ae551684a279851d1a0"
+    },
+    {
+      "case_id": "t2sql_f46a3e2c5f9cae5908b7",
+      "case_sha256": "545f97a4b950a140665f52f66de26cf56da172f53fee66b04dba69a1ddc5823a",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.462997+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "f02d3538ea3f8dbd1dd601d8ac12d37abffd7d8179ab08d26d37a55123b4e671"
+    },
+    {
+      "case_id": "t2sql_f54d6e63b2b0b297c323",
+      "case_sha256": "70f1c62ac2f26bc5005b2b84ee6ac8e3d9c454419732dc911341baabd84e20d0",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.464864+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "e27a01fe93404508ca0e1bd079e9a0f638cb13e70281f5bb02f2049bf38a86d0"
+    },
+    {
+      "case_id": "t2sql_f5d2884e33598aca88c0",
+      "case_sha256": "680336c7d03149308b8a21c17687355930a3ce6bd2765014a2fae532f43a0a76",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.466811+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "496f71bd640aa507237a4dd7cf03bc18f2c04b4dbb08fc6f373e1beab15a8484"
+    },
+    {
+      "case_id": "t2sql_f68481c4420f2ab13a3e",
+      "case_sha256": "06d1d312b2d40fba7647f7a9ef2c57ec697178e47539686bbb2a03c6bd26bb15",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.468898+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "bbc3b249b5b5f5fb48e1212549e020bea71ded2605340d352fd8f8cbe69fcb6a"
+    },
+    {
+      "case_id": "t2sql_f7f50fbbda792d5a8add",
+      "case_sha256": "43b9ed39885878a847e70e79f211e0593ca739688e014b4b124e8544d6d729f8",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.470793+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "c7ad2492c5047a6f1b32b2e6fd0d3ac898bc8ee36570358c5903871244b66ad8"
+    },
+    {
+      "case_id": "t2sql_fa5e455f4f8ef25f6448",
+      "case_sha256": "06f38a017661039a3c95a4b6b0d28c9968faddf338ac5d515ff10109c24b33a1",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.472762+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "eee25cd2354b0ef66bb716ac9781f2c58be8411341d558489ee1d7cde5fe6b3a"
+    },
+    {
+      "case_id": "t2sql_fbc5d765cac5b8245a22",
+      "case_sha256": "fa9c34556e0f1045d43942333288ee70d699eabb2cc3b4b5b2ed03d2e0ec19c6",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.474786+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "805a81abf981f0416762f4dde3ee3f7c2aebe6aa22cce4d305688ea84271419d"
+    },
+    {
+      "case_id": "t2sql_fdc99980f878bac0fae8",
+      "case_sha256": "41a611889aa7f33a2427aa680d097ad7694e0c462b93382b2e4830739d6173ae",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.477008+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "07c3422f4e19468915422251e9b0d495afdcef315bddad7378ccd52705efef9b"
+    },
+    {
+      "case_id": "t2sql_fe4af080d89f35b58bae",
+      "case_sha256": "acb84006b93f22c5e057e0d05e2fb1e90cded762f6c2f04000a644c8bdaab141",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.478983+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "6e04947ec2ec335d2c133af3215fe716786a5c5d9abf654e38e591228080a304"
+    },
+    {
+      "case_id": "t2sql_fe7ccad81d7b5f596606",
+      "case_sha256": "6983df1175fa6f8adc132a78e2edc704b21575e19c960d652d5b8bd38a61b1ee",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.480949+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "pass"
+      },
+      "event_hash": "c6beacabc9369a7fa782115ecd9013c00fb87f6edb7853bfe0ee93140b1bbbf7"
+    },
+    {
+      "case_id": "t2sql_fe9202f67e2720977773",
+      "case_sha256": "ff6259819d2f62bd842c2af9ba8a2dd3a381577e0d819f737bf2dd2afbe80b9d",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.482864+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "db4052f550b166edf58dfbd3e73a1043549cf28cbf2a7f6bddbb80dabebd5ce7"
+    },
+    {
+      "case_id": "t2sql_ffbd10b59df9164ce587",
+      "case_sha256": "7ccfdb03bb9bdb8800b2be72713580974e84da6a7363385fb90925e106646209",
+      "verdict": "approve",
+      "reviewer": "匿名审核员",
+      "reviewed_at": "2026-09-03T10:29:43.485015+00:00",
+      "checklist": {
+        "question_sql_match": "pass",
+        "result_semantics": "pass",
+        "schema_grounding": "pass",
+        "join_correctness": "na"
+      },
+      "event_hash": "86f8e97831f2c1ee35f40ba40fdaa97e99d402347ae0f662c0b76893990a0396"
+    }
+  ],
+  "signing": {
+    "algorithm": "hmac-sha256",
+    "key_id": "dce8c8caa35566bd8234"
+  },
+  "signature": "a00fe216d33ece4fe9a9fd78ed137344b64297fc747c9eaf69644424be734dff"
+}
