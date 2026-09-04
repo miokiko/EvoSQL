@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#ff4fc3">
   <title>EvoSQL · 可进化多智能体 Text2SQL</title>
   <meta name="description" content="EvoSQL 多智能体 Text2SQL 问答、知识、评测与受控自进化控制台">
-  <link rel="stylesheet" href="/assets/app.css?v=20260904.decision6">
+  <link rel="stylesheet" href="/assets/app.css?v=20260905.runtime1">
 </head>
 <body>
   <div class="app-shell text2sql-shell">
@@ -18,10 +18,10 @@
 
       <nav class="nav-list">
         <button class="nav-item active" data-view="query" data-icon="SQL"><span>问答工作台</span></button>
-        <button class="nav-item" data-view="trace" data-icon="TR"><span>运行轨迹</span></button>
+        <button class="nav-item" data-view="trace" data-icon="11"><span>11 节点轨迹</span></button>
         <button class="nav-item" data-view="memory" data-icon="MEM"><span>记忆中心</span></button>
         <button class="nav-item" data-view="data" data-icon="DB"><span>数据与知识</span></button>
-        <button class="nav-item" data-view="skills" data-icon="SK"><span>Skills</span></button>
+        <button class="nav-item" data-view="skills" data-icon="05"><span>Agent Policies</span></button>
         <button class="nav-item" data-view="evaluation" data-icon="QA"><span>评测与审核</span></button>
         <button class="nav-item" data-view="evolution" data-icon="EV"><span>自进化中心</span></button>
       </nav>
@@ -50,12 +50,17 @@
           <div class="text2sql-intro">
             <p class="eyebrow">MULTI-AGENT · GROUNDED · READ-ONLY</p>
             <h2>把业务问题，<br><em>变成可信 SQL。</em></h2>
-            <p>Lead 先路由并编排证据，再并行调度 Schema Grounding 与 Query Planning；计划经确定性绑定和 Lead 审批后交给 SQL Generation，最后由 Critic 盲审、Harness 执行只读门禁。</p>
+            <p>五个 Agent 只负责理解、规划、生成与评审；11 个固定 Runtime Node 管理顺序、并发和恢复；不可演化的 Harness 负责绑定、验真与最终只读执行。</p>
           </div>
           <div class="text2sql-runtime">
             <span class="status status-neutral" id="text2sql-ready"><i></i>正在读取状态</span>
             <strong id="text2sql-model">模型状态加载中</strong>
             <small id="text2sql-runtime-note">数据库与知识版本正在校验</small>
+            <div class="runtime-contract-facts" aria-label="运行架构摘要">
+              <span><b>05</b>Agent Roles</span>
+              <span><b>11</b>Runtime Nodes</span>
+              <span><b>01</b>Harness</span>
+            </div>
           </div>
         </div>
 
@@ -76,6 +81,20 @@
           </div>
           <p class="text2sql-form-note" id="text2sql-form-note">正在读取运行配置。</p>
         </form>
+
+        <article class="panel runtime-overview-panel" aria-labelledby="runtime-overview-title">
+          <div class="runtime-overview-head">
+            <div><p class="eyebrow">PLAN-FIRST RUNTIME</p><h3 id="runtime-overview-title">五个 Agent 如何穿过 11 个节点</h3><p>实线表示一次查询的固定执行顺序；第 3 节点内部并行运行 Schema Grounding 与 Query Planning。</p></div>
+            <span class="runtime-contract-chip" id="runtime-contract-chip">plan-first-text2sql-v3</span>
+          </div>
+          <div id="runtime-blueprint" class="runtime-map-shell" aria-label="11 节点运行架构"></div>
+          <div class="runtime-legend" aria-label="节点类型图例">
+            <span><i class="kind-agent"></i>Agent 决策</span>
+            <span><i class="kind-runtime"></i>Runtime 编排</span>
+            <span><i class="kind-harness"></i>Harness 确定性门禁</span>
+            <span><i class="kind-parallel"></i>节点内并行</span>
+          </div>
+        </article>
 
         <div class="text2sql-status-grid" id="text2sql-status-grid" aria-live="polite">
           <article class="panel text2sql-status-card loading"></article>
@@ -143,9 +162,11 @@
           </div>
           <aside class="panel text2sql-agent-panel">
             <div class="panel-head">
-              <div><p class="eyebrow">AGENT TRACE</p><h3>多智能体协作</h3></div>
+              <div><p class="eyebrow">RUNTIME TRACE</p><h3>11 节点执行图</h3></div>
               <span class="muted" id="text2sql-usage">--</span>
             </div>
+            <div class="runtime-result-map" id="text2sql-runtime-trace"></div>
+            <div class="runtime-panel-divider"><span>Agent 结构化决策</span></div>
             <div class="text2sql-agent-trace" id="text2sql-agent-trace"></div>
             <div class="version-pins" id="result-version-pins"></div>
           </aside>
@@ -162,7 +183,7 @@
 
       <section class="view" id="view-trace" aria-labelledby="page-title">
         <div class="section-heading page-heading">
-          <div><p class="eyebrow">EXECUTION TRACE</p><h2>运行轨迹</h2><p>复盘最近一次次 Text2SQL 问答中的 SQL 门禁、Agent 协作、耗时与版本固定信息。</p></div>
+          <div><p class="eyebrow">EXECUTION TRACE</p><h2>11 节点运行轨迹</h2><p>先看 Runtime 编排，再下钻五个 Agent 的结构化决策、计划绑定、候选门禁、耗时与版本固定信息。</p></div>
         </div>
         <div class="module-stats" id="trace-stats"></div>
         <div class="trace-layout">
@@ -281,15 +302,15 @@
 
       <section class="view" id="view-skills" aria-labelledby="page-title">
         <div class="section-heading page-heading">
-          <div><p class="eyebrow">TEXT2SQL SKILLS</p><h2>Skills</h2><p>五个可演化 Agent 共同组成 Text2SQL 协议；deterministic Harness 负责绑定与门禁，但不是 Skill。</p></div>
+          <div><p class="eyebrow">AGENT POLICIES</p><h2>Agent Policies</h2><p>五个可演化 Agent 各自拥有独立 Policy 槽位；deterministic Harness 负责绑定与门禁，但不是 Agent，也不是 Skill。</p></div>
         </div>
         <div class="module-stats" id="skill-stats"></div>
         <div class="skill-catalog" id="text2sql-skill-list"></div>
         <div class="module-grid two-column skill-submit-layout">
           <article class="panel module-panel">
-            <div class="panel-head"><div><p class="eyebrow">SUBMIT CANDIDATE</p><h3>提交候选 Skill</h3></div><span class="status status-neutral">候选隔离</span></div>
+            <div class="panel-head"><div><p class="eyebrow">SUBMIT POLICY CANDIDATE</p><h3>提交候选 Agent Policy</h3></div><span class="status status-neutral">候选隔离</span></div>
             <form id="skill-submit-form" class="skill-submit-form">
-              <label>目标 Skill
+              <label>目标 Agent Role
                 <select id="skill-role" name="skill_name" required>
                   <option value="text2sql-lead">text2sql-lead</option>
                   <option value="schema-grounding">schema-grounding</option>
@@ -298,20 +319,20 @@
                   <option value="text2sql-critic">text2sql-critic</option>
                 </select>
               </label>
-              <label>新增或修改的指令
+              <label>Policy 增量指令
                 <textarea id="skill-instructions" name="prompt_fragment" rows="7" maxlength="4000" required placeholder="例如：聚合前必须先明确结果粒度，并检查 Join 是否造成重复计数。"></textarea>
               </label>
               <label>修改原因
                 <input id="skill-reason" name="change_reason" maxlength="2000" required placeholder="说明要解决的 Text2SQL 失败模式">
               </label>
               <div class="skill-submit-footer">
-                <small>提交后状态为 Candidate，仍需 Validation、Sealed Holdout、Shadow、Canary 与人工确认。</small>
-                <button class="button" type="submit">提交候选 Skill</button>
+                <small>提交后只形成单角色 Candidate Policy，仍需 Validation、Sealed Holdout、Shadow、Canary 与人工确认。</small>
+                <button class="button" type="submit">提交候选 Policy</button>
               </div>
             </form>
           </article>
           <article class="panel module-panel">
-            <div class="panel-head"><div><p class="eyebrow">CANDIDATE QUEUE</p><h3>候选队列</h3></div><button class="copy-button" id="refresh-skills" type="button">刷新</button></div>
+            <div class="panel-head"><div><p class="eyebrow">POLICY CANDIDATES</p><h3>候选策略队列</h3></div><button class="copy-button" id="refresh-skills" type="button">刷新</button></div>
             <div id="skill-candidates" class="candidate-list"></div>
             <div id="skill-submit-result" class="skill-submit-result hidden" aria-live="polite"></div>
           </article>
@@ -366,11 +387,18 @@
             <div class="role-grid" id="agent-role-grid"></div>
           </article>
         </div>
+        <article class="panel runtime-overview-panel evolution-runtime-panel">
+          <div class="runtime-overview-head">
+            <div><p class="eyebrow">IMMUTABLE ORCHESTRATION</p><h3>Policy 可以演化，Runtime 拓扑不可演化</h3><p>五个角色的受控 Policy 能独立升级；节点顺序、Binder、SQL Gate、Checkpoint 和执行权限保持固定。</p></div>
+            <span class="runtime-contract-chip">11 NODES · FAIL CLOSED</span>
+          </div>
+          <div id="evolution-runtime-graph" class="runtime-map-shell" aria-label="不可演化的运行时拓扑"></div>
+        </article>
       </section>
     </main>
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="/assets/app.js?v=20260904.plan1"></script>
+  <script src="/assets/app.js?v=20260905.runtime1"></script>
 </body>
 </html>

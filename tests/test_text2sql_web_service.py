@@ -350,6 +350,21 @@ class Text2SQLWebServiceTests(unittest.TestCase):
         self.assertEqual(
             public["deterministic_runtime"]["role"], "text2sql-harness"
         )
+        self.assertEqual(
+            public["deterministic_runtime"]["protocol"], TEXT2SQL_PROTOCOL
+        )
+        self.assertEqual(public["deterministic_runtime"]["node_count"], 11)
+        self.assertEqual(
+            public["deterministic_runtime"]["nodes"],
+            list(TEXT2SQL_RUNTIME_NODES),
+        )
+        self.assertEqual(
+            public["deterministic_runtime"]["build_version"], BUILD_VERSION
+        )
+        self.assertEqual(
+            public["deterministic_runtime"]["gate_implementation_version"],
+            GATE_IMPLEMENTATION_VERSION,
+        )
         self.assertNotIn("collaboration", public)
 
     def test_text2sql_skills_can_be_listed_and_submitted_as_isolated_candidate(self):
@@ -385,6 +400,11 @@ class Text2SQLWebServiceTests(unittest.TestCase):
             status = service.status()
             self.assertEqual(status["roles"], list(TEXT2SQL_SKILLS))
             self.assertFalse(status["deterministic_runtime"]["is_skill"])
+            self.assertEqual(status["deterministic_runtime"]["node_count"], 11)
+            self.assertEqual(
+                status["deterministic_runtime"]["nodes"],
+                list(TEXT2SQL_RUNTIME_NODES),
+            )
 
             submitted = service.propose_skill(
                 "query-planning",

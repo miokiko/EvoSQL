@@ -150,6 +150,11 @@ def _public_runtime_payload(
         "role": "text2sql-harness",
         "classification": "deterministic-runtime",
         "is_skill": False,
+        "protocol": TEXT2SQL_PROTOCOL,
+        "node_count": len(TEXT2SQL_RUNTIME_NODES),
+        "nodes": list(TEXT2SQL_RUNTIME_NODES),
+        "build_version": BUILD_VERSION,
+        "gate_implementation_version": GATE_IMPLEMENTATION_VERSION,
         "binding": {
             "accepted": bool(plan["bound_query_plan"])
             and not bool(plan["binding_conflicts"]),
@@ -335,6 +340,11 @@ class Text2SQLWebService:
                 "role": "text2sql-harness",
                 "classification": "deterministic-runtime",
                 "is_skill": False,
+                "protocol": TEXT2SQL_PROTOCOL,
+                "node_count": len(TEXT2SQL_RUNTIME_NODES),
+                "nodes": list(TEXT2SQL_RUNTIME_NODES),
+                "build_version": BUILD_VERSION,
+                "gate_implementation_version": GATE_IMPLEMENTATION_VERSION,
             },
         }
 

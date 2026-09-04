@@ -3,10 +3,10 @@ const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
 const views = {
   query: { title: "问答工作台", kicker: "TEXT2SQL WORKSPACE" },
-  trace: { title: "运行轨迹", kicker: "EXECUTION TRACE" },
+  trace: { title: "11 节点轨迹", kicker: "EXECUTION TRACE" },
   memory: { title: "记忆中心", kicker: "MEMORY CONTROL PLANE" },
   data: { title: "数据与知识", kicker: "DATABASE & KNOWLEDGE" },
-  skills: { title: "Skills", kicker: "TEXT2SQL SKILLS" },
+  skills: { title: "Agent Policies", kicker: "ROLE-SCOPED POLICIES" },
   evaluation: { title: "评测与审核", kicker: "EVALUATION & REVIEW" },
   evolution: { title: "自进化中心", kicker: "SELF-EVOLUTION" },
 };
@@ -29,6 +29,20 @@ const traceStageDetails = {
   "final-selection": ["Lead Final", "text2sql-lead"],
   "cached-result-answer": ["Lead Result Answer", "text2sql-lead"],
 };
+
+const runtimeNodeCatalog = [
+  { id: "text2sql-lead-routing", label: "Lead Routing", actor: "text2sql-lead", kind: "agent", phase: "ROUTE", description: "识别 DATA / FOLLOW-UP / RESULT QA" },
+  { id: "text2sql-evidence-orchestration", label: "Evidence", actor: "runtime", kind: "runtime", phase: "GROUND", description: "固定 Snapshot、Knowledge 与 Memory 证据" },
+  { id: "text2sql-plan-workers", label: "Plan Workers", actor: "schema-grounding ∥ query-planning", kind: "agent", phase: "PLAN", description: "两个 Worker 在同一节点内并行", parallel: true },
+  { id: "text2sql-plan-binding", label: "Plan Binding", actor: "text2sql-harness", kind: "harness", phase: "BIND", description: "确定性合并 QuerySpec 与 SchemaPlan" },
+  { id: "text2sql-lead-plan-assessment", label: "Lead Assessment", actor: "text2sql-lead", kind: "agent", phase: "ASSESS", description: "检查语义完整性与冲突责任" },
+  { id: "text2sql-plan-revisions-approval", label: "Revision + Approval", actor: "runtime + harness", kind: "runtime", phase: "APPROVE", description: "定向返工并铸造不可变计划" },
+  { id: "text2sql-sql-generation", label: "SQL Generation", actor: "sql-generation", kind: "agent", phase: "GENERATE", description: "只翻译 ApprovedQueryPlan" },
+  { id: "text2sql-candidate-gates", label: "Candidate Gates", actor: "text2sql-harness", kind: "harness", phase: "VERIFY", description: "Validate + Conformance + EXPLAIN" },
+  { id: "text2sql-critic", label: "Blind Critic", actor: "text2sql-critic", kind: "agent", phase: "CRITIQUE", description: "匿名候选独立盲审" },
+  { id: "text2sql-lead-final", label: "Lead Final", actor: "text2sql-lead", kind: "agent", phase: "SELECT", description: "只选择 Critic 接受的候选" },
+  { id: "text2sql-final-gates-execute", label: "Final Gates", actor: "text2sql-harness", kind: "harness", phase: "EXECUTE", description: "重验后在本机只读执行" },
+];
 
 const knowledgeLabels = {
   schema: "Schema 结构",
@@ -166,6 +180,7 @@ function renderQueryStatus(status) {
   const ready = Boolean(status.ready);
   const provider = model.provider || model.requested_provider || "aliyun-dashscope";
   const modelName = model.model || "未配置模型";
+  const runtime = status.deterministic_runtime || {};
 
   const readyBadge = $("#text2sql-ready");
   readyBadge.className = `status ${ready ? "status-online" : "status-neutral"}`;
@@ -175,6 +190,11 @@ function renderQueryStatus(status) {
   $("#text2sql-runtime-note").textContent = configured
     ? "云端仅负责推理，SQLite 数据文件始终留在本机"
     : "数据库、知识库和评测集可独立检查，问答需要模型配置";
+  $("#runtime-contract-chip").textContent = `${runtime.protocol || "plan-first-text2sql-v3"} · ${number(runtime.node_count || 11)} nodes`;
+  $("#runtime-blueprint").innerHTML = renderRuntimeMap(
+    { deterministic_runtime: runtime },
+    { mode: "blueprint" },
+  );
   $("#text2sql-status-grid").innerHTML = [
     statusCard("本地数据库", database.ready ? `${number(database.table_count)} 张表` : "不可用", database.readonly ? "SQLite · 强制只读" : "只读状态未确认", database.ready ? "is-ready" : "is-warning"),
     statusCard("人工审核评测集", dataset.review_verified ? `${number(dataset.reviewed_case_count)} / ${number(dataset.case_count)}` : "未验证", dataset.review_verified ? "签名证书有效 · 审核人 匿名审核员" : "需要审核证书", dataset.review_verified ? "is-ready" : "is-warning"),
@@ -281,6 +301,10 @@ function renderEvolution(status) {
     return `<div><b>${String(index + 1).padStart(2, "0")}</b><span><strong>${escapeHtml(name)}</strong><small>${escapeHtml(detail)}</small></span></div>`;
   }).join("");
   $("#agent-role-grid").innerHTML = `${roleCards}<div><b>H</b><span><strong>Deterministic Harness</strong><small>负责绑定、候选 Gate 与最终只读执行；它不是 Agent，也不是可演化 Skill</small></span></div>`;
+  $("#evolution-runtime-graph").innerHTML = renderRuntimeMap(
+    { deterministic_runtime: status.deterministic_runtime || {} },
+    { mode: "blueprint" },
+  );
 }
 
 function renderStatus(status) {
@@ -312,24 +336,27 @@ function renderSkills(data) {
   const skills = data.skills || [];
   const candidates = data.candidates || [];
   $("#skill-stats").innerHTML = [
-    statusCard("运行 Skills", number(skills.length), "五个可演化 Agent · Harness 非 Skill"),
+    statusCard("Agent Roles", number(skills.length), "五个运行时角色 · Harness 非 Agent"),
     statusCard("稳定策略", short(data.active_policy_version, 24), "当前生产版本"),
     statusCard("候选版本", number(data.candidate_count), "隔离等待评测"),
-    statusCard("提交契约", data.submission_contract || "--", "单次只允许修改一个 Skill"),
+    statusCard("提交契约", data.submission_contract || "--", "单次只允许修改一个角色 Policy"),
   ].join("");
   $("#text2sql-skill-list").innerHTML = skills.map((skill, index) => {
-    const tools = (skill.allowed_tools || []).map((tool) => `<em>${escapeHtml(tool)}</em>`).join("");
+    const allowedTools = skill.allowed_tools || [];
+    const tools = allowedTools.length
+      ? allowedTools.map((tool) => `<em>${escapeHtml(tool)}</em>`).join("")
+      : '<em class="tool-none">NO RUNTIME TOOLS</em>';
     const fragment = skill.prompt_fragment
       ? escapeHtml(skill.prompt_fragment)
       : "使用稳定基线指令；可以在下方提交增量指令候选。";
     return `<article class="panel skill-runtime-card">
-      <div class="skill-runtime-head"><b>${String(index + 1).padStart(2, "0")}</b><span><small>RUNTIME SKILL</small><strong>${escapeHtml(skill.name)}</strong></span><i>ACTIVE</i></div>
+      <div class="skill-runtime-head"><b>${String(index + 1).padStart(2, "0")}</b><span><small>AGENT ROLE · POLICY SLOT</small><strong>${escapeHtml(skill.name)}</strong></span><i>ACTIVE</i></div>
       <p>${escapeHtml(skill.description)}</p>
       <blockquote>${fragment}</blockquote>
       <div class="skill-tool-list">${tools}</div>
       <footer><span>${number(skill.field_alias_count)} 字段别名</span><span>${number(skill.value_alias_count)} 取值别名</span><span>${number(skill.few_shot_count)} Few-shot</span></footer>
     </article>`;
-  }).join("") || '<div class="empty-state"><span>没有发现 Text2SQL Skill</span></div>';
+  }).join("") || '<div class="empty-state"><span>没有发现 Text2SQL Agent Policy</span></div>';
   const roleSelect = $("#skill-role");
   if (roleSelect && skills.length) {
     const previousRole = roleSelect.value;
@@ -338,14 +365,14 @@ function renderSkills(data) {
   }
   $("#skill-candidates").innerHTML = candidates.length
     ? [...candidates].reverse().map((item) => `<div class="candidate-item"><span><strong>${escapeHtml(item.target_skill || "unknown")}</strong><small>${escapeHtml(item.change_reason || "无变更说明")}</small></span><div><b>${escapeHtml(item.status || "candidate")}</b><code title="${escapeHtml(item.policy_version || "")}">${escapeHtml(short(item.policy_version, 20))}</code></div></div>`).join("")
-    : '<div class="empty-state compact"><span><b>暂无候选 Skill</b>稳定版本不会被直接覆盖。</span></div>';
+    : '<div class="empty-state compact"><span><b>暂无候选 Policy</b>稳定版本不会被直接覆盖。</span></div>';
 }
 
 async function loadSkills() {
   try {
     renderSkills(await api("/api/text2sql/skills"));
   } catch (error) {
-    $("#text2sql-skill-list").innerHTML = `<div class="empty-state"><span>Skills 加载失败：${escapeHtml(error.message)}</span></div>`;
+    $("#text2sql-skill-list").innerHTML = `<div class="empty-state"><span>Agent Policies 加载失败：${escapeHtml(error.message)}</span></div>`;
   }
 }
 
@@ -452,6 +479,107 @@ function traceBoolean(value) {
   if (value === true) return "PASS";
   if (value === false) return "BLOCK";
   return "--";
+}
+
+function runtimeDefinitions(payload = {}) {
+  const declared = payload.deterministic_runtime?.nodes
+    || runtimeStatus?.deterministic_runtime?.nodes
+    || runtimeNodeCatalog.map((node) => node.id);
+  const byId = Object.fromEntries(runtimeNodeCatalog.map((node) => [node.id, node]));
+  const ordered = Array.isArray(declared) && declared.length === runtimeNodeCatalog.length
+    ? declared
+    : runtimeNodeCatalog.map((node) => node.id);
+  return ordered.map((id, index) => byId[id] || {
+    id,
+    label: String(id).replace(/^text2sql-/, "").replaceAll("-", " "),
+    actor: "runtime",
+    kind: "runtime",
+    phase: `NODE ${index + 1}`,
+    description: "固定 Runtime Node",
+  });
+}
+
+function runtimeNodeState(payload, node, index, mode) {
+  if (mode === "blueprint") return "fixed";
+  if (mode === "running") return index === 0 ? "running" : "pending";
+  if (mode === "error") return index === 0 ? "blocked" : "pending";
+
+  const queryType = payload.query_type || "DATA_QUERY";
+  if (queryType === "RESULT_QA") {
+    if (index === 0) return "completed";
+    if (index === runtimeNodeCatalog.length - 1) {
+      return payload.status === "success" ? "replay" : "blocked";
+    }
+    return "bypassed";
+  }
+
+  const agents = Array.isArray(payload.agents) ? payload.agents : [];
+  const agentRan = (stage) => agents.some((item) => item.stage === stage && item.status !== "not-run");
+  const workersRan = agentRan("schema-grounding") && agentRan("query-planning");
+  const bound = payload.bound_query_plan || {};
+  const approved = payload.approved_query_plan || {};
+  const conflicts = Array.isArray(payload.binding_conflicts) ? payload.binding_conflicts : [];
+  const generation = payload.sql_generation || {};
+  const gateResults = Array.isArray(payload.candidate_gate_results) ? payload.candidate_gate_results : [];
+  const rounds = Array.isArray(payload.candidate_gate_rounds) ? payload.candidate_gate_rounds : [];
+
+  switch (node.id) {
+    case "text2sql-lead-routing":
+      return "completed";
+    case "text2sql-evidence-orchestration":
+      return workersRan ? "completed" : "blocked";
+    case "text2sql-plan-workers":
+      return workersRan ? "completed" : "blocked";
+    case "text2sql-plan-binding":
+      return Object.keys(bound).length ? "completed" : conflicts.length ? "blocked" : "bypassed";
+    case "text2sql-lead-plan-assessment":
+      return agentRan("semantic-plan-approval") ? "completed" : "bypassed";
+    case "text2sql-plan-revisions-approval":
+      return Object.keys(approved).length ? "completed" : "blocked";
+    case "text2sql-sql-generation":
+      return generation.status && generation.status !== "not-run" ? "completed" : "bypassed";
+    case "text2sql-candidate-gates":
+      return rounds.length || gateResults.length
+        ? gateResults.some((item) => item.accepted) ? "completed" : "blocked"
+        : "bypassed";
+    case "text2sql-critic":
+      return agentRan("blind-review") ? "completed" : "bypassed";
+    case "text2sql-lead-final":
+      return agentRan("final-selection") ? "completed" : "bypassed";
+    case "text2sql-final-gates-execute":
+      return payload.status === "success" && payload.gates?.accepted ? "completed" : "blocked";
+    default:
+      return "fixed";
+  }
+}
+
+function runtimeStateLabel(state) {
+  return {
+    fixed: "FIXED",
+    running: "RUNNING",
+    pending: "WAIT",
+    completed: "DONE",
+    blocked: "BLOCK",
+    bypassed: "SKIP",
+    replay: "REPLAY",
+  }[state] || state;
+}
+
+function renderRuntimeMap(payload = {}, { compact = false, mode = "result" } = {}) {
+  const nodes = runtimeDefinitions(payload);
+  const items = nodes.map((node, index) => {
+    const state = runtimeNodeState(payload, node, index, mode);
+    const parallel = node.parallel ? '<span class="runtime-parallel-badge">PARALLEL × 2</span>' : "";
+    return `<li class="runtime-node kind-${escapeHtml(node.kind)} state-${escapeHtml(state)}${node.parallel ? " is-parallel" : ""}" title="${escapeHtml(node.description)}">
+      <div class="runtime-node-top"><b>${String(index + 1).padStart(2, "0")}</b><em>${escapeHtml(runtimeStateLabel(state))}</em></div>
+      <span class="runtime-node-phase">${escapeHtml(node.phase)}</span>
+      <strong>${escapeHtml(node.label)}</strong>
+      <small>${escapeHtml(node.actor)}</small>
+      ${parallel}
+      <p>${escapeHtml(node.description)}</p>
+    </li>`;
+  }).join("");
+  return `<div class="runtime-map-shell-inner${compact ? " is-compact" : ""}"><ol class="runtime-map">${items}</ol></div>`;
 }
 
 function agentDetailSummary(agent = {}) {
@@ -620,6 +748,7 @@ function renderTraceDetail(trace) {
     ${trace.standalone_question && trace.standalone_question !== trace.question ? `<p class="trace-standalone"><b>改写后的独立问题</b>${escapeHtml(trace.standalone_question)}</p>` : ""}
     ${routeDetail}
     <div class="trace-metrics"><span><b>${number(trace.execution?.llm_calls)}</b>LLM calls</span><span><b>${number(trace.execution?.tool_calls)}</b>Tool calls</span><span><b>${number(trace.execution?.total_tokens)}</b>Tokens</span><span><b>${number(trace.execution?.duration_ms)}</b>ms</span></div>
+    <p class="trace-label">11-NODE RUNTIME</p>${renderRuntimeMap(trace)}
     <p class="trace-label">FINAL SQL</p><pre class="text2sql-sql">${escapeHtml(trace.final_sql || "-- 未生成 SQL")}</pre>
     ${draftPlanning}
     ${planning}
@@ -1104,6 +1233,8 @@ function renderResult(result) {
   $("#text2sql-answer").innerHTML = renderTable(answer);
   renderVisualization(answer, accepted);
   $("#text2sql-row-count").textContent = `${number(answer.row_count)} 行${answer.truncated ? " · 已截断" : ""}`;
+  $("#text2sql-runtime-trace").innerHTML = renderRuntimeMap(result, { compact: true });
+  $("#runtime-blueprint").innerHTML = renderRuntimeMap(result);
   $("#text2sql-agent-trace").innerHTML = renderAgentTrace(result.agents)
     + (activeQueryType === "RESULT_QA" ? "" : renderProtocolSummary(result));
   const usage = result.execution || {};
@@ -1201,6 +1332,7 @@ async function submitQuestion() {
   const button = $(".text2sql-submit");
   let failed = false;
   setBusy(button, true);
+  $("#runtime-blueprint").innerHTML = renderRuntimeMap({}, { mode: "running" });
   $("#text2sql-form-note").textContent = "Lead 正在路由问题并编排证据；需要查库时会并行调度 Schema Grounding 与 Query Planning，再进行计划绑定、审批和 SQL Generation…";
   try {
     const result = await api("/v1/text2sql/query", {
@@ -1218,6 +1350,7 @@ async function submitQuestion() {
     toast(result.status === "success" ? "Text2SQL 查询完成" : "查询被安全门禁拦截");
   } catch (error) {
     failed = true;
+    $("#runtime-blueprint").innerHTML = renderRuntimeMap({}, { mode: "error" });
     const identityRejected = String(error.message || "").includes("task_id was reused");
     if (identityRejected) {
       pendingText2SQLQuery = null;
@@ -1301,11 +1434,11 @@ $("#skill-submit-form").addEventListener("submit", async (event) => {
     });
     const output = $("#skill-submit-result");
     output.classList.remove("hidden");
-    output.innerHTML = `<b>候选 Skill 已保存</b><span>${escapeHtml(result.skill_name)} · ${escapeHtml(result.candidate_policy_version)}</span><small>下一步：Validation 与 Sealed Holdout 离线评测。稳定版本尚未改变。</small>`;
+    output.innerHTML = `<b>候选 Agent Policy 已保存</b><span>${escapeHtml(result.skill_name)} · ${escapeHtml(result.candidate_policy_version)}</span><small>下一步：Validation 与 Sealed Holdout 离线评测。稳定版本尚未改变。</small>`;
     form.reset();
     $("#skill-role").value = "sql-generation";
     await Promise.all([loadSkills(), loadStatus()]);
-    toast("候选 Skill 已进入隔离队列");
+    toast("候选 Agent Policy 已进入隔离队列");
   } catch (error) {
     toast(error.message);
   } finally {
@@ -1318,5 +1451,7 @@ $("#refresh-memory").addEventListener("click", loadMemory);
 $("#refresh").addEventListener("click", loadWorkspace);
 window.addEventListener("hashchange", () => show(location.hash.slice(1), false));
 
+$("#runtime-blueprint").innerHTML = renderRuntimeMap({}, { mode: "blueprint" });
+$("#evolution-runtime-graph").innerHTML = renderRuntimeMap({}, { mode: "blueprint" });
 show(location.hash.slice(1), false);
 loadWorkspace();

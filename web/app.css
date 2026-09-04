@@ -2079,3 +2079,237 @@ input:focus, select:focus, textarea:focus,
   .chart-controls { align-self: flex-start; }
   .text2sql-chart { margin-inline: -3px; }
 }
+
+/* Plan-first five-Agent / 11-node runtime */
+.runtime-contract-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  width: 100%;
+  margin-top: 5px;
+}
+.runtime-contract-facts span {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  color: var(--faint);
+  background: rgba(9, 7, 15, .6);
+  font: 700 8px/1.25 "Cascadia Code", Consolas, monospace;
+  text-align: center;
+}
+.runtime-contract-facts b { color: var(--cyan); font-size: 16px; }
+
+.runtime-overview-panel {
+  --panel-accent: var(--purple);
+  margin-bottom: 20px;
+  padding: 23px;
+  overflow: hidden;
+}
+.runtime-overview-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 18px;
+}
+.runtime-overview-head h3 { margin: 0; font-size: 18px; }
+.runtime-overview-head p:last-child {
+  max-width: 760px;
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.6;
+}
+.runtime-contract-chip {
+  flex: 0 0 auto;
+  padding: 8px 11px;
+  border: 1px solid rgba(104, 244, 223, .42);
+  border-radius: 999px;
+  color: var(--cyan);
+  background: rgba(104, 244, 223, .07);
+  font: 750 8px/1 "Cascadia Code", Consolas, monospace;
+  letter-spacing: .45px;
+  white-space: nowrap;
+}
+.runtime-map-shell { min-width: 0; overflow: hidden; }
+.runtime-map-shell-inner {
+  overflow-x: auto;
+  padding: 4px 3px 12px;
+  scrollbar-color: var(--line-strong) transparent;
+}
+.runtime-map {
+  display: grid;
+  grid-template-columns: repeat(11, minmax(102px, 1fr));
+  gap: 11px;
+  min-width: 1240px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.runtime-node {
+  --node-accent: var(--purple);
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-height: 150px;
+  padding: 11px;
+  border: 1px solid color-mix(in srgb, var(--node-accent) 42%, transparent);
+  border-top: 3px solid var(--node-accent);
+  border-radius: 12px 5px 12px 12px;
+  background: color-mix(in srgb, var(--node-accent) 6%, rgba(13, 7, 18, .94));
+}
+.runtime-node:not(:last-child)::after {
+  content: "›";
+  position: absolute;
+  top: 61px;
+  right: -10px;
+  z-index: 2;
+  color: var(--faint);
+  font: 900 15px/1 monospace;
+}
+.runtime-node.kind-agent { --node-accent: var(--blue); }
+.runtime-node.kind-runtime { --node-accent: var(--purple); }
+.runtime-node.kind-harness { --node-accent: var(--green); }
+.runtime-node.is-parallel {
+  --node-accent: var(--yellow);
+  background:
+    linear-gradient(135deg, rgba(255, 230, 109, .08), transparent 55%),
+    rgba(13, 7, 18, .94);
+}
+.runtime-node-top { display: flex; align-items: center; justify-content: space-between; gap: 7px; }
+.runtime-node-top b {
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  border-radius: 7px;
+  color: #09070f;
+  background: var(--node-accent);
+  font: 900 8px/1 monospace;
+}
+.runtime-node-top em {
+  color: var(--faint);
+  font: 800 7px/1 monospace;
+  font-style: normal;
+  letter-spacing: .45px;
+}
+.runtime-node-phase { color: var(--node-accent); font: 800 7px/1 monospace; letter-spacing: 1px; }
+.runtime-node > strong { font-size: 10px; line-height: 1.35; }
+.runtime-node > small {
+  overflow: hidden;
+  color: var(--muted);
+  font: 650 7px/1.35 "Cascadia Code", Consolas, monospace;
+  text-overflow: ellipsis;
+}
+.runtime-node > p { margin: 2px 0 0; color: var(--faint); font-size: 8px; line-height: 1.45; }
+.runtime-parallel-badge {
+  justify-self: start;
+  padding: 4px 6px;
+  border: 1px dashed rgba(255, 230, 109, .55);
+  border-radius: 999px;
+  color: var(--yellow);
+  font: 800 6px/1 monospace;
+  letter-spacing: .4px;
+}
+.runtime-node.state-completed .runtime-node-top em { color: var(--green); }
+.runtime-node.state-blocked { border-color: rgba(255, 109, 159, .65); border-top-color: var(--red); }
+.runtime-node.state-blocked .runtime-node-top em { color: var(--red); }
+.runtime-node.state-bypassed,
+.runtime-node.state-pending { opacity: .48; filter: saturate(.55); }
+.runtime-node.state-replay { --node-accent: var(--cyan); }
+.runtime-node.state-running {
+  --node-accent: var(--cyan);
+  box-shadow: 0 0 0 3px rgba(104, 244, 223, .08), 0 0 26px rgba(104, 244, 223, .13);
+  animation: runtime-pulse 1.8s ease-in-out infinite;
+}
+.runtime-node.state-running .runtime-node-top em { color: var(--cyan); }
+.runtime-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 5px;
+  color: var(--faint);
+  font-size: 8px;
+}
+.runtime-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.runtime-legend i { width: 16px; height: 3px; border-radius: 999px; background: var(--purple); }
+.runtime-legend .kind-agent { background: var(--blue); }
+.runtime-legend .kind-runtime { background: var(--purple); }
+.runtime-legend .kind-harness { background: var(--green); }
+.runtime-legend .kind-parallel { background: var(--yellow); }
+
+.runtime-result-map { margin: 15px 0 18px; }
+.runtime-result-map .runtime-map-shell-inner { overflow: visible; padding: 0; }
+.runtime-result-map .runtime-map {
+  grid-template-columns: 1fr;
+  gap: 7px;
+  min-width: 0;
+}
+.runtime-result-map .runtime-node {
+  grid-template-columns: 31px minmax(0, 1fr) auto;
+  gap: 3px 9px;
+  min-height: 0;
+  padding: 9px;
+  border-top-width: 1px;
+  border-left: 3px solid var(--node-accent);
+}
+.runtime-result-map .runtime-node:not(:last-child)::after {
+  content: "";
+  top: auto;
+  right: auto;
+  bottom: -8px;
+  left: 23px;
+  width: 1px;
+  height: 8px;
+  background: var(--line-strong);
+}
+.runtime-result-map .runtime-node-top {
+  grid-row: 1 / 4;
+  align-self: center;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+}
+.runtime-result-map .runtime-node-top em { font-size: 5px; }
+.runtime-result-map .runtime-node-phase,
+.runtime-result-map .runtime-node > p { display: none; }
+.runtime-result-map .runtime-node > strong { grid-column: 2; font-size: 9px; }
+.runtime-result-map .runtime-node > small { grid-column: 2; font-size: 7px; }
+.runtime-result-map .runtime-parallel-badge {
+  grid-column: 3;
+  grid-row: 1 / 3;
+  align-self: center;
+  padding-inline: 5px;
+}
+.runtime-panel-divider {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 2px 0 12px;
+  color: var(--faint);
+  font: 800 7px/1 monospace;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.runtime-panel-divider::before,
+.runtime-panel-divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.evolution-runtime-panel { margin-top: 18px; }
+
+@keyframes runtime-pulse {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
+@media (max-width: 700px) {
+  .runtime-overview-head { align-items: flex-start; flex-direction: column; gap: 12px; }
+  .runtime-contract-facts { grid-template-columns: 1fr; }
+  .runtime-map { min-width: 1120px; }
+  .runtime-overview-panel { padding: 18px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .runtime-node.state-running { animation: none; }
+}
