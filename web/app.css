@@ -1284,7 +1284,18 @@ textarea { min-height: 150px; resize: vertical; font: 11px/1.7 "Cascadia Code", 
 .experience-item pre { overflow: auto; max-height: 150px; margin: 0; padding: 11px; border-radius: 8px; color: #d8dde3; background: #0e1115; font: 560 9px/1.6 "Cascadia Code", Consolas, monospace; white-space: pre-wrap; }
 .experience-item > p { margin: 0; color: var(--amber); font-size: 9px; line-height: 1.5; }
 .experience-review-editor { display: grid; gap: 8px; }
+.experience-review-editor > small { color: var(--faint); font-size: 8px; line-height: 1.5; }
 .experience-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.experience-confirm-unavailable {
+  display: grid;
+  gap: 5px;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: rgba(255, 255, 255, .025);
+}
+.experience-confirm-unavailable b { color: var(--yellow); font-size: 9px; }
+.experience-confirm-unavailable span { color: var(--faint); font-size: 8px; line-height: 1.5; }
 
 /* Memory control plane */
 .memory-page-heading {

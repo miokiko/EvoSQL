@@ -532,12 +532,31 @@ class Text2SQLWebService:
         with Text2SQLEvolutionStore(self.evolution_store_path, snapshot) as evolution:
             values = list(evolution.list_experiences(state, limit))
             jobs = list(evolution.list_experience_evaluation_jobs(limit=limit))
+            confirmable_ids = set()
+            for value in values:
+                if (
+                    str(value.get("state") or "") != "ineligible"
+                    or "requires_human_feedback"
+                    not in set(value.get("eligibility_reasons") or ())
+                ):
+                    continue
+                try:
+                    trace = evolution.get_query_trace(str(value.get("task_id") or ""))
+                except ValueError:
+                    continue
+                if (
+                    str(trace.get("status") or "") == "success"
+                    and bool(str(trace.get("final_sql") or "").strip())
+                    and bool((trace.get("gates") or {}).get("accepted"))
+                ):
+                    confirmable_ids.add(str(value.get("experience_id") or ""))
         latest_job = {}
         for job in jobs:
             latest_job.setdefault(str(job["experience_id"]), job)
         public_values = []
         for value in values:
             item = dict(value)
+            item["confirmable"] = str(item.get("experience_id") or "") in confirmable_ids
             job = latest_job.get(str(item["experience_id"]))
             if job:
                 item["evaluation"] = {
@@ -555,6 +574,54 @@ class Text2SQLWebService:
                 }
             public_values.append(item)
         return {"experiences": public_values, "state": state or "all"}
+
+    def confirm_experience(
+        self, experience_id: str, actor: str, note: str = ""
+    ) -> Mapping[str, Any]:
+        """Convert a gated QueryRun capture into a reviewable candidate."""
+
+        snapshot = self._snapshot()
+        with Text2SQLEvolutionStore(self.evolution_store_path, snapshot) as evolution:
+            item = evolution.get_experience(experience_id)
+            if item["state"] == "candidate" and item["eligible"]:
+                return {
+                    **dict(item),
+                    "confirmation": "already-confirmed",
+                    "next_step": "human_experience_review",
+                }
+            if item["state"] != "ineligible" or "requires_human_feedback" not in set(
+                item.get("eligibility_reasons") or ()
+            ):
+                raise ValueError("experience is not awaiting human confirmation")
+            trace = evolution.get_query_trace(str(item.get("task_id") or ""))
+            if (
+                str(trace.get("status") or "") != "success"
+                or not bool(str(trace.get("final_sql") or "").strip())
+                or not bool((trace.get("gates") or {}).get("accepted"))
+            ):
+                raise ValueError("experience QueryRun is not eligible for confirmation")
+            gate = validate_sql(str(item["sql"]), snapshot)
+            if not gate.accepted:
+                raise ValueError(
+                    "experience SQL failed the deterministic gate: %s"
+                    % ", ".join(gate.errors)
+                )
+            confirmed_id = evolution.add_experience_candidate(
+                str(item["task_id"]),
+                str(item["question"]),
+                str(item["sql"]),
+                source_kind="human_confirmed_query",
+                eligible=True,
+            )
+            evolution.record_query_feedback(
+                str(item["task_id"]), "correct", note, actor
+            )
+            confirmed = evolution.get_experience(confirmed_id)
+        return {
+            **dict(confirmed),
+            "confirmation": "human-confirmed",
+            "next_step": "human_experience_review",
+        }
 
     def feedback(
         self,

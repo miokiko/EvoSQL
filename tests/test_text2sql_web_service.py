@@ -705,6 +705,7 @@ class Text2SQLWebServiceTests(unittest.TestCase):
             pending = service.experiences()["experiences"][0]
             self.assertEqual(pending["state"], "ineligible")
             self.assertIn("requires_human_feedback", pending["eligibility_reasons"])
+            self.assertTrue(pending["confirmable"])
             feedback = service.feedback(
                 "trace-feedback",
                 "correct",
@@ -747,6 +748,44 @@ class Text2SQLWebServiceTests(unittest.TestCase):
                         for item in store.candidates()
                     },
                 )
+
+    def test_ineligible_experience_can_be_confirmed_from_review_surface(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            service = Text2SQLWebService(
+                _settings(),
+                llm_config={},
+                evolution_store_path=root / "evolution.sqlite3",
+            )
+            service._remember_trace(
+                {
+                    "task_id": "trace-cross-page-confirm",
+                    "status": "success",
+                    "question": "最大累计事件数是多少？",
+                    "standalone_question": "最大累计事件数是多少？",
+                    "query_type": "DATA_QUERY",
+                    "final_sql": "SELECT MAX(d_sumEvent) FROM t_activeinfo",
+                    "gates": {"accepted": True},
+                    "agents": [],
+                    "execution": {},
+                    "version_pins": {},
+                    "answer": {"columns": ["max"], "rows": [[1]], "row_count": 1},
+                },
+                user_id="reviewer",
+                session_id="previous-session",
+            )
+            pending = service.experiences()["experiences"][0]
+            self.assertTrue(pending["confirmable"])
+
+            confirmed = service.confirm_experience(
+                pending["experience_id"], "reviewer", "结果与业务含义一致"
+            )
+
+            self.assertEqual(confirmed["state"], "candidate")
+            self.assertTrue(confirmed["eligible"])
+            self.assertEqual(confirmed["user_feedback"], "correct")
+            self.assertEqual(confirmed["source_kind"], "human_confirmed_query")
+            self.assertEqual(confirmed["next_step"], "human_experience_review")
 
     def test_incorrect_production_feedback_creates_reviewable_semantic_memory(self):
         project_root = Path(__file__).resolve().parents[1]

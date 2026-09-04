@@ -391,13 +391,19 @@ function renderExperiences(data) {
           + Math.min(100, Math.round(current / total * 100)) + '%"></u></i><small>'
           + escapeHtml(evaluation.error || "构建候选索引并运行 240 条对照评测") + '</small></div>'
         : "";
-      const actions = item.state === "candidate"
+      const awaitingConfirmation = item.state === "ineligible"
+        && (item.eligibility_reasons || []).includes("requires_human_feedback");
+      const actions = awaitingConfirmation && item.confirmable
+        ? `<div class="experience-review-editor"><input data-experience-confirm-note maxlength="2000" placeholder="确认说明（可选）"><div class="experience-actions"><button class="button experience-confirm" data-experience-id="${escapeHtml(item.experience_id)}" type="button">确认结果正确</button></div><small>确认后只进入 Candidate，仍需人工审核和 240 条回归门禁。</small></div>`
+        : awaitingConfirmation
+        ? `<div class="experience-confirm-unavailable"><b>等待确认</b><span>原 QueryRun 已不在当前运行历史中，不能跨过来源校验。</span></div>`
+        : item.state === "candidate"
         ? `<div class="experience-review-editor"><input data-experience-review-note maxlength="2000" placeholder="审核评论（拒绝时必填）"><div class="experience-actions"><button class="copy-button experience-review" data-experience-id="${escapeHtml(item.experience_id)}" data-decision="reject" type="button">拒绝</button><button class="button experience-review" data-experience-id="${escapeHtml(item.experience_id)}" data-decision="approve" type="button">审核并跑 240 条</button></div></div>`
         : item.state === "evaluation_failed" || item.state === "evaluated"
         ? `<div class="experience-actions"><button class="button experience-evaluation" data-experience-id="${escapeHtml(item.experience_id)}" type="button">重新构建并评测</button></div>`
         : `<b>${escapeHtml(memoryStateLabel(item.state || "unknown"))}</b>`;
       return `<article class="experience-item">
-        <div class="experience-copy"><span><strong>${escapeHtml(item.question || "未命名问题")}</strong><small>${escapeHtml(item.source_kind || "query_run")} · ${escapeHtml(item.experience_id || "")}</small></span><em class="experience-state state-${escapeHtml(item.state || "unknown")}">${escapeHtml(item.state || "unknown")}</em></div>
+        <div class="experience-copy"><span><strong>${escapeHtml(item.question || "未命名问题")}</strong><small>${escapeHtml(item.source_kind || "query_run")} · ${escapeHtml(item.experience_id || "")}</small></span><em class="experience-state state-${escapeHtml(item.state || "unknown")}">${escapeHtml(memoryStateLabel(item.state || "unknown"))}</em></div>
         <pre>${escapeHtml(item.sql || "--")}</pre>
         ${reasons ? `<p>${escapeHtml(reasons)}</p>` : ""}
         ${item.review_note ? `<blockquote class="review-note"><b>审核评论</b>${escapeHtml(item.review_note)}</blockquote>` : ""}
@@ -405,7 +411,24 @@ function renderExperiences(data) {
         ${actions}
       </article>`;
     }).join("")
-    : '<div class="empty-state compact"><span><b>暂无 Question-SQL 候选经验</b>正确反馈会先进入这里，审核后才进入稳定知识。</span></div>';
+    : '<div class="empty-state compact"><span><b>暂无 Question-SQL 经验</b>成功查询先等待用户确认，再进入候选审核。</span></div>';
+  $$(".experience-confirm").forEach((button) => button.addEventListener("click", async () => {
+    const card = button.closest(".experience-item");
+    const note = $('[data-experience-confirm-note]', card)?.value.trim() || "";
+    button.disabled = true;
+    try {
+      await api(`/v1/text2sql/experiences/${encodeURIComponent(button.dataset.experienceId)}/confirm`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ note }),
+      });
+      toast("已确认正确，经验进入 Candidate 审核队列");
+      await Promise.all([loadExperiences(), loadStatus(), loadTraces(), loadMemory()]);
+    } catch (error) {
+      toast(error.message);
+      button.disabled = false;
+    }
+  }));
   $$(".experience-review").forEach((button) => button.addEventListener("click", async () => {
     const decision = button.dataset.decision;
     const card = button.closest(".experience-item");
@@ -795,7 +818,7 @@ function memoryStateLabel(state) {
     rejected: "已拒绝",
     retired: "已撤销",
     promoted: "已发布",
-    ineligible: "不可晋升",
+    ineligible: "等待用户确认",
   }[state] || state || "未知";
 }
 
