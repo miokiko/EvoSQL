@@ -25,7 +25,7 @@ EvoSQL 的核心原则是：
 
 ![EvoSQL Multi-Agent Text2SQL 与受控自进化系统架构](docs/assets/evosql-system-architecture.png)
 
-外层是固定的 8 节点状态机；真正的并发发生在 `text2sql-workers` 节点内部，两名 Worker 由线程池并行运行。四个名称是 Runtime Role 与可演化 Policy 槽位，不是四个独立服务或四份 Codex `SKILL.md`。
+在线查询由 `AgentRuntime` 按 8 个阶段顺序推进，Runtime Node 与 Agent 并非一一对应：Lead 参与节点 1、4、7，`schema-grounding` 与 `sql-strategy` 在节点 3 内由线程池并行，Critic 对应节点 6；节点 2 负责证据编排并可选调用 Draft Planner，节点 5 按 Lead 指令对指定 Worker 最多返工一次，节点 8 由确定性 Harness 完成安全门禁与只读执行。四个核心 Agent 是进程内的逻辑角色，分别拥有独立的 Prompt、输入输出契约、Tool ACL 和可演化 Policy。
 
 ## 核心设计
 
