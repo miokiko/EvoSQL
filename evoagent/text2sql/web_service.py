@@ -623,6 +623,86 @@ class Text2SQLWebService:
             "next_step": "human_experience_review",
         }
 
+    def feedback_experience(
+        self,
+        experience_id: str,
+        decision: str,
+        note: str,
+        corrected_sql: str,
+        actor: str,
+    ) -> Mapping[str, Any]:
+        """Record review-surface feedback without relying on browser session state."""
+
+        if decision == "correct":
+            return self.confirm_experience(experience_id, actor, note)
+        if decision != "incorrect":
+            raise ValueError("feedback decision must be correct or incorrect")
+        note = note.strip()
+        corrected_sql = corrected_sql.strip()
+        if not note:
+            raise ValueError("incorrect feedback requires a reason")
+
+        snapshot = self._snapshot()
+        with Text2SQLEvolutionStore(self.evolution_store_path, snapshot) as evolution:
+            item = evolution.get_experience(experience_id)
+            if item["state"] != "ineligible" or "requires_human_feedback" not in set(
+                item.get("eligibility_reasons") or ()
+            ):
+                raise ValueError("experience is not awaiting human feedback")
+            trace = evolution.get_query_trace(str(item.get("task_id") or ""))
+            if not str(trace.get("final_sql") or "").strip():
+                raise ValueError("experience QueryRun has no SQL to review")
+
+            if corrected_sql:
+                if corrected_sql == str(item.get("sql") or "").strip():
+                    raise ValueError("corrected SQL must differ from the rejected SQL")
+                corrected_gate = validate_sql(corrected_sql, snapshot)
+                if not corrected_gate.accepted:
+                    raise ValueError(
+                        "corrected SQL failed the deterministic gate: %s"
+                        % ", ".join(corrected_gate.errors)
+                    )
+
+            attribution = attribute_query_failure(
+                trace,
+                snapshot,
+                corrected_sql=corrected_sql,
+                feedback_note=note,
+            )
+            memory_id = evolution.add_memory_candidate(
+                str(attribution["target_skill"]),
+                str(attribution["failure_kind"]),
+                str(attribution["content"]),
+                dict(attribution["evidence"]),
+                str(attribution["origin_split"]),
+            )
+            evolution.record_query_feedback(
+                str(item["task_id"]), "incorrect", note, actor
+            )
+            corrected_experience_id = ""
+            if corrected_sql:
+                corrected_experience_id = evolution.add_experience_candidate(
+                    str(item["task_id"]),
+                    str(item["question"]),
+                    corrected_sql,
+                    source_kind="human_corrected_sql",
+                    eligible=True,
+                )
+            rejected = evolution.get_experience(experience_id)
+
+        return {
+            **dict(rejected),
+            "feedback": "incorrect",
+            "memory_id": memory_id,
+            "corrected_experience_id": corrected_experience_id,
+            "attribution": {
+                key: attribution[key]
+                for key in ("target_skill", "failure_kind", "content")
+                if key in attribution
+            },
+            "next_step": "human_memory_review",
+        }
+
     def feedback(
         self,
         task_id: str,

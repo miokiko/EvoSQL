@@ -394,7 +394,16 @@ function renderExperiences(data) {
       const awaitingConfirmation = item.state === "ineligible"
         && (item.eligibility_reasons || []).includes("requires_human_feedback");
       const actions = awaitingConfirmation && item.confirmable
-        ? `<div class="experience-review-editor"><input data-experience-confirm-note maxlength="2000" placeholder="确认说明（可选）"><div class="experience-actions"><button class="button experience-confirm" data-experience-id="${escapeHtml(item.experience_id)}" type="button">确认结果正确</button></div><small>确认后只进入 Candidate，仍需人工审核和 240 条回归门禁。</small></div>`
+        ? `<div class="experience-review-editor">
+            <input data-experience-confirm-note maxlength="2000" placeholder="确认说明（可选）">
+            <div class="experience-actions"><button class="copy-button experience-incorrect-toggle" type="button">结果不正确</button><button class="button experience-confirm" data-experience-id="${escapeHtml(item.experience_id)}" type="button">确认结果正确</button></div>
+            <div class="experience-incorrect-editor hidden">
+              <label>错误原因（必填）<input data-experience-incorrect-note maxlength="2000" placeholder="说明结果或 SQL 哪里不正确"></label>
+              <label>正确 SQL（可选）<textarea data-experience-corrected-sql rows="4" placeholder="如果知道正确 SQL，可在这里提交"></textarea></label>
+              <button class="button experience-incorrect-submit" data-experience-id="${escapeHtml(item.experience_id)}" type="button">提交错误反馈</button>
+            </div>
+            <small>正确反馈进入 Question-SQL Candidate；错误反馈进入归因后的 Semantic Memory Candidate。两者都不会直接修改生产行为。</small>
+          </div>`
         : awaitingConfirmation
         ? `<div class="experience-confirm-unavailable"><b>等待确认</b><span>原 QueryRun 已不在当前运行历史中，不能跨过来源校验。</span></div>`
         : item.state === "candidate"
@@ -423,6 +432,38 @@ function renderExperiences(data) {
         body: JSON.stringify({ note }),
       });
       toast("已确认正确，经验进入 Candidate 审核队列");
+      await Promise.all([loadExperiences(), loadStatus(), loadTraces(), loadMemory()]);
+    } catch (error) {
+      toast(error.message);
+      button.disabled = false;
+    }
+  }));
+  $$(".experience-incorrect-toggle").forEach((button) => button.addEventListener("click", () => {
+    $(".experience-incorrect-editor", button.closest(".experience-item"))?.classList.toggle("hidden");
+  }));
+  $$(".experience-incorrect-submit").forEach((button) => button.addEventListener("click", async () => {
+    const card = button.closest(".experience-item");
+    const noteInput = $("[data-experience-incorrect-note]", card);
+    const note = noteInput?.value.trim() || "";
+    if (!note) {
+      toast("结果不正确时必须填写原因");
+      noteInput?.focus();
+      return;
+    }
+    button.disabled = true;
+    try {
+      const result = await api(`/v1/text2sql/experiences/${encodeURIComponent(button.dataset.experienceId)}/feedback`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          decision: "incorrect",
+          note,
+          corrected_sql: $("[data-experience-corrected-sql]", card)?.value.trim() || "",
+        }),
+      });
+      toast(result.corrected_experience_id
+        ? "错误已归因；修正 SQL 与 Semantic Memory 分别进入候选队列"
+        : "错误已归因并生成 Semantic Memory Candidate");
       await Promise.all([loadExperiences(), loadStatus(), loadTraces(), loadMemory()]);
     } catch (error) {
       toast(error.message);

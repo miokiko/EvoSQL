@@ -787,6 +787,57 @@ class Text2SQLWebServiceTests(unittest.TestCase):
             self.assertEqual(confirmed["source_kind"], "human_confirmed_query")
             self.assertEqual(confirmed["next_step"], "human_experience_review")
 
+    def test_ineligible_experience_can_be_rejected_from_review_surface(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            service = Text2SQLWebService(
+                _settings(),
+                llm_config={},
+                evolution_store_path=root / "evolution.sqlite3",
+            )
+            service._remember_trace(
+                {
+                    "task_id": "trace-cross-page-reject",
+                    "status": "success",
+                    "question": "最小累计事件数是多少？",
+                    "standalone_question": "最小累计事件数是多少？",
+                    "query_type": "DATA_QUERY",
+                    "final_sql": "SELECT MAX(d_sumEvent) FROM t_activeinfo",
+                    "gates": {"accepted": True, "errors": []},
+                    "agents": [],
+                    "execution": {},
+                    "version_pins": {},
+                    "answer": {"columns": ["max"], "rows": [[9]], "row_count": 1},
+                },
+                user_id="reviewer",
+                session_id="previous-session",
+            )
+            pending = service.experiences()["experiences"][0]
+
+            feedback = service.feedback_experience(
+                pending["experience_id"],
+                "incorrect",
+                "聚合口径错误，应该取最小值",
+                "SELECT MIN(d_sumEvent) FROM t_activeinfo",
+                "reviewer",
+            )
+
+            self.assertEqual(feedback["state"], "rejected")
+            self.assertTrue(feedback["memory_id"])
+            self.assertTrue(feedback["corrected_experience_id"])
+            self.assertEqual(
+                feedback["attribution"]["target_skill"], "query-planning"
+            )
+            with Text2SQLEvolutionStore(
+                root / "evolution.sqlite3", service._snapshot()
+            ) as evolution:
+                corrected = evolution.get_experience(
+                    feedback["corrected_experience_id"]
+                )
+                self.assertEqual(corrected["state"], "candidate")
+                self.assertEqual(corrected["source_kind"], "human_corrected_sql")
+                self.assertEqual(len(evolution.list_memory("candidate")), 1)
+
     def test_incorrect_production_feedback_creates_reviewable_semantic_memory(self):
         project_root = Path(__file__).resolve().parents[1]
         snapshot = json.loads(

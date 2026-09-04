@@ -37,6 +37,9 @@ TEXT2SQL_EXPERIENCE_REVIEW = re.compile(
 TEXT2SQL_EXPERIENCE_CONFIRM = re.compile(
     r"^/v1/text2sql/experiences/([A-Za-z0-9_-]+)/confirm$"
 )
+TEXT2SQL_EXPERIENCE_FEEDBACK = re.compile(
+    r"^/v1/text2sql/experiences/([A-Za-z0-9_-]+)/feedback$"
+)
 TEXT2SQL_EXPERIENCE_ACTION = re.compile(
     r"^/v1/text2sql/experiences/([A-Za-z0-9_-]+)/(evaluation)$"
 )
@@ -498,6 +501,32 @@ class ApiHandler(BaseHTTPRequestHandler):
                     "text2sql.experience.confirm",
                     experience_confirm_match.group(1),
                     {"has_note": bool(str(payload.get("note") or "").strip())},
+                )
+                self._send_json(200, dict(result))
+                return
+            experience_feedback_match = TEXT2SQL_EXPERIENCE_FEEDBACK.match(path)
+            if experience_feedback_match:
+                principal = self._principal("manage")
+                payload = self._read_json(body)
+                result = self._text2sql_service().feedback_experience(
+                    experience_feedback_match.group(1),
+                    str(payload.get("decision") or ""),
+                    str(payload.get("note") or ""),
+                    str(payload.get("corrected_sql") or ""),
+                    principal.username,
+                )
+                self.service.store.audit(
+                    principal.tenant_id,
+                    principal.username,
+                    "text2sql.experience.feedback",
+                    experience_feedback_match.group(1),
+                    {
+                        "decision": str(payload.get("decision") or ""),
+                        "has_note": bool(str(payload.get("note") or "").strip()),
+                        "has_corrected_sql": bool(
+                            str(payload.get("corrected_sql") or "").strip()
+                        ),
+                    },
                 )
                 self._send_json(200, dict(result))
                 return

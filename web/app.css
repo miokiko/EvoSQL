@@ -1286,6 +1286,38 @@ textarea { min-height: 150px; resize: vertical; font: 11px/1.7 "Cascadia Code", 
 .experience-review-editor { display: grid; gap: 8px; }
 .experience-review-editor > small { color: var(--faint); font-size: 8px; line-height: 1.5; }
 .experience-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.experience-incorrect-editor {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(255, 109, 159, .34);
+  border-radius: var(--radius-control);
+  background: rgba(255, 109, 159, .035);
+}
+.experience-incorrect-editor label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 650;
+}
+.experience-incorrect-editor textarea {
+  width: 100%;
+  min-height: 88px;
+  padding: 9px 10px;
+  resize: vertical;
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  color: var(--ink);
+  background: rgba(13, 7, 18, .9);
+  font: 550 9px/1.55 "Cascadia Code", Consolas, monospace;
+}
+.experience-incorrect-editor textarea:focus {
+  border-color: var(--red);
+  box-shadow: 0 0 0 3px rgba(255, 109, 159, .1);
+  outline: 0;
+}
+.experience-incorrect-submit { justify-self: end; }
 .experience-confirm-unavailable {
   display: grid;
   gap: 5px;
