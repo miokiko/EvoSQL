@@ -28,6 +28,9 @@ database/*.local.sql
 导学-EvoAgent.md
 面经-EvoAgent.md
 
+# Keep interview preparation notes local.
+面经-EvoSQL.md
+
 # Keep compact, reviewable evaluation reports; omit resumable runtime journals.
 artifacts/text2sql/evaluation/*.checkpoint.jsonl
 artifacts/text2sql/evaluation/*recovery*.json

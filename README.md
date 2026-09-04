@@ -250,7 +250,6 @@ python -m unittest discover -s tests -p 'test_text2sql*.py' -v
 ## 深入阅读
 
 - [项目导学](导学-EvoSQL.md)
-- [简历与面试讲法](面经-EvoSQL.md)
 - [Text2SQL 设计与适配方案](Text2SQL自进化适配方案.md)
 - [Multi-Agent 基线](docs/text2sql/PHASE2_AGENTIC_BASELINE.md)
 - [Checkpoint 运行手册](docs/text2sql/CHECKPOINT_RUNBOOK.md)
