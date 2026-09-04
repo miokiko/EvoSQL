@@ -1720,6 +1720,13 @@ class Text2SQLEvolutionStore:
             "created_at DESC LIMIT ?",
             (bounded,),
         ).fetchall()
+        question_sql_rows = self.connection.execute(
+            "SELECT experience_id,task_id,question,sql,source_kind,state,created_at,"
+            "reviewed_by,reviewed_at,review_note,knowledge_evidence_id "
+            "FROM experience_reviews WHERE state='promoted' "
+            "ORDER BY reviewed_at DESC,created_at DESC LIMIT ?",
+            (bounded,),
+        ).fetchall()
         working_count = int(
             self.connection.execute(
                 "SELECT COUNT(*) FROM memory_messages WHERE user_id=? AND session_id=?",
@@ -1790,7 +1797,11 @@ class Text2SQLEvolutionStore:
             "memory_evaluations": {
                 "items": self.list_memory_evaluation_jobs(limit=bounded),
             },
-            "question_sql": {"counts": experience_counts},
+            "question_sql": {
+                "items": [dict(row) for row in question_sql_rows],
+                "counts": experience_counts,
+                "stable_only_injected": True,
+            },
         }
 
     def prepare_query_attempt(
@@ -2393,6 +2404,40 @@ class Text2SQLEvolutionStore:
                 "UPDATE experience_reviews SET state='promoted',knowledge_evidence_id=? "
                 "WHERE experience_id=?",
                 (knowledge_evidence_id[:200], experience_id),
+            )
+        return self.get_experience(experience_id)
+
+    def promote_confirmed_experience(
+        self,
+        experience_id: str,
+        knowledge_evidence_id: str,
+        actor: str,
+        review_note: str = "",
+    ) -> Mapping[str, Any]:
+        """Publish a human-confirmed Question-SQL pair as stable retrieval memory."""
+
+        item = self.get_experience(experience_id)
+        if item["state"] == "promoted":
+            return item
+        if (
+            item["state"] != "candidate"
+            or not item["eligible"]
+            or item["user_feedback"] != "correct"
+        ):
+            raise ValueError("only a human-confirmed candidate can be promoted")
+        if not knowledge_evidence_id.strip() or not actor.strip():
+            raise ValueError("knowledge evidence and actor are required")
+        with self.connection:
+            self.connection.execute(
+                "UPDATE experience_reviews SET state='promoted',knowledge_evidence_id=?,"
+                "reviewed_by=?,reviewed_at=?,review_note=? WHERE experience_id=?",
+                (
+                    knowledge_evidence_id[:200],
+                    actor.strip()[:200],
+                    _now(),
+                    review_note.strip()[:2000],
+                    experience_id,
+                ),
             )
         return self.get_experience(experience_id)
 

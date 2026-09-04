@@ -654,7 +654,7 @@ class Text2SQLWebServiceTests(unittest.TestCase):
             {item["role"] for item in public["agents"]}, set(TEXT2SQL_SKILLS)
         )
 
-    def test_confirmed_query_becomes_reviewed_knowledge_not_direct_vanna_write(self):
+    def test_confirmed_query_is_persisted_as_stable_vanna_memory(self):
         project_root = Path(__file__).resolve().parents[1]
         snapshot = json.loads(
             (project_root / "artifacts/text2sql/schema/database_snapshot.json").read_text(
@@ -706,56 +706,77 @@ class Text2SQLWebServiceTests(unittest.TestCase):
             self.assertEqual(pending["state"], "ineligible")
             self.assertIn("requires_human_feedback", pending["eligibility_reasons"])
             self.assertTrue(pending["confirmable"])
-            feedback = service.feedback(
-                "trace-feedback",
-                "correct",
-                "结果与业务含义一致",
-                "",
-                user_id="reviewer",
-                session_id="session-1",
-            )
-            self.assertTrue(feedback["experience_id"])
-            confirmed = service.experiences("candidate")["experiences"][0]
-            self.assertEqual(confirmed["experience_id"], feedback["experience_id"])
             with KnowledgeStore(knowledge_path) as store:
                 stable_before = store.current_index_version("stable")
-            with patch.object(
-                service,
-                "start_experience_evaluation",
+            with patch(
+                "evoagent.text2sql.web_service.VannaRetrieverOnly.build",
                 return_value={
-                    "job_id": "experience-eval-test",
-                    "status": "queued",
-                    "background": True,
+                    "ready": True,
+                    "index_version": "stable-test",
+                    "item_count": 1,
+                    "counts": {"ddl": 0, "documentation": 0, "sql": 1},
                 },
-            ):
-                reviewed = service.review_experience(
-                    feedback["experience_id"], "approve", "human-reviewer"
+            ) as build_vanna:
+                feedback = service.feedback(
+                    "trace-feedback",
+                    "correct",
+                    "结果与业务含义一致",
+                    "",
+                    user_id="reviewer",
+                    session_id="session-1",
                 )
-            self.assertEqual(reviewed["state"], "approved")
+            self.assertTrue(feedback["experience_id"])
+            self.assertEqual(feedback["next_step"], "available_in_vanna_and_memory")
+            self.assertEqual(feedback["experience"]["state"], "promoted")
+            confirmed = service.experiences("promoted")["experiences"][0]
+            self.assertEqual(confirmed["experience_id"], feedback["experience_id"])
+            self.assertEqual(confirmed["user_feedback"], "correct")
+            self.assertTrue(confirmed["knowledge_evidence_id"])
+            build_vanna.assert_called_once()
+            indexed_items = build_vanna.call_args.args[0]
             self.assertEqual(
-                reviewed["next_step"],
-                "candidate_vanna_build_and_240_case_regression_started",
+                [
+                    item["knowledge_type"]
+                    for item in indexed_items
+                    if item["knowledge_type"] == "verified_example"
+                ],
+                ["verified_example"],
             )
             with KnowledgeStore(knowledge_path) as store:
                 self.assertEqual(store.stats()["types"]["verified_example"], 1)
-                self.assertEqual(
-                    store.current_index_version("stable"), stable_before
-                )
-                self.assertIn(
+                self.assertNotEqual(store.current_index_version("stable"), stable_before)
+                self.assertNotIn(
                     "verified_example",
-                    {
-                        item["knowledge_type"]
-                        for item in store.candidates()
-                    },
+                    {item["knowledge_type"] for item in store.candidates()},
                 )
+            dashboard = service.memory("reviewer", "session-1", 10)
+            self.assertEqual(dashboard["question_sql"]["counts"]["promoted"], 1)
+            self.assertEqual(
+                dashboard["question_sql"]["items"][0]["experience_id"],
+                feedback["experience_id"],
+            )
 
     def test_ineligible_experience_can_be_confirmed_from_review_surface(self):
+        project_root = Path(__file__).resolve().parents[1]
+        snapshot = json.loads(
+            (project_root / "artifacts/text2sql/schema/database_snapshot.json").read_text(
+                encoding="utf-8"
+            )
+        )
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            snapshot_path = root / "snapshot.json"
+            knowledge_path = root / "knowledge.sqlite3"
+            snapshot_path.write_text(json.dumps(snapshot), encoding="utf-8")
+            with KnowledgeStore(knowledge_path) as store:
+                store.ingest_database(snapshot)
             service = Text2SQLWebService(
                 _settings(),
                 llm_config={},
+                snapshot_path=snapshot_path,
+                knowledge_store_path=knowledge_path,
                 evolution_store_path=root / "evolution.sqlite3",
+                vanna_index_root=root / "vanna",
             )
             service._remember_trace(
                 {
@@ -777,15 +798,28 @@ class Text2SQLWebServiceTests(unittest.TestCase):
             pending = service.experiences()["experiences"][0]
             self.assertTrue(pending["confirmable"])
 
-            confirmed = service.confirm_experience(
-                pending["experience_id"], "reviewer", "结果与业务含义一致"
-            )
+            with patch(
+                "evoagent.text2sql.web_service.VannaRetrieverOnly.build",
+                return_value={
+                    "ready": True,
+                    "index_version": "stable-test",
+                    "item_count": 1,
+                    "counts": {"ddl": 0, "documentation": 0, "sql": 1},
+                },
+            ):
+                confirmed = service.confirm_experience(
+                    pending["experience_id"], "reviewer", "结果与业务含义一致"
+                )
 
-            self.assertEqual(confirmed["state"], "candidate")
+            self.assertEqual(confirmed["state"], "promoted")
             self.assertTrue(confirmed["eligible"])
             self.assertEqual(confirmed["user_feedback"], "correct")
             self.assertEqual(confirmed["source_kind"], "human_confirmed_query")
-            self.assertEqual(confirmed["next_step"], "human_experience_review")
+            self.assertEqual(
+                confirmed["next_step"], "available_in_vanna_and_memory"
+            )
+            self.assertEqual(confirmed["memory_kind"], "question_sql_semantic")
+            self.assertTrue(confirmed["knowledge_evidence_id"])
 
     def test_ineligible_experience_can_be_rejected_from_review_surface(self):
         with tempfile.TemporaryDirectory() as directory:

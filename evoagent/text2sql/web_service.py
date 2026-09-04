@@ -578,20 +578,28 @@ class Text2SQLWebService:
     def confirm_experience(
         self, experience_id: str, actor: str, note: str = ""
     ) -> Mapping[str, Any]:
-        """Convert a gated QueryRun capture into a reviewable candidate."""
+        """Persist a human-confirmed QueryRun as stable Vanna retrieval memory."""
 
         snapshot = self._snapshot()
         with Text2SQLEvolutionStore(self.evolution_store_path, snapshot) as evolution:
             item = evolution.get_experience(experience_id)
-            if item["state"] == "candidate" and item["eligible"]:
+            if item["state"] == "promoted":
                 return {
                     **dict(item),
                     "confirmation": "already-confirmed",
-                    "next_step": "human_experience_review",
+                    "next_step": "available_in_vanna_and_memory",
                 }
-            if item["state"] != "ineligible" or "requires_human_feedback" not in set(
-                item.get("eligibility_reasons") or ()
-            ):
+            awaiting_feedback = (
+                item["state"] == "ineligible"
+                and "requires_human_feedback"
+                in set(item.get("eligibility_reasons") or ())
+            )
+            confirmed_candidate = (
+                item["state"] == "candidate"
+                and item["eligible"]
+                and item["user_feedback"] == "correct"
+            )
+            if not awaiting_feedback and not confirmed_candidate:
                 raise ValueError("experience is not awaiting human confirmation")
             trace = evolution.get_query_trace(str(item.get("task_id") or ""))
             if (
@@ -613,14 +621,40 @@ class Text2SQLWebService:
                 source_kind="human_confirmed_query",
                 eligible=True,
             )
-            evolution.record_query_feedback(
-                str(item["task_id"]), "correct", note, actor
-            )
+            if awaiting_feedback:
+                evolution.record_query_feedback(
+                    str(item["task_id"]), "correct", note, actor
+                )
             confirmed = evolution.get_experience(confirmed_id)
+        gate = validate_sql(str(confirmed["sql"]), snapshot)
+        with KnowledgeStore(self.knowledge_store_path) as knowledge:
+            knowledge_memory = knowledge.promote_verified_example(
+                str(confirmed["question"]),
+                str(confirmed["sql"]),
+                actor,
+                source_id=confirmed_id,
+                dependencies=tuple([*gate.tables, *gate.columns]),
+            )
+            stable_items = knowledge.stable_items_for_index()
+            database_snapshot_id = knowledge.database_snapshot_id()
+        stable_version = str(knowledge_memory["stable_index_version"])
+        vanna = VannaRetrieverOnly(
+            self.vanna_index_root, stable_version, enabled=True
+        ).build(stable_items, database_snapshot_id)
+        with Text2SQLEvolutionStore(self.evolution_store_path, snapshot) as evolution:
+            promoted = evolution.promote_confirmed_experience(
+                confirmed_id,
+                str(knowledge_memory["evidence_id"]),
+                actor,
+                note,
+            )
         return {
-            **dict(confirmed),
+            **dict(promoted),
             "confirmation": "human-confirmed",
-            "next_step": "human_experience_review",
+            "knowledge": dict(knowledge_memory),
+            "vanna": dict(vanna),
+            "memory_kind": "question_sql_semantic",
+            "next_step": "available_in_vanna_and_memory",
         }
 
     def feedback_experience(
@@ -772,7 +806,7 @@ class Text2SQLWebService:
             human_decision = evolution.record_query_feedback(
                 task_id, decision, note, user_id
             )
-            return {
+            result = {
                 "task_id": task_id,
                 "feedback": decision,
                 "decision": dict(human_decision),
@@ -793,6 +827,15 @@ class Text2SQLWebService:
                     else "completed"
                 ),
             }
+        if decision == "correct" and experience_id:
+            promotion = self.confirm_experience(experience_id, user_id, note)
+            result.update(
+                {
+                    "experience": dict(promotion),
+                    "next_step": "available_in_vanna_and_memory",
+                }
+            )
+        return result
 
     def review_memory_candidate(
         self,

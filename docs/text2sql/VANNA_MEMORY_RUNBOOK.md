@@ -34,11 +34,12 @@ Text2SQL Lead（Query Router + 会话上下文）
 
 这是 `plan-first-text2sql-v3` 实现 Multi-Agent 语义的固定、有限 11 节点运行图。五个 Agent Role 是 `text2sql-lead`、`schema-grounding`、`query-planning`、`sql-generation`、`text2sql-critic`；并发只发生在 plan-workers 节点内的 Schema Grounding 与 Query Planning 之间。Lead 负责路由、委派、计划语义审核、有界返工和最终候选选择。Harness 负责绑定、批准计划铸造、候选门禁和只读执行，是不可绕过的确定性边界，不是 Agent，也不是 Skill。当前不会在 Critic reject 后再次修复 SQL。
 
-## 2. 三类记忆
+## 2. 四层记忆
 
-- 会话记忆：保存用户与会话维度的 QueryRun、独立问题、路由类型、结构化 QuerySpec / SchemaPlan、SQL、最终 Gate、结果摘要和最多 50 行结果快照，用于追问和结果问答。
-- 知识记忆：KnowledgeStore 是权威层，保存 Schema、Wiki、关系、取值和审核后的 Question-SQL，继续执行状态、ACL、快照和版本校验。
-- Skill 记忆：五个 Agent 的策略、失败归因与 stable/candidate Memory 仍由原 EvoAgent 自进化模块管理；Query Planning 与 SQL Generation 使用独立策略槽，不与 Vanna 混合。Harness 没有 Skill Memory。
+- Working Memory：保存当前 user / session 的有限消息，用于本轮上下文。
+- Episodic Memory：保存 QueryRun、独立问题、路由类型、结构化 QuerySpec / SchemaPlan、SQL、最终 Gate、结果摘要和最多 50 行结果快照，用于追问、结果问答与审计。
+- Question-SQL Memory：用户确认正确的 Question-SQL 以 `verified_example` 写入 stable KnowledgeStore，再构建版本化 Vanna Stable 索引；经验账本同步标记为 `promoted`，并用 `knowledge_evidence_id` 关联两侧记录。
+- Agent Semantic Memory：五个 Agent 的失败归因经验按 stable / candidate 分层治理；Query Planning 与 SQL Generation 使用独立策略槽，不与 Vanna 混合。Harness 没有 Skill Memory。
 
 使用阿里云模型时，Leader 路由会收到最近 QueryRun 的问题、SQL 与结果元数据；`RESULT_QA` 还会收到所引用 QueryRun 的列名及最多 50 行有限结果快照。完整 SQLite 文件不会上传，历史快照也不会提供给其他用户或会话。
 
@@ -75,12 +76,12 @@ EVOAGENT_TEXT2SQL_VANNA_ROOT=artifacts/text2sql/vanna
 
 ## 5. Question-SQL 经验闭环
 
-1. 每次成功的独立查询记录为 QueryRun，并生成隔离候选经验。
-2. 用户在问答页标记“正确”，或提交经过确定性 SQL 门禁的修正 SQL。
-3. 管理员在“评测与人工审核”页批准或拒绝候选。
-4. 批准后写入 KnowledgeStore 的 `verified_example` 稳定条目；不会在线直接修改正在使用的向量索引。
-5. 离线运行 `build_text2sql_vanna.py`，新 Question-SQL 才进入下一个固定 Vanna 索引。
-6. Policy 候选仍走 240 题 Validation/Sealed Holdout、Shadow、Canary 和人工激活流程；Memory 候选也必须经人审、240 题评测和显式激活后才可进入 stable。经验索引、Policy 发布和 Memory 发布是彼此隔离的演进线。
+1. 每次成功的独立查询记录为 QueryRun；在收到用户反馈前，Question-SQL 经验处于 `ineligible / requires_human_feedback`。
+2. 用户点击“确认结果正确”后，系统重新检查 QueryRun 来源、最终 Harness Gate 和当前 Schema Snapshot，并再次执行确定性 SQL Gate。
+3. 校验通过后，Question-SQL 以 `verified_example` 直接写入 stable KnowledgeStore，并同步构建新的不可变 Vanna Stable 版本。
+4. 经验账本把该记录标记为 `promoted`；后续查询可以立即从 Vanna 召回，但命中仍必须回到 KnowledgeStore 复验 stable、snapshot 与 ACL。
+5. 用户点击“结果不正确”时，原经验变为 `rejected`，系统执行确定性错误归因并生成单一 Agent Role 的 Semantic Memory Candidate；可选修正 SQL 作为独立 Question-SQL 候选保存，避免覆盖原始证据。
+6. 错误归因产生的 Agent Memory 与 Policy 候选仍走人工审核、240 题 Validation/Sealed Holdout、Shadow、Canary 和显式激活。正反馈 Question-SQL 只增强检索，不修改 Agent Policy，也不绕过 Binder、Critic 或最终 SQL Gate。
 
 ## 6. 可观测性
 

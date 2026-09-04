@@ -37,7 +37,5 @@ artifacts/text2sql/checkpoints/
 artifacts/text2sql/evaluation/*.checkpoint.jsonl
 artifacts/text2sql/evaluation/*recovery*.json
 
-# Vanna/Chroma indexes are reproducible binary outputs. Keep manifests only.
+# Vanna/Chroma indexes and runtime memory manifests are reproducible local outputs.
 artifacts/text2sql/vanna/**/*
-!artifacts/text2sql/vanna/**/
-!artifacts/text2sql/vanna/**/manifest.json

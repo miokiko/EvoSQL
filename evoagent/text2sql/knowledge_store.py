@@ -721,7 +721,7 @@ class KnowledgeStore:
         source_id: str,
         dependencies: Sequence[str] = (),
     ) -> Mapping[str, str]:
-        """Compatibility helper for explicit offline promotion."""
+        """Promote a verified Question-SQL pair into stable retrieval knowledge."""
 
         staged = self.stage_verified_example(
             question,

@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#ff4fc3">
   <title>EvoSQL · 可进化多智能体 Text2SQL</title>
   <meta name="description" content="EvoSQL 多智能体 Text2SQL 问答、知识、评测与受控自进化控制台">
-  <link rel="stylesheet" href="/assets/app.css?v=20260905.feedback2">
+  <link rel="stylesheet" href="/assets/app.css?v=20260905.memory1">
 </head>
 <body>
   <div class="app-shell text2sql-shell">
@@ -199,7 +199,7 @@
 
       <section class="view" id="view-memory" aria-labelledby="page-title">
         <div class="section-heading page-heading memory-page-heading">
-          <div><p class="eyebrow">MEMORY CONTROL PLANE</p><h2>记忆中心</h2><p>把会话上下文、历史 QueryRun 与审核后的稳定经验分层管理，明确哪些内容能进入 Agent 推理。</p></div>
+          <div><p class="eyebrow">MEMORY CONTROL PLANE</p><h2>记忆中心</h2><p>把会话上下文、历史 QueryRun、角色经验与 Vanna Question-SQL 记忆分层管理。</p></div>
           <button class="copy-button" id="refresh-memory" type="button">刷新记忆</button>
         </div>
 
@@ -207,13 +207,13 @@
           <div class="memory-lineage-copy">
             <p class="eyebrow">MEMORY LIFECYCLE</p>
             <h3>一次查询如何成为可复用经验</h3>
-            <p>运行记录不会自动变成长期知识；失败归因和用户反馈先进入候选区，通过人工审核后才能进入 Stable Semantic Memory。</p>
+            <p>用户确认正确的 Question-SQL 会在确定性复验后直接写入 Vanna Stable Memory；错误反馈则归因为角色级候选经验。</p>
           </div>
           <div class="memory-flow" aria-label="记忆演进流程">
             <div><b>01</b><strong>Working</strong><span>当前会话</span></div><i></i>
             <div><b>02</b><strong>Episodic</strong><span>QueryRun 轨迹</span></div><i></i>
             <div><b>03</b><strong>Human Gate</strong><span>归因与审核</span></div><i></i>
-            <div><b>04</b><strong>Semantic</strong><span>稳定经验</span></div>
+            <div><b>04</b><strong>Long-term</strong><span>Vanna / Agent Memory</span></div>
           </div>
         </article>
 
@@ -257,6 +257,17 @@
               <div class="empty-state compact"><span>正在读取长期记忆</span></div>
             </div>
           </article>
+
+          <article class="panel memory-layer-card memory-question-sql">
+            <div class="memory-layer-head">
+              <span class="memory-layer-number">04</span>
+              <div><p class="eyebrow">VANNA RETRIEVAL MEMORY</p><h3>Question-SQL Memory</h3><small>用户确认正确 · 版本化写入 Stable Vanna</small></div>
+              <span class="memory-policy-chip">Stable Retrieval</span>
+            </div>
+            <div class="memory-stream question-sql-memory-stream" id="question-sql-memory-list">
+              <div class="empty-state compact"><span>正在读取 Question-SQL 记忆</span></div>
+            </div>
+          </article>
         </div>
 
         <article class="panel memory-boundary-panel">
@@ -265,7 +276,7 @@
             <span><b>01</b><strong>不展示思维链</strong><small>仅展示结构化摘要与执行事实</small></span>
             <span><b>02</b><strong>双裁决分离</strong><small>Harness 门禁与 Human Review 独立存储，不相互覆盖</small></span>
             <span><b>03</b><strong>候选不可注入</strong><small>只有 Stable Semantic Memory 可供 Agent 使用</small></span>
-            <span><b>04</b><strong>知识域隔离</strong><small>Question–SQL 审核后才可回流 Vanna</small></span>
+            <span><b>04</b><strong>正负反馈分流</strong><small>正确 Question–SQL 进入 Vanna；错误经验进入 Agent Memory 候选</small></span>
           </div>
         </article>
       </section>
@@ -399,6 +410,6 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="/assets/app.js?v=20260905.feedback2"></script>
+  <script src="/assets/app.js?v=20260905.memory1"></script>
 </body>
 </html>

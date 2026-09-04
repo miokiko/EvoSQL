@@ -198,7 +198,7 @@ function renderQueryStatus(status) {
   $("#text2sql-status-grid").innerHTML = [
     statusCard("本地数据库", database.ready ? `${number(database.table_count)} 张表` : "不可用", database.readonly ? "SQLite · 强制只读" : "只读状态未确认", database.ready ? "is-ready" : "is-warning"),
     statusCard("人工审核评测集", dataset.review_verified ? `${number(dataset.reviewed_case_count)} / ${number(dataset.case_count)}` : "未验证", dataset.review_verified ? "签名证书有效 · 审核人 匿名审核员" : "需要审核证书", dataset.review_verified ? "is-ready" : "is-warning"),
-    statusCard("知识与记忆", `${number(stable)} 稳定 / ${number(candidate)} 候选`, `Wiki 索引 · ${short(knowledge.stable_index_version, 22)}`, "is-ready"),
+    statusCard("Knowledge Evidence", `${number(stable)} 可用 / ${number(candidate)} 待审核`, `Schema、取值、关系与术语 · ${short(knowledge.stable_index_version, 22)}`, "is-ready"),
     statusCard("Vanna 语义检索", vanna.ready ? `${number(vanna.item_count)} 条向量` : "回退模式", vanna.ready ? `只检索 · ${short(vanna.index_version, 22)}` : "使用 Wiki/结构化知识检索", vanna.ready ? "is-ready" : "is-warning"),
   ].join("");
 
@@ -282,7 +282,7 @@ function renderEvolution(status) {
   const experiences = evolution.experience_counts || {};
   $("#evolution-stats").innerHTML = [
     statusCard("稳定记忆", number(evolution.stable_memory_count), "生产问答可使用"),
-    statusCard("Question-SQL 候选", number(experiences.candidate), "人工反馈后隔离审核"),
+    statusCard("Question-SQL Memory", number(experiences.promoted), "用户确认后写入 Stable Vanna"),
     statusCard("当前策略", evolution.active_policy_version || "未初始化", "稳定版本"),
     statusCard("发布阶段", release.status && release.status !== "inactive" ? release.status : "未启用", "Shadow / Canary 门禁"),
   ].join("");
@@ -402,7 +402,7 @@ function renderExperiences(data) {
               <label>正确 SQL（可选）<textarea data-experience-corrected-sql rows="4" placeholder="如果知道正确 SQL，可在这里提交"></textarea></label>
               <button class="button experience-incorrect-submit" data-experience-id="${escapeHtml(item.experience_id)}" type="button">提交错误反馈</button>
             </div>
-            <small>正确反馈进入 Question-SQL Candidate；错误反馈进入归因后的 Semantic Memory Candidate。两者都不会直接修改生产行为。</small>
+            <small>正确反馈经确定性复验后写入 Stable Vanna 与 Question-SQL Memory；错误反馈进入归因后的 Agent Semantic Memory Candidate。</small>
           </div>`
         : awaitingConfirmation
         ? `<div class="experience-confirm-unavailable"><b>等待确认</b><span>原 QueryRun 已不在当前运行历史中，不能跨过来源校验。</span></div>`
@@ -420,7 +420,7 @@ function renderExperiences(data) {
         ${actions}
       </article>`;
     }).join("")
-    : '<div class="empty-state compact"><span><b>暂无 Question-SQL 经验</b>成功查询先等待用户确认，再进入候选审核。</span></div>';
+    : '<div class="empty-state compact"><span><b>暂无 Question-SQL 经验</b>成功查询经用户确认后，会写入 Stable Vanna 与长期记忆。</span></div>';
   $$(".experience-confirm").forEach((button) => button.addEventListener("click", async () => {
     const card = button.closest(".experience-item");
     const note = $('[data-experience-confirm-note]', card)?.value.trim() || "";
@@ -431,7 +431,7 @@ function renderExperiences(data) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ note }),
       });
-      toast("已确认正确，经验进入 Candidate 审核队列");
+      toast("已写入 Stable Vanna 与 Question-SQL Memory");
       await Promise.all([loadExperiences(), loadStatus(), loadTraces(), loadMemory()]);
     } catch (error) {
       toast(error.message);
@@ -873,7 +873,8 @@ function renderMemory(data) {
   const episodic = layers.episodic || {};
   const semantic = layers.semantic || {};
   const semanticCounts = semantic.counts || {};
-  const experienceCounts = data.question_sql?.counts || {};
+  const questionSql = data.question_sql || {};
+  const experienceCounts = questionSql.counts || {};
   const evaluationJobs = Array.isArray(data.evaluations?.items) ? data.evaluations.items : [];
   const jobByMemory = new Map();
   evaluationJobs.forEach((job) => {
@@ -884,13 +885,13 @@ function renderMemory(data) {
   $("#memory-stats").innerHTML = [
     statusCard("Working Memory", number(working.count), "当前会话 · 最多保留 " + number(working.retention_limit_per_session) + " 条", "is-ready"),
     statusCard("Episodic Memory", number(episodic.count), "当前会话 QueryRun · 最多 " + number(episodic.retention_limit) + " 条", "is-ready"),
-    statusCard("Stable Semantic", number(semanticCounts.stable), "可注入 Agent · 快照 " + snapshot, "is-ready"),
     statusCard(
-      "Candidate Queue",
-      number(semanticCounts.candidate),
-      "待审核 · 待评测 " + number((semanticCounts.approved || 0) + (semanticCounts.evaluating || 0)) + " 条",
+      "Agent Semantic",
+      `${number(semanticCounts.stable)} 稳定 / ${number(semanticCounts.candidate)} 候选`,
+      "角色级失败经验 · 快照 " + snapshot,
       semanticCounts.candidate ? "is-warning" : ""
     ),
+    statusCard("Question-SQL Memory", number(experienceCounts.promoted), "用户确认正确 · Stable Vanna", experienceCounts.promoted ? "is-ready" : ""),
   ].join("");
 
   const workingItems = Array.isArray(working.items) ? working.items : [];
@@ -1064,6 +1065,17 @@ function renderMemory(data) {
       button.disabled = false;
     }
   }));
+
+  const questionSqlItems = Array.isArray(questionSql.items) ? questionSql.items : [];
+  $("#question-sql-memory-list").innerHTML = questionSqlItems.length
+    ? questionSqlItems.map((item) => `<article class="memory-entry question-sql-entry">
+        <div class="memory-entry-head"><span class="memory-state state-promoted">VANNA · STABLE</span><time>${escapeHtml(formatTraceTime(item.reviewed_at || item.created_at))}</time></div>
+        <p>${escapeHtml(item.question || "未命名问题")}</p>
+        <code>${escapeHtml(item.sql || "--")}</code>
+        <div class="memory-entry-tags"><span>Question-SQL</span><span>${escapeHtml(short(item.knowledge_evidence_id, 28))}</span></div>
+        <small>${escapeHtml(item.reviewed_by ? "确认人 " + item.reviewed_by : "Human Confirmed")}</small>
+      </article>`).join("")
+    : memoryEmpty("还没有 Question-SQL 长期记忆", "在查询结果或经验审计中确认 SQL 正确后，会立即写入 Stable Vanna。");
   clearTimeout(memoryPollTimer);
   if (semanticItems.some((item) => item.state === "evaluating")) {
     memoryPollTimer = setTimeout(loadMemory, 5000);
@@ -1079,6 +1091,7 @@ async function loadMemory() {
     $("#working-memory-list").innerHTML = memoryEmpty("Working Memory 加载失败", error.message);
     $("#episodic-memory-list").innerHTML = memoryEmpty("Episodic Memory 加载失败", error.message);
     $("#semantic-memory-list").innerHTML = memoryEmpty("Semantic Memory 加载失败", error.message);
+    $("#question-sql-memory-list").innerHTML = memoryEmpty("Question-SQL Memory 加载失败", error.message);
   }
 }
 
@@ -1352,10 +1365,12 @@ async function submitQueryFeedback(decision) {
   $("#feedback-submit-incorrect").disabled = true;
   $("#feedback-correction").classList.add("hidden");
   await Promise.all([loadExperiences(), loadStatus(), loadTraces(), loadMemory()]);
-  if (result.experience_id && result.memory_id) {
+  if (decision === "correct" && result.experience_id) {
+    toast("已写入 Stable Vanna 与 Question-SQL Memory");
+  } else if (result.experience_id && result.memory_id) {
     toast("修正 SQL 与归因记忆已分别进入审核队列");
   } else if (result.experience_id) {
-    toast("反馈已生成候选 Question-SQL 经验");
+    toast("修正 SQL 已进入 Question-SQL 候选队列");
   } else if (result.memory_id) {
     toast("错误已自动归因，并生成 Semantic Candidate");
   } else {

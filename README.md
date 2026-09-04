@@ -121,8 +121,13 @@ Store 使用 Lease 避免同任务并发执行，使用 canonical JSON 与 SHA-2
 “自进化”不是让 Agent 在线改自己的 Prompt。当前闭环是：
 
 ```text
-Query Result / Execution Trace / User Feedback / Evaluation Failure
-  → candidate Experience Memory
+Successful Query + User confirms correct
+  → QueryRun provenance + deterministic SQL revalidation
+  → stable verified_example in KnowledgeStore
+  → versioned Vanna Stable index + promoted Question-SQL Memory
+
+Incorrect Feedback / Evaluation Failure
+  → reject the original Question-SQL experience
   → deterministic Root-cause Attribution
   → responsible Agent role
   → single-role Policy or Memory candidate
@@ -135,7 +140,7 @@ Query Result / Execution Trace / User Feedback / Evaluation Failure
   → rollback when needed
 ```
 
-失败类型会被归因到职责槽位，例如 Schema Linking → `schema-grounding`，计数 / 粒度 → `query-planning`，SQL 翻译 / conformance → `sql-generation`，错误接受候选 → `text2sql-critic`，路由 / 拆解 / 最终选择 → `text2sql-lead`。一次候选只能修改一个角色的白名单字段；拓扑、Binder、SQL Gate、数据库权限、评测集、审批状态和 Harness 永远不参与自修改。
+正反馈与错误学习是两条不同的记忆线：用户明确确认正确的 Question-SQL 经来源校验和确定性 SQL Gate 后，直接成为可检索的稳定记忆；它不会修改 Agent Policy。错误反馈才会进入受治理的角色经验候选，并被归因到职责槽位，例如 Schema Linking → `schema-grounding`，计数 / 粒度 → `query-planning`，SQL 翻译 / conformance → `sql-generation`，错误接受候选 → `text2sql-critic`，路由 / 拆解 / 最终选择 → `text2sql-lead`。一次候选只能修改一个角色的白名单字段；拓扑、Binder、SQL Gate、数据库权限、评测集、审批状态和 Harness 永远不参与自修改。
 
 晋升门禁不信任评测报告自带的聚合数字：它先校验 baseline / candidate 的匿名逐题 outcome 是否完整、唯一、类型合法且字段语义一致，再自行重算 EX、安全率、可执行率、AST 解析率、framework error、P95 延迟和 SQL Skeleton 分桶；任一声明值不一致、candidate 某个 split 的可执行率 / AST 解析率为零，或 sealed holdout 出现单题回退都会 fail closed。问题文本、Gold SQL 与逐题结果不会写入演化库。
 
@@ -247,7 +252,7 @@ python -m evoagent
 ## 当前限制
 
 - 97 条推断 Relationship 和 4 条 Business Glossary 仍为 candidate；未审核关系不会进入稳定检索。
-- 当前 Vanna stable 索引没有人工批准的 Question-SQL 样例。
+- 仓库提交的 baseline Vanna 索引不含 Question-SQL；本地运行时可把用户确认正确的样例写入新的版本化 Stable 索引，运行数据不会提交到 Git。
 - `QueryPlan/v1` 保守拒绝复合 Join、自连接、CTE、集合运算、通用子查询、OR、HAVING，以及尚无 cardinality / uniqueness 证明的明细 `rows + JOIN`；聚合、分组与存在性查询仍可使用受证据约束的 Join。
 - 中文自然语言值的表面来源检查不是完整语义证明；系统依赖双计划、Lead 审批和 Blind Critic 共同降低误解风险。
 - 本地 SQLite 是当前执行后端；远程数据库事务、资源隔离和生产压测尚待补充。

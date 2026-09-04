@@ -1396,6 +1396,10 @@ textarea { min-height: 150px; resize: vertical; font: 11px/1.7 "Cascadia Code", 
   --panel-accent: var(--accent);
   grid-column: 1 / -1;
 }
+.memory-question-sql {
+  --panel-accent: var(--cyan);
+  grid-column: 1 / -1;
+}
 .memory-layer-head {
   display: grid;
   grid-template-columns: 42px minmax(0, 1fr) auto;
@@ -1483,6 +1487,16 @@ textarea { min-height: 150px; resize: vertical; font: 11px/1.7 "Cascadia Code", 
   font: 560 8px/1.55 "Cascadia Code", Consolas, monospace;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.question-sql-entry code {
+  overflow: auto;
+  padding: 10px;
+  border: 1px dashed rgba(104, 244, 223, .42);
+  border-radius: 9px;
+  background: rgba(7, 18, 21, .5);
+  text-overflow: clip;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 .memory-entry > small { color: var(--faint); font: 650 8px/1.35 monospace; }
 .episodic-decision-reason { display: grid; gap: 4px; padding: 9px 10px; border-left: 3px solid var(--panel-accent); background: color-mix(in srgb, var(--panel-accent) 5%, transparent); }
