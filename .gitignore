@@ -30,6 +30,7 @@ database/*.local.sql
 # Local learning and interview-preparation notes are not release artifacts.
 导学-*.md
 面经-*.md
+Text2SQL自进化适配方案.md
 
 # Runtime checkpoints and resumable evaluation journals are machine-local.
 artifacts/text2sql/checkpoints/
