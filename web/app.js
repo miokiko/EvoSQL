@@ -872,6 +872,9 @@ function renderMemory(data) {
   const working = layers.working || {};
   const episodic = layers.episodic || {};
   const semantic = layers.semantic || {};
+  const sessionView = data.session_view || {};
+  const showingHistory = sessionView.mode === "latest_history";
+  const displaySession = sessionView.display_session_id || data.session_id || "";
   const semanticCounts = semantic.counts || {};
   const questionSql = data.question_sql || {};
   const experienceCounts = questionSql.counts || {};
@@ -881,10 +884,15 @@ function renderMemory(data) {
     if (!jobByMemory.has(job.memory_id)) jobByMemory.set(job.memory_id, job);
   });
   const snapshot = short(data.memory_snapshot_id, 22);
+  const workingLimit = Number(working.retention_limit_per_session || 100);
+  const episodicLimit = Number(episodic.retention_limit || 50);
+  const sessionDetail = showingHistory
+    ? `最近历史会话 · ${short(displaySession, 18)}`
+    : "当前浏览器会话";
 
   $("#memory-stats").innerHTML = [
-    statusCard("Working Memory", number(working.count), "当前会话 · 最多保留 " + number(working.retention_limit_per_session) + " 条", "is-ready"),
-    statusCard("Episodic Memory", number(episodic.count), "当前会话 QueryRun · 最多 " + number(episodic.retention_limit) + " 条", "is-ready"),
+    statusCard("Working Memory", `${number(working.count)} / ${number(workingLimit)}`, `${sessionDetail} · 消息`, "is-ready"),
+    statusCard("Episodic Memory", `${number(episodic.count)} / ${number(episodicLimit)}`, `${sessionDetail} · QueryRun`, "is-ready"),
     statusCard(
       "Agent Semantic",
       `${number(semanticCounts.stable)} 稳定 / ${number(semanticCounts.candidate)} 候选`,
@@ -893,6 +901,18 @@ function renderMemory(data) {
     ),
     statusCard("Question-SQL Memory", number(experienceCounts.promoted), "用户确认正确 · Stable Vanna", experienceCounts.promoted ? "is-ready" : ""),
   ].join("");
+
+  const sessionNotice = $("#memory-session-notice");
+  sessionNotice.classList.toggle("hidden", !showingHistory);
+  sessionNotice.innerHTML = showingHistory
+    ? `<b>当前会话暂无记录</b><span>正在回看最近历史会话 <code>${escapeHtml(short(displaySession, 24))}</code>；新查询仍会写入当前会话。</span>`
+    : "";
+  $("#working-memory-scope").textContent = showingHistory
+    ? `历史会话快照 · 最多 ${number(workingLimit)} 条消息`
+    : `当前会话 · 最多 ${number(workingLimit)} 条消息`;
+  $("#episodic-memory-scope").textContent = showingHistory
+    ? `历史 QueryRun · 每个会话最多 ${number(episodicLimit)} 个`
+    : `当前 QueryRun · 每个会话最多 ${number(episodicLimit)} 个`;
 
   const workingItems = Array.isArray(working.items) ? working.items : [];
   $("#working-memory-list").innerHTML = workingItems.length

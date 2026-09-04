@@ -564,6 +564,7 @@ class Text2SQLWebServiceTests(unittest.TestCase):
 
             dashboard = service.memory("reader", "session-1", 10)
             self.assertEqual(dashboard["contract"], "Text2SQLMemoryDashboard/v1")
+            self.assertEqual(dashboard["session_view"]["mode"], "current")
             self.assertEqual(dashboard["layers"]["working"]["count"], 2)
             self.assertEqual(
                 {item["role"] for item in dashboard["layers"]["working"]["items"]},
@@ -584,6 +585,19 @@ class Text2SQLWebServiceTests(unittest.TestCase):
             self.assertTrue(
                 dashboard["boundaries"]["stable_semantic_memory_only_injected"]
             )
+
+            historical = service.memory("reader", "new-browser-session", 10)
+            self.assertEqual(
+                historical["session_view"]["mode"], "latest_history"
+            )
+            self.assertTrue(
+                historical["session_view"]["current_session_empty"]
+            )
+            self.assertEqual(
+                historical["session_view"]["display_session_id"], "session-1"
+            )
+            self.assertEqual(historical["layers"]["working"]["count"], 2)
+            self.assertEqual(historical["layers"]["episodic"]["count"], 1)
 
     def test_cached_result_qa_trace_does_not_claim_sql_workers_ran(self):
         public = Text2SQLWebService._public_result(

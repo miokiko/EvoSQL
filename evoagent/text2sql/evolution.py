@@ -33,6 +33,8 @@ _RATE_METRICS = {
 _SPLIT_METRICS = (*sorted(_RATE_METRICS), "p95_latency_ms")
 _EXECUTION_ACCURACY_TOLERANCE = 1e-6
 _MIN_CANDIDATE_OPERATIONAL_RATE = 1e-6
+WORKING_MEMORY_RETENTION_PER_SESSION = 100
+EPISODIC_MEMORY_RETENTION_PER_SESSION = 50
 _NON_EXECUTABLE_NON_AST_FAILURE_KINDS = frozenset(
     {"NO_SQL", "PARSE_ERROR", "UNKNOWN_TABLE", "UNKNOWN_COLUMN", "TIMEOUT"}
 )
@@ -1632,8 +1634,16 @@ class Text2SQLEvolutionStore:
                 ),
             )
             self.connection.execute(
-                "DELETE FROM query_traces WHERE task_id NOT IN "
-                "(SELECT task_id FROM query_traces ORDER BY recorded_at DESC LIMIT 50)"
+                "DELETE FROM query_traces WHERE user_id=? AND session_id=? "
+                "AND task_id NOT IN (SELECT task_id FROM query_traces "
+                "WHERE user_id=? AND session_id=? ORDER BY recorded_at DESC LIMIT ?)",
+                (
+                    str(trace.get("user_id") or "local-user")[:200],
+                    str(trace.get("session_id") or "default")[:200],
+                    str(trace.get("user_id") or "local-user")[:200],
+                    str(trace.get("session_id") or "default")[:200],
+                    EPISODIC_MEMORY_RETENTION_PER_SESSION,
+                ),
             )
             self._store_harness_decision(
                 task_id,
@@ -1782,12 +1792,12 @@ class Text2SQLEvolutionStore:
             "working": {
                 "items": [dict(row) for row in working_rows],
                 "count": working_count,
-                "retention_limit_per_session": 100,
+                "retention_limit_per_session": WORKING_MEMORY_RETENTION_PER_SESSION,
             },
             "episodic": {
                 "items": episodic_items,
                 "count": episodic_count,
-                "retention_limit": 50,
+                "retention_limit": EPISODIC_MEMORY_RETENTION_PER_SESSION,
             },
             "semantic": {
                 "items": [dict(row) for row in semantic_rows],
@@ -1803,6 +1813,48 @@ class Text2SQLEvolutionStore:
                 "stable_only_injected": True,
             },
         }
+
+    def list_memory_sessions(
+        self, user_id: str, limit: int = 20
+    ) -> Sequence[Mapping[str, Any]]:
+        """List bounded session summaries for one user, newest activity first."""
+
+        user_key = user_id[:200]
+        bounded = max(1, min(int(limit), 50))
+        rows = self.connection.execute(
+            "SELECT session_id,MAX(last_activity) AS last_activity FROM ("
+            "SELECT session_id,MAX(created_at) AS last_activity FROM memory_messages "
+            "WHERE user_id=? GROUP BY session_id UNION ALL "
+            "SELECT session_id,MAX(recorded_at) AS last_activity FROM query_traces "
+            "WHERE user_id=? GROUP BY session_id) "
+            "WHERE session_id<>'' GROUP BY session_id "
+            "ORDER BY last_activity DESC LIMIT ?",
+            (user_key, user_key, bounded),
+        ).fetchall()
+        sessions = []
+        for row in rows:
+            session_key = str(row["session_id"])
+            working_count = int(
+                self.connection.execute(
+                    "SELECT COUNT(*) FROM memory_messages WHERE user_id=? AND session_id=?",
+                    (user_key, session_key),
+                ).fetchone()[0]
+            )
+            episodic_count = int(
+                self.connection.execute(
+                    "SELECT COUNT(*) FROM query_traces WHERE user_id=? AND session_id=?",
+                    (user_key, session_key),
+                ).fetchone()[0]
+            )
+            sessions.append(
+                {
+                    "session_id": session_key,
+                    "last_activity": str(row["last_activity"] or ""),
+                    "working_count": working_count,
+                    "episodic_count": episodic_count,
+                }
+            )
+        return tuple(sessions)
 
     def prepare_query_attempt(
         self,
@@ -1969,8 +2021,14 @@ class Text2SQLEvolutionStore:
             self.connection.execute(
                 "DELETE FROM memory_messages WHERE message_id NOT IN ("
                 "SELECT message_id FROM memory_messages WHERE user_id=? AND session_id=? "
-                "ORDER BY message_id DESC LIMIT 100) AND user_id=? AND session_id=?",
-                (user_id[:200], session_id[:200], user_id[:200], session_id[:200]),
+                "ORDER BY message_id DESC LIMIT ?) AND user_id=? AND session_id=?",
+                (
+                    user_id[:200],
+                    session_id[:200],
+                    WORKING_MEMORY_RETENTION_PER_SESSION,
+                    user_id[:200],
+                    session_id[:200],
+                ),
             )
 
     def recent_query_context(

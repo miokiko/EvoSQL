@@ -36,12 +36,14 @@ Text2SQL Lead（Query Router + 会话上下文）
 
 ## 2. 四层记忆
 
-- Working Memory：保存当前 user / session 的有限消息，用于本轮上下文。
-- Episodic Memory：保存 QueryRun、独立问题、路由类型、结构化 QuerySpec / SchemaPlan、SQL、最终 Gate、结果摘要和最多 50 行结果快照，用于追问、结果问答与审计。
+- Working Memory：保存当前 user / session 最近 100 条用户与助手消息，用于本轮上下文。
+- Episodic Memory：每个 user / session 保存最近 50 个 QueryRun；每个 QueryRun 包含独立问题、路由类型、结构化 QuerySpec / SchemaPlan、SQL、最终 Gate、结果摘要和最多 50 行结果快照，用于追问、结果问答与审计。
 - Question-SQL Memory：用户确认正确的 Question-SQL 以 `verified_example` 写入 stable KnowledgeStore，再构建版本化 Vanna Stable 索引；经验账本同步标记为 `promoted`，并用 `knowledge_evidence_id` 关联两侧记录。
 - Agent Semantic Memory：五个 Agent 的失败归因经验按 stable / candidate 分层治理；Query Planning 与 SQL Generation 使用独立策略槽，不与 Vanna 混合。Harness 没有 Skill Memory。
 
 使用阿里云模型时，Leader 路由会收到最近 QueryRun 的问题、SQL 与结果元数据；`RESULT_QA` 还会收到所引用 QueryRun 的列名及最多 50 行有限结果快照。完整 SQLite 文件不会上传，历史快照也不会提供给其他用户或会话。
+
+记忆中心默认读取当前浏览器会话；如果当前会话为空但同一用户存在历史记录，页面会明确标注“历史会话回看”并展示最近一个会话。该回看只影响可视化，不会把历史 Working Memory 合并进新会话的 Agent 上下文。
 
 FOLLOW_UP_QUERY 必须显式选择一个当前会话内的 parent；系统不会在 Lead 漏填时静默绑定最近任务。父快照还必须通过 task、user/session、success、最终 Gate、完整版本 pins、严格 QuerySpec/SchemaPlan 与绑定指纹校验，否则整个追问 fail closed，Lead 的 standalone rewrite 也不会继续驱动 Worker。独立问题改写不是事实来源：新 filter 值只能来自本轮原始问题，或来自认证父 QuerySpec；显式 Join 只能来自原始问题的确定性等式解析或可信父 SchemaPlan。该结构化 provenance 只供 Harness 校验，不会把父物理 Schema 暴露给 Query Planning。RESULT_QA 同样要求认证父快照，并且仅允许明确的结果重显；文案从缓存列/行确定性生成，任何比较、过滤、排序或计算要求都会转为新查询。
 

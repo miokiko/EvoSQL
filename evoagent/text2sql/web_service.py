@@ -475,18 +475,52 @@ class Text2SQLWebService:
     def memory(
         self, user_id: str, session_id: str, limit: int = 12
     ) -> Mapping[str, Any]:
-        """Return the three Text2SQL memory layers without private trace payloads."""
+        """Return four memory layers, falling back to the latest visible session."""
         snapshot = self._snapshot()
+        requested_session_id = session_id[:200]
+        display_session_id = requested_session_id
         with Text2SQLEvolutionStore(self.evolution_store_path, snapshot) as evolution:
             dashboard = dict(
-                evolution.memory_dashboard(user_id, session_id, limit)
+                evolution.memory_dashboard(user_id, requested_session_id, limit)
             )
+            sessions = list(evolution.list_memory_sessions(user_id))
+            current_session_empty = (
+                int(dashboard["working"]["count"]) == 0
+                and int(dashboard["episodic"]["count"]) == 0
+            )
+            if current_session_empty:
+                fallback = next(
+                    (
+                        item
+                        for item in sessions
+                        if item["session_id"] != requested_session_id
+                    ),
+                    None,
+                )
+                if fallback:
+                    display_session_id = str(fallback["session_id"])
+                    dashboard = dict(
+                        evolution.memory_dashboard(
+                            user_id, display_session_id, limit
+                        )
+                    )
             snapshot_id = evolution.memory_snapshot_id
         return {
             "contract": "Text2SQLMemoryDashboard/v1",
             "memory_snapshot_id": snapshot_id,
             "storage": "local-sqlite",
-            "session_id": session_id[:200],
+            "session_id": requested_session_id,
+            "session_view": {
+                "requested_session_id": requested_session_id,
+                "display_session_id": display_session_id,
+                "mode": (
+                    "latest_history"
+                    if display_session_id != requested_session_id
+                    else "current"
+                ),
+                "current_session_empty": current_session_empty,
+                "available_sessions": sessions,
+            },
             "layers": {
                 "working": dashboard["working"],
                 "episodic": dashboard["episodic"],

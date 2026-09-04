@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#ff4fc3">
   <title>EvoSQL · 可进化多智能体 Text2SQL</title>
   <meta name="description" content="EvoSQL 多智能体 Text2SQL 问答、知识、评测与受控自进化控制台">
-  <link rel="stylesheet" href="/assets/app.css?v=20260905.memory1">
+  <link rel="stylesheet" href="/assets/app.css?v=20260905.memory2">
 </head>
 <body>
   <div class="app-shell text2sql-shell">
@@ -224,11 +224,13 @@
           <article class="panel text2sql-status-card loading"></article>
         </div>
 
+        <div class="memory-session-notice hidden" id="memory-session-notice" role="status"></div>
+
         <div class="memory-layer-grid">
           <article class="panel memory-layer-card memory-working">
             <div class="memory-layer-head">
               <span class="memory-layer-number">01</span>
-              <div><p class="eyebrow">SESSION CONTEXT</p><h3>Working Memory</h3><small>当前用户与会话 · 最近消息</small></div>
+              <div><p class="eyebrow">SESSION CONTEXT</p><h3>Working Memory</h3><small id="working-memory-scope">当前用户与会话 · 最近消息</small></div>
               <span class="memory-policy-chip">短期</span>
             </div>
             <div class="memory-stream" id="working-memory-list">
@@ -239,7 +241,7 @@
           <article class="panel memory-layer-card memory-episodic">
             <div class="memory-layer-head">
               <span class="memory-layer-number">02</span>
-              <div><p class="eyebrow">QUERY HISTORY</p><h3>Episodic Memory</h3><small>QueryRun、Harness 裁决与人工审核</small></div>
+              <div><p class="eyebrow">QUERY HISTORY</p><h3>Episodic Memory</h3><small id="episodic-memory-scope">QueryRun、Harness 裁决与人工审核</small></div>
               <span class="memory-policy-chip">可追溯</span>
             </div>
             <div class="memory-stream" id="episodic-memory-list">
@@ -410,6 +412,6 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="/assets/app.js?v=20260905.memory1"></script>
+  <script src="/assets/app.js?v=20260905.memory2"></script>
 </body>
 </html>

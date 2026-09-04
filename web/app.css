@@ -1337,6 +1337,20 @@ textarea { min-height: 150px; resize: vertical; font: 11px/1.7 "Cascadia Code", 
   gap: 24px;
 }
 .memory-page-heading > div { max-width: 760px; }
+.memory-session-notice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: -2px 0 18px;
+  padding: 11px 14px;
+  border: 2px solid rgba(255, 230, 109, .42);
+  border-radius: 13px 5px 13px 13px;
+  color: var(--muted);
+  background: rgba(255, 230, 109, .06);
+  font-size: 9px;
+}
+.memory-session-notice b { color: var(--yellow); white-space: nowrap; }
+.memory-session-notice code { color: #fff0a2; font: 700 8px/1.4 "Cascadia Code", Consolas, monospace; }
 .memory-lineage {
   --panel-accent: var(--accent);
   display: grid;

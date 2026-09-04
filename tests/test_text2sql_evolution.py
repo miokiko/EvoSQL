@@ -7,6 +7,7 @@ from pathlib import Path
 from evoagent.text2sql.agentic import Text2SQLAgenticEngine
 from evoagent.text2sql.database_tools import ROLE_TOOL_PERMISSIONS, Text2SQLToolSuite
 from evoagent.text2sql.evolution import (
+    EPISODIC_MEMORY_RETENTION_PER_SESSION,
     Text2SQLEvolutionStore,
     evaluate_knowledge_promotion_gate,
     evaluate_memory_promotion_gate,
@@ -720,6 +721,38 @@ class EvolutionStoreTests(unittest.TestCase):
             "Repeated duplicate-count failures",
             "test-author",
         )
+
+    def test_episodic_retention_is_per_session_not_global(self):
+        self.store.save_query_trace(
+            {
+                "task_id": "other-session-run",
+                "status": "success",
+                "question": "其他会话",
+                "user_id": "reader",
+                "session_id": "session-b",
+                "recorded_at": "2026-09-04T00:00:00+00:00",
+            }
+        )
+        for index in range(EPISODIC_MEMORY_RETENTION_PER_SESSION + 1):
+            self.store.save_query_trace(
+                {
+                    "task_id": "session-a-%03d" % index,
+                    "status": "success",
+                    "question": "当前会话 %d" % index,
+                    "user_id": "reader",
+                    "session_id": "session-a",
+                    "recorded_at": "2026-09-04T00:01:%02d+00:00" % index,
+                }
+            )
+        sessions = {
+            item["session_id"]: item
+            for item in self.store.list_memory_sessions("reader")
+        }
+        self.assertEqual(
+            sessions["session-a"]["episodic_count"],
+            EPISODIC_MEMORY_RETENTION_PER_SESSION,
+        )
+        self.assertEqual(sessions["session-b"]["episodic_count"], 1)
 
     def test_recent_query_context_includes_bounded_conversation_messages(self):
         self.store.append_message("user-1", "session-1", "user", "先按等级统计", "task-1")
