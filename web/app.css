@@ -1593,6 +1593,87 @@ input:focus, select:focus, textarea:focus,
 .text2sql-table tbody tr:nth-child(even) { background: rgba(255, 79, 195, .055); }
 .text2sql-table tbody tr:hover { background: rgba(104, 244, 223, .06); }
 
+.chart-panel {
+  --panel-accent: var(--yellow);
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 90% 12%, rgba(255, 230, 109, .11), transparent 18rem),
+    radial-gradient(circle at 5% 105%, rgba(255, 79, 195, .12), transparent 20rem),
+    var(--surface);
+}
+.chart-panel-head { align-items: center; }
+.chart-controls {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border: 2px solid rgba(104, 244, 223, .32);
+  border-radius: 999px;
+  background: rgba(13, 7, 18, .84);
+}
+.chart-toggle {
+  min-height: 30px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--muted);
+  background: transparent;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.chart-toggle:hover { color: var(--ink); }
+.chart-toggle.active {
+  color: #210818;
+  background: linear-gradient(100deg, var(--yellow), var(--accent-bright));
+  box-shadow: 3px 3px 0 rgba(104, 244, 223, .27);
+}
+.chart-description {
+  margin: 14px 0 10px;
+  color: var(--ink);
+  font: 750 11px/1.5 "Cascadia Code", Consolas, monospace;
+}
+.text2sql-chart {
+  overflow-x: auto;
+  min-height: 250px;
+  border: 2px solid var(--line-strong);
+  border-radius: 18px 7px 18px 18px;
+  background:
+    linear-gradient(rgba(255, 255, 255, .025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, .025) 1px, transparent 1px),
+    rgba(10, 5, 14, .72);
+  background-size: 24px 24px;
+}
+.result-chart { display: block; width: 100%; min-width: 590px; height: auto; }
+.chart-grid-line { stroke: rgba(255, 255, 255, .08); stroke-width: 1; stroke-dasharray: 4 7; }
+.chart-zero-line { stroke: rgba(104, 244, 223, .48); stroke-width: 1.5; }
+.chart-axis-label, .chart-x-label, .chart-tick-label, .chart-value-label {
+  fill: var(--muted);
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 11px;
+}
+.chart-value-label { fill: var(--ink); font-size: 12px; font-weight: 800; }
+.chart-bar {
+  fill: var(--accent);
+  stroke: rgba(255, 255, 255, .2);
+  stroke-width: 1;
+  filter: drop-shadow(4px 4px 0 rgba(167, 121, 255, .22));
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: chart-grow .5s cubic-bezier(.2, .8, .2, 1) both;
+  animation-delay: calc(var(--mark-index) * 45ms);
+}
+.chart-mark:nth-of-type(4n + 2) .chart-bar { fill: var(--cyan); }
+.chart-mark:nth-of-type(4n + 3) .chart-bar { fill: var(--yellow); }
+.chart-mark:nth-of-type(4n) .chart-bar { fill: var(--purple); }
+.chart-line { fill: none; stroke: var(--accent-bright); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(4px 4px 0 rgba(104, 244, 223, .2)); }
+.chart-dot { fill: var(--yellow); stroke: #180b20; stroke-width: 3; }
+.chart-source { margin: 10px 0 0; color: var(--faint); font-size: 9px; line-height: 1.5; }
+
+@keyframes chart-grow {
+  from { opacity: .15; transform: scaleX(.02); }
+  to { opacity: 1; transform: scaleX(1); }
+}
+
 .text2sql-agent-item,
 .session-item,
 .trace-item,
@@ -1669,4 +1750,7 @@ input:focus, select:focus, textarea:focus,
   .text2sql-hero::before { left: auto; right: 26px; bottom: 18px; }
   .text2sql-status-card:nth-child(even) { transform: none; }
   .page-heading::after { letter-spacing: 1px; }
+  .chart-panel-head { align-items: flex-start; gap: 12px; }
+  .chart-controls { align-self: flex-start; }
+  .text2sql-chart { margin-inline: -3px; }
 }

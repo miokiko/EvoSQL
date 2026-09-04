@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#ff4fc3">
   <title>EvoSQL · 可进化多智能体 Text2SQL</title>
   <meta name="description" content="EvoSQL 多智能体 Text2SQL 问答、知识、评测与受控自进化控制台">
-  <link rel="stylesheet" href="/assets/app.css?v=20260904.pink2">
+  <link rel="stylesheet" href="/assets/app.css?v=20260904.pink3">
 </head>
 <body>
   <div class="app-shell text2sql-shell">
@@ -92,6 +92,18 @@
               </div>
               <div class="answer-value" id="text2sql-answer-summary">--</div>
               <div class="answer-meta" id="text2sql-answer-meta"></div>
+            </article>
+            <article class="panel chart-panel hidden" id="text2sql-chart-panel">
+              <div class="panel-head chart-panel-head">
+                <div><p class="eyebrow">VISUAL ANSWER</p><h3>结果图表</h3></div>
+                <div class="chart-controls" id="text2sql-chart-controls" aria-label="图表类型">
+                  <button class="chart-toggle active" type="button" data-chart-type="bar">柱状图</button>
+                  <button class="chart-toggle" type="button" data-chart-type="line">折线图</button>
+                </div>
+              </div>
+              <p class="chart-description" id="text2sql-chart-description">根据最终结果集自动生成</p>
+              <div class="text2sql-chart" id="text2sql-chart"></div>
+              <p class="chart-source">图表来自安全门禁通过后的本地只读 SQL 结果，不会触发额外模型调用。</p>
             </article>
             <article class="panel query-feedback-panel" id="query-feedback-panel">
               <div class="panel-head">
@@ -284,6 +296,6 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="/assets/app.js?v=20260904.2"></script>
+  <script src="/assets/app.js?v=20260904.3"></script>
 </body>
 </html>

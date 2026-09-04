@@ -33,6 +33,8 @@ let selectedTraceId = "";
 let activeSql = "";
 let activeTaskId = "";
 let activeQueryType = "DATA_QUERY";
+let activeChartModel = null;
+let activeChartType = "bar";
 let toastTimer = null;
 const sessionHistory = [];
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -51,7 +53,7 @@ function persistentSessionId() {
 }
 
 const text2sqlSessionId = persistentSessionId();
-const pendingQueryKey = `evoagent.text2sql.pending.${text2sqlSessionId}`;
+const pendingQueryKey = "evoagent.text2sql.pending." + text2sqlSessionId;
 
 function readPendingQuery() {
   try {
@@ -118,7 +120,7 @@ function show(view, updateHash = true) {
   });
   $("#page-title").textContent = views[selected].title;
   $("#page-kicker").textContent = views[selected].kicker;
-  document.title = `${views[selected].title} · EvoSQL`;
+  document.title = views[selected].title + " · EvoSQL";
   if (updateHash || selected !== view) history.replaceState(null, "", `#${selected}`);
   window.scrollTo({ top: 0, behavior: reduceMotion.matches ? "auto" : "smooth" });
 }
@@ -455,6 +457,156 @@ function renderTable(answer = {}) {
   return `<table class="text2sql-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
 }
 
+function finiteChartNumber(value) {
+  if (typeof value === "boolean" || value === null || value === "") return null;
+  const parsed = typeof value === "number" ? value : Number(String(value).replaceAll(",", ""));
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function buildChartModel(answer = {}) {
+  const columns = Array.isArray(answer.columns) ? answer.columns.map(String) : [];
+  const sourceRows = Array.isArray(answer.rows) ? answer.rows : [];
+  if (columns.length < 2 || sourceRows.length < 2) return null;
+  const rows = sourceRows.map((row) => Array.isArray(row) ? row : columns.map((column) => row?.[column]));
+  const numericIndexes = columns.map((_, index) => index).filter((index) => {
+    const values = rows.map((row) => row[index]).filter((value) => value !== null && value !== "");
+    return values.length > 0 && values.every((value) => finiteChartNumber(value) !== null);
+  });
+  if (!numericIndexes.length) return null;
+  let categoryIndex = columns.findIndex((_, index) => !numericIndexes.includes(index));
+  let valueIndex = numericIndexes.find((index) => index !== categoryIndex);
+  if (categoryIndex < 0) {
+    categoryIndex = 0;
+    valueIndex = numericIndexes.find((index) => index !== categoryIndex);
+  }
+  if (valueIndex === undefined) return null;
+  const points = rows.slice(0, 12).map((row) => ({
+    label: row[categoryIndex] === null ? "NULL" : String(row[categoryIndex]),
+    value: finiteChartNumber(row[valueIndex]),
+  })).filter((point) => point.value !== null);
+  if (points.length < 2) return null;
+  const categoryName = columns[categoryIndex];
+  const valueName = columns[valueIndex];
+  const temporal = /(date|time|year|month|day|日期|时间|年份|年度|月份|月|年)/i.test(categoryName)
+    || points.every((point) => /^\d{4}(?:[-/年]\d{1,2})?/.test(point.label));
+  return {
+    categoryName,
+    valueName,
+    points,
+    truncated: sourceRows.length > points.length,
+    suggestedType: temporal ? "line" : "bar",
+  };
+}
+
+function formatChartValue(value) {
+  return Number(value).toLocaleString("zh-CN", { maximumFractionDigits: 2 });
+}
+
+function barChartSvg(model) {
+  const width = 760;
+  const rowHeight = 46;
+  const height = 32 + model.points.length * rowHeight;
+  const plotLeft = 170;
+  const plotRight = 92;
+  const plotWidth = width - plotLeft - plotRight;
+  const values = model.points.map((point) => point.value);
+  const domainMin = Math.min(0, ...values);
+  const domainMax = Math.max(0, ...values);
+  const span = domainMax - domainMin || 1;
+  const scale = (value) => plotLeft + ((value - domainMin) / span) * plotWidth;
+  const baseline = scale(0);
+  const grid = [0, .25, .5, .75, 1].map((ratio) => {
+    const x = plotLeft + ratio * plotWidth;
+    return '<line class="chart-grid-line" x1="' + x + '" x2="' + x + '" y1="10" y2="' + (height - 14) + '" />';
+  }).join("");
+  const bars = model.points.map((point, index) => {
+    const y = 18 + index * rowHeight;
+    const valueX = scale(point.value);
+    const x = Math.min(baseline, valueX);
+    const barWidth = Math.max(2, Math.abs(valueX - baseline));
+    const label = escapeHtml(short(point.label, 18));
+    const value = escapeHtml(formatChartValue(point.value));
+    const valueLabelX = point.value >= 0 ? Math.min(valueX + 10, width - 48) : Math.max(valueX - 10, plotLeft - 8);
+    const anchor = point.value >= 0 ? "start" : "end";
+    return '<g class="chart-mark" style="--mark-index:' + index + '">'
+      + '<title>' + escapeHtml(point.label) + '：' + value + '</title>'
+      + '<text class="chart-axis-label" x="154" y="' + (y + 18) + '" text-anchor="end">' + label + '</text>'
+      + '<rect class="chart-bar" x="' + x + '" y="' + y + '" width="' + barWidth + '" height="25" rx="7" />'
+      + '<text class="chart-value-label" x="' + valueLabelX + '" y="' + (y + 18) + '" text-anchor="' + anchor + '">' + value + '</text>'
+      + '</g>';
+  }).join("");
+  return '<svg class="result-chart" viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="查询结果柱状图">'
+    + grid
+    + '<line class="chart-zero-line" x1="' + baseline + '" x2="' + baseline + '" y1="10" y2="' + (height - 14) + '" />'
+    + bars
+    + '</svg>';
+}
+
+function lineChartSvg(model) {
+  const width = 760;
+  const height = 330;
+  const left = 70;
+  const right = 30;
+  const top = 28;
+  const bottom = 72;
+  const plotWidth = width - left - right;
+  const plotHeight = height - top - bottom;
+  const values = model.points.map((point) => point.value);
+  let min = Math.min(...values);
+  let max = Math.max(...values);
+  if (min === max) {
+    const padding = Math.abs(min || 1) * .1;
+    min -= padding;
+    max += padding;
+  }
+  const xFor = (index) => left + (model.points.length === 1 ? 0 : index / (model.points.length - 1)) * plotWidth;
+  const yFor = (value) => top + (1 - (value - min) / (max - min)) * plotHeight;
+  const grid = [0, .25, .5, .75, 1].map((ratio) => {
+    const y = top + ratio * plotHeight;
+    const value = max - ratio * (max - min);
+    return '<g><line class="chart-grid-line" x1="' + left + '" x2="' + (width - right) + '" y1="' + y + '" y2="' + y + '" />'
+      + '<text class="chart-tick-label" x="' + (left - 12) + '" y="' + (y + 4) + '" text-anchor="end">' + escapeHtml(formatChartValue(value)) + '</text></g>';
+  }).join("");
+  const coordinates = model.points.map((point, index) => xFor(index) + "," + yFor(point.value)).join(" ");
+  const marks = model.points.map((point, index) => {
+    const x = xFor(index);
+    const y = yFor(point.value);
+    return '<g class="chart-mark" style="--mark-index:' + index + '"><title>'
+      + escapeHtml(point.label) + '：' + escapeHtml(formatChartValue(point.value))
+      + '</title><circle class="chart-dot" cx="' + x + '" cy="' + y + '" r="6" />'
+      + '<text class="chart-x-label" x="' + x + '" y="' + (height - 38) + '" text-anchor="middle">' + escapeHtml(short(point.label, 10)) + '</text></g>';
+  }).join("");
+  return '<svg class="result-chart" viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="查询结果折线图">'
+    + grid
+    + '<polyline class="chart-line" points="' + coordinates + '" />'
+    + marks
+    + '</svg>';
+}
+
+function renderActiveChart() {
+  if (!activeChartModel) return;
+  $$("[data-chart-type]", $("#text2sql-chart-controls")).forEach((button) => {
+    button.classList.toggle("active", button.dataset.chartType === activeChartType);
+  });
+  $("#text2sql-chart").innerHTML = activeChartType === "line"
+    ? lineChartSvg(activeChartModel)
+    : barChartSvg(activeChartModel);
+}
+
+function renderVisualization(answer = {}, accepted = false) {
+  const panel = $("#text2sql-chart-panel");
+  activeChartModel = accepted ? buildChartModel(answer) : null;
+  panel.classList.toggle("hidden", !activeChartModel);
+  if (!activeChartModel) {
+    $("#text2sql-chart").innerHTML = "";
+    return;
+  }
+  activeChartType = activeChartModel.suggestedType;
+  $("#text2sql-chart-description").textContent = activeChartModel.categoryName + " × " + activeChartModel.valueName
+    + (activeChartModel.truncated ? " · 展示前 12 个结果点" : " · " + activeChartModel.points.length + " 个结果点");
+  renderActiveChart();
+}
+
 function answerSummary(answer = {}) {
   if (answer.summary_text) {
     return { value: String(answer.summary_text), meta: "基于已授权的历史 QueryRun 结果 · 未重新执行 SQL" };
@@ -494,6 +646,7 @@ function renderResult(result) {
     ? `<i></i>${activeQueryType === "RESULT_QA" ? "会话结果回答" : "安全门禁通过"}`
     : `未执行${gates.errors?.length ? ` · ${gates.errors.length} 项拦截` : ""}`;
   $("#text2sql-answer").innerHTML = renderTable(answer);
+  renderVisualization(answer, accepted);
   $("#text2sql-row-count").textContent = `${number(answer.row_count)} 行${answer.truncated ? " · 已截断" : ""}`;
   $("#text2sql-agent-trace").innerHTML = (result.agents || []).map((agent, index) => {
     const detail = agent.detail && Object.keys(agent.detail).length ? `<code>${escapeHtml(JSON.stringify(agent.detail))}</code>` : "";
@@ -572,7 +725,7 @@ async function submitQuestion() {
   if (!pendingText2SQLQuery || pendingText2SQLQuery.question !== question) {
     pendingText2SQLQuery = {
       question,
-      taskId: `text2sql-web-${globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`}`,
+      taskId: "text2sql-web-" + (globalThis.crypto?.randomUUID?.() || Date.now() + "-" + Math.random().toString(16).slice(2)),
     };
     writePendingQuery(pendingText2SQLQuery);
   }
@@ -602,8 +755,8 @@ async function submitQuestion() {
       writePendingQuery(null);
     }
     $("#text2sql-form-note").textContent = identityRejected
-      ? `${error.message}；旧恢复标识已清除，再次发送会创建新任务。`
-      : `${error.message}；再次发送同一问题将从 checkpoint 续跑。`;
+      ? error.message + "；旧恢复标识已清除，再次发送会创建新任务。"
+      : error.message + "；再次发送同一问题将从 checkpoint 续跑。";
     toast(error.message);
   } finally {
     setBusy(button, false);
@@ -625,6 +778,12 @@ $("#text2sql-question").addEventListener("keydown", (event) => {
     event.preventDefault();
     if (!$(".text2sql-submit").disabled) submitQuestion();
   }
+});
+$("#text2sql-chart-controls").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-chart-type]");
+  if (!button || !activeChartModel) return;
+  activeChartType = button.dataset.chartType;
+  renderActiveChart();
 });
 $("#copy-sql").addEventListener("click", async () => {
   if (!activeSql) return;
