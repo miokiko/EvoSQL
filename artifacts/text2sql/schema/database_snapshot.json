@@ -4,7 +4,7 @@
   "database": "evo_text2sql_eval",
   "source": {
     "kind": "mysql_dump",
-    "path": "/Users/tyl/Desktop/EvoAgent-Text2SQL/database/test1_full_20241118.sql",
+    "path": "database/test1_full_20241118.sql",
     "dump_sha256": "f4fff88ef9ba98c368bbe2d9f7daf34d9e943c22a1d344596e4c604bc1ad39c3"
   },
   "generated_at": "2026-09-03T06:28:47.821482+00:00",

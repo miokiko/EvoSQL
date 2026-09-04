@@ -45,7 +45,9 @@ python scripts/query_text2sql_knowledge.py \
   --principal local-user
 ```
 
-可选角色为 `lead`、`schema-grounding`、`sql-strategy`、`critic`。各角色使用不同的知识类型权重和数量上限，但共同遵守三个硬门禁：只读取当前数据库快照、只读取 `stable`、只返回调用者 ACL 允许的内容。
+当前 `plan-first-text2sql-v3` 运行协议包含五个 Agent：`text2sql-lead`、`schema-grounding`、`query-planning`、`sql-generation`、`text2sql-critic`。实际请求由 Evidence Orchestration 统一读取 stable 证据：Schema Grounding 可接收物理 Schema、值域、关系和已审核样例；Query Planning 保持 schema-blind，只接收问题和已审核的 `business_glossary`；SQL Generation 只消费 Lead 审核、Harness 铸造的 `ApprovedQueryPlan`；Blind Critic 只审核通过 Harness 候选门禁的匿名候选。Harness 负责确定性绑定、SQL Gate 和只读执行，不是 Agent，也不是 Skill。
+
+上面的 `query_text2sql_knowledge.py` 是 Phase 1 保留的独立只读检查入口，其 `--role` 仍暴露历史检索视图名 `lead`、`schema-grounding`、`sql-strategy`、`critic`。其中 `sql-strategy` 仅表示旧版检索权重视图，不是当前 Agent 或可演化 Skill，也不能用于新 Policy/Memory 写入。无论选择哪个兼容视图，KnowledgeStore 都共同遵守三个硬门禁：只读取当前数据库快照、只读取 `stable`、只返回调用者 ACL 允许的内容。
 
 返回的 `EvidencePack` 固定：
 

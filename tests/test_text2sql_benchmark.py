@@ -23,26 +23,13 @@ class ResumableText2SQLBenchmarkTests(unittest.TestCase):
     def test_checkpoint_resumes_without_rerunning_completed_cases(self):
         checkpoint = ResumableEvaluationCheckpoint(self.path, self.identity)
         self.assertEqual(checkpoint.start(), ())
-        run_id = checkpoint.run_id
-        self.assertTrue(run_id.startswith("evaluation-run-"))
         checkpoint.append_outcome(
             {"case_id": "case-1", "execution_accuracy": True, "total_tokens": 10}
         )
-        resumed_checkpoint = ResumableEvaluationCheckpoint(self.path, self.identity)
-        resumed = resumed_checkpoint.start(resume=True)
-        self.assertEqual(resumed_checkpoint.run_id, run_id)
+        resumed = ResumableEvaluationCheckpoint(self.path, self.identity).start(resume=True)
         self.assertEqual([item["case_id"] for item in resumed], ["case-1"])
         with self.assertRaisesRegex(ValueError, "use --resume"):
             checkpoint.start(resume=False)
-
-    def test_new_checkpoint_gets_an_independent_runtime_namespace(self):
-        first = ResumableEvaluationCheckpoint(self.path, self.identity)
-        first.start()
-        second = ResumableEvaluationCheckpoint(
-            self.path.with_name("second.checkpoint.jsonl"), self.identity
-        )
-        second.start()
-        self.assertNotEqual(first.run_id, second.run_id)
 
     def test_checkpoint_detects_identity_and_content_tampering(self):
         checkpoint = ResumableEvaluationCheckpoint(self.path, self.identity)

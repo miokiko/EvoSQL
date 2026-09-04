@@ -145,6 +145,37 @@ class AgentRuntime:
         span_factory: Optional[Callable[[str, Dict[str, Any]], Any]] = None,
         non_retryable: Tuple[type, ...] = (ValueError, RuntimeCancelled, RuntimeBudgetExceeded),
     ) -> Dict[str, Any]:
+        runtime_nodes = tuple(nodes)
+        node_names = tuple(node.name for node in runtime_nodes)
+        seen_names = set()
+        duplicate_names = set()
+        for name in node_names:
+            if name in seen_names:
+                duplicate_names.add(name)
+            seen_names.add(name)
+        if duplicate_names:
+            raise ValueError(
+                "runtime node names must be unique: %s"
+                % ", ".join(sorted(duplicate_names))
+            )
+
+        checkpoint_node_order = None
+        if checkpoint_store is not None:
+            checkpoint_node_order = getattr(checkpoint_store, "node_order", None)
+            if checkpoint_node_order is None:
+                checkpoint_session = getattr(checkpoint_store, "session", None)
+                checkpoint_node_order = getattr(
+                    checkpoint_session, "node_order", None
+                )
+        if checkpoint_node_order is not None:
+            bound_node_order = tuple(str(name) for name in checkpoint_node_order)
+            # An empty order represents a legacy/unbound checkpoint store. Once
+            # a graph is bound, its complete sequence is immutable for resumes.
+            if bound_node_order and bound_node_order != node_names:
+                raise ValueError(
+                    "runtime node sequence does not match checkpoint-bound graph"
+                )
+
         state = dict(initial_state)
         started = time.monotonic()
         steps = 0
@@ -165,7 +196,7 @@ class AgentRuntime:
                 emit("budget_exhausted", node)
                 raise RuntimeBudgetExceeded("task execution budget exceeded")
 
-        for node in nodes:
+        for node in runtime_nodes:
             cached = checkpoints.get(node.name) if node.checkpoint else None
             if cached and cached.get("status") == "completed":
                 output = dict(cached.get("state") or {})

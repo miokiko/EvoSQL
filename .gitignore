@@ -9,12 +9,14 @@ htmlcov/
 build/
 dist/
 *.egg-info/
+
 *.db
 *.sqlite3
 *.db-wal
 *.db-shm
 *.sqlite3-wal
 *.sqlite3-shm
+
 .env
 .env.*
 !.env.example
@@ -22,20 +24,19 @@ dist/
 *.pem
 *.log
 *.pid
+
 database/*.local.sql
 
-# Local legacy resume notes are superseded by the EvoSQL guides.
-导学-EvoAgent.md
-面经-EvoAgent.md
+# Local learning and interview-preparation notes are not release artifacts.
+导学-*.md
+面经-*.md
 
-# Keep interview preparation notes local.
-面经-EvoSQL.md
-
-# Keep compact, reviewable evaluation reports; omit resumable runtime journals.
+# Runtime checkpoints and resumable evaluation journals are machine-local.
+artifacts/text2sql/checkpoints/
 artifacts/text2sql/evaluation/*.checkpoint.jsonl
 artifacts/text2sql/evaluation/*recovery*.json
 
-# Vanna/Chroma indexes are reproducible binary build outputs. Keep manifests only.
+# Vanna/Chroma indexes are reproducible binary outputs. Keep manifests only.
 artifacts/text2sql/vanna/**/*
 !artifacts/text2sql/vanna/**/
 !artifacts/text2sql/vanna/**/manifest.json

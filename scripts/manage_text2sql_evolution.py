@@ -96,13 +96,38 @@ def parser() -> argparse.ArgumentParser:
     memory_add.add_argument("--evidence", type=Path)
 
     memory_list = commands.add_parser("memory-list")
-    memory_list.add_argument("--state", choices=("candidate", "stable", "rejected"), default="")
+    memory_list.add_argument(
+        "--state",
+        choices=(
+            "candidate",
+            "approved",
+            "evaluating",
+            "evaluated",
+            "evaluation_failed",
+            "stable",
+            "rejected",
+            "retired",
+        ),
+        default="",
+    )
 
     memory_review = commands.add_parser("memory-review")
     memory_review.add_argument("--memory-id", required=True)
     memory_review.add_argument("--decision", choices=("approve", "reject"), required=True)
     memory_review.add_argument("--actor", required=True)
     memory_review.add_argument("--human-reviewed", action="store_true", required=True)
+    memory_review.add_argument("--review-note", default="")
+
+    memory_activate = commands.add_parser("memory-activate")
+    memory_activate.add_argument("--memory-id", required=True)
+    memory_activate.add_argument("--actor", required=True)
+    memory_activate.add_argument("--reason", required=True)
+    memory_activate.add_argument("--human-approved", action="store_true", required=True)
+
+    memory_rollback = commands.add_parser("memory-rollback")
+    memory_rollback.add_argument("--memory-id", required=True)
+    memory_rollback.add_argument("--actor", required=True)
+    memory_rollback.add_argument("--reason", required=True)
 
     capture = commands.add_parser("capture-training-failures")
     capture.add_argument("--report", type=Path, required=True)
@@ -268,14 +293,30 @@ def main() -> int:
         elif args.command == "memory-list":
             output = store.list_memory(args.state)
         elif args.command == "memory-review":
-            store.review_memory(
-                args.memory_id, args.decision, args.actor, args.human_reviewed
+            reviewed = store.review_memory(
+                args.memory_id,
+                args.decision,
+                args.actor,
+                args.human_reviewed,
+                args.review_note,
             )
             output = {
                 "memory_id": args.memory_id,
                 "decision": args.decision,
+                "state": reviewed["state"],
                 "memory_snapshot_id": store.memory_snapshot_id,
             }
+        elif args.command == "memory-activate":
+            output = store.activate_memory(
+                args.memory_id,
+                args.actor,
+                args.reason,
+                args.human_approved,
+            )
+        elif args.command == "memory-rollback":
+            output = store.rollback_memory(
+                args.memory_id, args.actor, args.reason
+            )
         elif args.command == "capture-training-failures":
             report = _json(args.report)
             memory_ids = store.capture_training_failures(

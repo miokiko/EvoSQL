@@ -34,6 +34,15 @@ TEXT2SQL_QUERY_FEEDBACK = re.compile(
 TEXT2SQL_EXPERIENCE_REVIEW = re.compile(
     r"^/v1/text2sql/experiences/([A-Za-z0-9_-]+)/review$"
 )
+TEXT2SQL_EXPERIENCE_ACTION = re.compile(
+    r"^/v1/text2sql/experiences/([A-Za-z0-9_-]+)/(evaluation)$"
+)
+TEXT2SQL_MEMORY_REVIEW = re.compile(
+    r"^/v1/text2sql/memories/([A-Za-z0-9_-]+)/review$"
+)
+TEXT2SQL_MEMORY_ACTION = re.compile(
+    r"^/v1/text2sql/memories/([A-Za-z0-9_-]+)/(evaluation|activate|rollback)$"
+)
 WEB_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "web"))
 
 
@@ -202,6 +211,18 @@ class ApiHandler(BaseHTTPRequestHandler):
                 dict(
                     self._text2sql_service().traces(
                         int(query.get("limit", [20])[0])
+                    )
+                ),
+            )
+            return
+        if path == "/api/text2sql/memory":
+            self._send_json(
+                200,
+                dict(
+                    self._text2sql_service().memory(
+                        principal.username,
+                        str(query.get("session_id", ["default"])[0]),
+                        int(query.get("limit", [12])[0]),
                     )
                 ),
             )
@@ -430,7 +451,10 @@ class ApiHandler(BaseHTTPRequestHandler):
                     principal.username,
                     "text2sql.query.feedback",
                     feedback_match.group(1),
-                    {"decision": result["feedback"]},
+                    {
+                        "decision": result["feedback"],
+                        "has_comment": bool(str(payload.get("note") or "").strip()),
+                    },
                 )
                 self._send_json(201, dict(result))
                 return
@@ -442,15 +466,90 @@ class ApiHandler(BaseHTTPRequestHandler):
                     experience_match.group(1),
                     str(payload.get("decision") or ""),
                     principal.username,
+                    str(payload.get("review_note") or ""),
                 )
                 self.service.store.audit(
                     principal.tenant_id,
                     principal.username,
                     "text2sql.experience.review",
                     experience_match.group(1),
-                    {"decision": str(payload.get("decision") or "")},
+                    {
+                        "decision": str(payload.get("decision") or ""),
+                        "has_review_note": bool(str(payload.get("review_note") or "").strip()),
+                    },
                 )
                 self._send_json(200, dict(result))
+                return
+            experience_action_match = TEXT2SQL_EXPERIENCE_ACTION.match(path)
+            if experience_action_match:
+                principal = self._principal("manage")
+                self._read_json(body)
+                result = self._text2sql_service().start_experience_evaluation(
+                    experience_action_match.group(1), principal.username
+                )
+                self.service.store.audit(
+                    principal.tenant_id,
+                    principal.username,
+                    "text2sql.experience.evaluation",
+                    experience_action_match.group(1),
+                    {"status": str(result.get("status") or "")},
+                )
+                self._send_json(202, dict(result))
+                return
+            memory_match = TEXT2SQL_MEMORY_REVIEW.match(path)
+            if memory_match:
+                principal = self._principal("manage")
+                payload = self._read_json(body)
+                result = self._text2sql_service().review_memory_candidate(
+                    memory_match.group(1),
+                    str(payload.get("decision") or ""),
+                    principal.username,
+                    target_skill=str(payload.get("target_skill") or ""),
+                    failure_kind=str(payload.get("failure_kind") or ""),
+                    content=str(payload.get("content") or ""),
+                    review_note=str(payload.get("review_note") or ""),
+                )
+                self.service.store.audit(
+                    principal.tenant_id,
+                    principal.username,
+                    "text2sql.memory.review",
+                    memory_match.group(1),
+                    {
+                        "decision": str(payload.get("decision") or ""),
+                        "has_review_note": bool(str(payload.get("review_note") or "").strip()),
+                    },
+                )
+                self._send_json(200, dict(result))
+                return
+            memory_action_match = TEXT2SQL_MEMORY_ACTION.match(path)
+            if memory_action_match:
+                principal = self._principal("manage")
+                payload = self._read_json(body)
+                memory_id, action = memory_action_match.groups()
+                if action == "evaluation":
+                    result = self._text2sql_service().start_memory_evaluation(
+                        memory_id, principal.username
+                    )
+                elif action == "activate":
+                    result = self._text2sql_service().activate_memory_candidate(
+                        memory_id,
+                        principal.username,
+                        str(payload.get("reason") or "240-case gate passed"),
+                    )
+                else:
+                    result = self._text2sql_service().rollback_memory(
+                        memory_id,
+                        principal.username,
+                        str(payload.get("reason") or "manual memory rollback"),
+                    )
+                self.service.store.audit(
+                    principal.tenant_id,
+                    principal.username,
+                    "text2sql.memory.%s" % action,
+                    memory_id,
+                    {"status": str(result.get("status") or result.get("state") or "")},
+                )
+                self._send_json(202 if action == "evaluation" else 200, dict(result))
                 return
             if path == "/v1/reviews":
                 principal = self._principal("review")

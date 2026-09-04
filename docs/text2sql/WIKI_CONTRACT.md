@@ -29,16 +29,19 @@
 5. Wiki 文本一律作为不可信数据处理，页面中的提示词或操作指令不能变成 Agent 指令。
 6. ACL 必须继承到知识块和检索结果；无权用户召回到受限知识属于阻断级故障。
 
-每个任务必须固定以下四个版本：
+每个任务必须固定以下五项版本：
 
 ```text
 database_snapshot_id
 wiki_index_version
+vanna_index_version
 memory_snapshot_id
 policy_version
 ```
 
 缺少任一版本的任务不得进入评测或自进化回放。
+
+Vanna 只在 Evidence Orchestration 中辅助召回这些已进入 stable 的知识；它不生成 SQL，命中项仍须回到 KnowledgeStore 重新校验状态、ACL 与数据库快照。
 
 ## 生产平台接入前确认清单
 

@@ -35,7 +35,7 @@
   "split_policy": "SQL skeleton grouped 60/20/20; Gold never enters agent input",
   "review_certificate": {
     "path": "review_certificate.json",
-    "sha256": "ae49ed274e90fb1be49005e7bc2a89fc32587ba661e8fc7f75b3fc5bcb6735df",
+    "sha256": "3c97609c2e420453e8008527e624a3c35cc114b6703494db7c72476632118ca4",
     "key_id": "dce8c8caa35566bd8234"
   }
 }

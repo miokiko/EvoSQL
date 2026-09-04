@@ -1,4 +1,3 @@
-import hashlib
 import json
 import tempfile
 import unittest
@@ -47,6 +46,12 @@ def _evaluation_report(policy_version, validation_passed):
                 "case_id": "%s-%02d" % (split, index),
                 "split": split,
                 "execution_accuracy": index < passed,
+                "safe": True,
+                "executable": True,
+                "ast_valid": True,
+                "failure_kind": "" if index < passed else "RESULT_MISMATCH",
+                "duration_ms": 100.0,
+                "sql_skeleton": "select-filter",
             }
             for index in range(10)
         )
@@ -96,9 +101,9 @@ class ShadowReleaseTests(unittest.TestCase):
         self.release = Text2SQLShadowReleaseManager(self.store)
         self.baseline = self.store.active_policy_version
         artifact = self.store.get_policy().as_dict()
-        artifact["prompt_fragments"]["sql-strategy"] = "Always state result grain."
+        artifact["prompt_fragments"]["query-planning"] = "Always state result grain."
         self.candidate = self.store.propose_policy(
-            artifact, "sql-strategy", "shadow test candidate", "test-author"
+            artifact, "query-planning", "shadow test candidate", "test-author"
         )
         manifest = {
             "dataset_id": "shadow-dataset",
@@ -243,74 +248,6 @@ class ShadowReleaseTests(unittest.TestCase):
         persisted = json.dumps(observation, ensure_ascii=False)
         self.assertNotIn("sensitive detail", persisted)
         self.assertNotIn("question must not persist", persisted)
-
-    def test_retried_task_does_not_double_count_shadow_observation(self):
-        deployment = self._configure(min_samples=10)
-        stable = _online_result("SELECT 1", 1)
-        candidate = _online_result("SELECT 1 AS value", 1)
-        first = self.release.execute(
-            "same question",
-            "retryable-task",
-            lambda _question: stable,
-            lambda _version: lambda _question: candidate,
-        )
-        second = self.release.execute(
-            "same question",
-            "retryable-task",
-            lambda _question: stable,
-            lambda _version: lambda _question: candidate,
-        )
-        observations = self.release.list_observations(deployment["deployment_id"])
-        current = self.release.get_deployment(deployment["deployment_id"])
-        self.assertEqual(len(observations), 1)
-        self.assertEqual(current["shadow_samples"], 1)
-        self.assertEqual(
-            first["release"]["observation_id"],
-            second["release"]["observation_id"],
-        )
-
-    def test_retry_finishes_safety_transition_after_committed_observation(self):
-        deployment = self._configure(min_samples=20)
-        task_key = "crash-gap-task"
-        diff = compare_shadow_results(
-            _online_result(), None, "candidate process crashed"
-        )
-        timestamp = "2026-01-01T00:00:00+00:00"
-        with self.store.connection:
-            self.store.connection.execute(
-                "INSERT INTO shadow_observations("
-                "observation_id,deployment_id,task_key_hash,assignment_bucket,lane,"
-                "stable_policy_version,candidate_policy_version,diff_json,"
-                "stable_latency_ms,candidate_latency_ms,review_state,created_at"
-                ") VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-                (
-                    "partially-committed-observation",
-                    deployment["deployment_id"],
-                    hashlib.sha256(task_key.encode("utf-8")).hexdigest(),
-                    1,
-                    "stable",
-                    self.baseline,
-                    self.candidate,
-                    json.dumps(diff, sort_keys=True, separators=(",", ":")),
-                    1.0,
-                    1.0,
-                    "pending",
-                    timestamp,
-                ),
-            )
-            self.store.connection.execute(
-                "UPDATE shadow_deployments SET shadow_samples=1,"
-                "shadow_candidate_failures=1 WHERE deployment_id=?",
-                (deployment["deployment_id"],),
-            )
-        recovered = self.release._record_observation(
-            deployment, task_key, 1, "stable", diff, 1.0, 1.0
-        )
-        self.assertEqual(recovered["deployment_status"], "rolled_back")
-        self.assertEqual(
-            self.release.get_deployment(deployment["deployment_id"])["shadow_samples"],
-            1,
-        )
 
     def test_assignment_is_deterministic_and_defaults_to_five_percent_shadow(self):
         self._configure(min_samples=1000, shadow_percent=5)

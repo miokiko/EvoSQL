@@ -8,6 +8,7 @@ from pathlib import Path
 from evoagent.text2sql.dataset_builder import CATEGORY_TARGETS, build_dataset
 from evoagent.text2sql.evaluation import (
     Text2SQLEvaluator,
+    _failure_from_gate,
     _sql_features,
     classify_result_mismatch,
     load_dataset,
@@ -108,17 +109,26 @@ class Text2SQLDatasetTests(unittest.TestCase):
                 "gates": {"accepted": True, "errors": []},
                 "version_pins": pins,
                 "collaboration": {
+                    "bound_query_plan": {
+                        "schema_plan": {
+                            "tables": list(case.required_tables),
+                            "columns": list(case.required_columns),
+                            "joins": [
+                                {"evidence_id": value}
+                                for value in case.required_relationships
+                            ],
+                        }
+                    },
                     "worker_results": [
                         {
                             "worker": "schema-grounding",
                             "output": {
                                 "schema_plan": {
-                                    "tables": list(case.required_tables),
-                                    "columns": list(case.required_columns),
-                                    "joins": [
-                                        {"evidence_id": value}
-                                        for value in case.required_relationships
-                                    ],
+                                    # Canonical BoundQueryPlan must take priority
+                                    # over a stale compatibility worker payload.
+                                    "tables": [],
+                                    "columns": [],
+                                    "joins": [],
                                 }
                             },
                         }
@@ -155,6 +165,24 @@ class Text2SQLDatasetTests(unittest.TestCase):
                 1,
             ),
             "AGGREGATION_MISMATCH",
+        )
+
+    def test_plan_gate_failures_keep_semantic_evaluation_categories(self):
+        self.assertEqual(
+            _failure_from_gate(["missing_value_binding"]),
+            "SCHEMA_LINK_MISMATCH",
+        )
+        self.assertEqual(
+            _failure_from_gate(["filter_mismatch"]),
+            "FILTER_MISMATCH",
+        )
+        self.assertEqual(
+            _failure_from_gate(["distinct_mismatch"]),
+            "AGGREGATION_MISMATCH",
+        )
+        self.assertEqual(
+            _failure_from_gate(["unexpected_join"]),
+            "JOIN_OR_GRAIN_MISMATCH",
         )
 
     def test_value_grounding_normalizes_equivalent_numeric_literals(self):

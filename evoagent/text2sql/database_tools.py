@@ -28,25 +28,25 @@ ROLE_TOOL_PERMISSIONS = {
         "retrieve_knowledge",
         "inspect_schema",
         "sample_values",
-        "validate_sql",
-        "explain_sql",
-        "execute_sql",
     },
     "schema-grounding": {"retrieve_knowledge", "inspect_schema", "sample_values"},
-    "sql-strategy": {
-        "retrieve_knowledge",
-        "inspect_schema",
-        "sample_values",
-        "validate_sql",
-        "explain_sql",
-    },
-    "text2sql-critic": {
-        "retrieve_knowledge",
-        "inspect_schema",
-        "validate_sql",
-        "explain_sql",
-    },
+    # These reasoning roles receive immutable, stage-filtered context. Keeping
+    # their maximum ACL empty makes the plan-first separation true even if a
+    # caller forgets to apply a stricter stage override.
+    "query-planning": set(),
+    "sql-generation": set(),
+    "text2sql-critic": set(),
+    # This is an application-owned principal, not an evolvable model role.  It
+    # is the only principal allowed to execute SQL, and the runtime invokes it
+    # only after the deterministic final gates have accepted a candidate.
+    "text2sql-harness": {"validate_sql", "explain_sql", "execute_sql"},
 }
+
+
+# Old traces and checkpoints may still name the former combined worker.  Keep
+# the alias at the runtime boundary only; policy artifacts use the five
+# canonical roles and never expose a sixth, evolvable ``sql-strategy`` slot.
+LEGACY_RUNTIME_ROLE_ALIASES = {"sql-strategy": "query-planning"}
 
 
 def _json_value(value: Any) -> Any:
@@ -269,7 +269,8 @@ class Text2SQLToolSuite:
     def registry(
         self, role: str, allowed_tools: Optional[Sequence[str]] = None
     ) -> ToolRegistry:
-        permissions = ROLE_TOOL_PERMISSIONS.get(role)
+        canonical_role = LEGACY_RUNTIME_ROLE_ALIASES.get(role, role)
+        permissions = ROLE_TOOL_PERMISSIONS.get(canonical_role)
         if permissions is None:
             raise ValueError("unsupported Text2SQL role: %s" % role)
         if allowed_tools is not None:
@@ -284,9 +285,11 @@ class Text2SQLToolSuite:
         role_view = {
             "text2sql-lead": "lead",
             "schema-grounding": "schema-grounding",
-            "sql-strategy": "sql-strategy",
+            "query-planning": "sql-strategy",
+            "sql-generation": "sql-strategy",
             "text2sql-critic": "critic",
-        }[role]
+            "text2sql-harness": "lead",
+        }[canonical_role]
         specs = {
             "retrieve_knowledge": AgentTool(
                 "retrieve_knowledge",

@@ -15,7 +15,7 @@
     "model": "qwen3.7-flash",
     "temperature": 0
   },
-  "checkpoint": "/Users/tyl/Desktop/EvoAgent-Text2SQL/artifacts/text2sql/evaluation/full-240-qwen3.7-flash-draftlink-20260904.json.checkpoint.jsonl",
+  "checkpoint": "artifacts/text2sql/evaluation/full-240-qwen3.7-flash-draftlink-20260904.json.checkpoint.jsonl",
   "resume_from": "",
   "budget": {
     "enforcement": "between_completed_cases_with_in_flight_overshoot",

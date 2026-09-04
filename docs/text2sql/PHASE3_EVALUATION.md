@@ -21,7 +21,7 @@
 - `validation.jsonl`：48 题；
 - `sealed_holdout.jsonl`：48 题。
 
-运行时 Agent 只接收 `question`。Gold SQL、Gold 结果指纹、必需表列和关系只存在于评测器一侧；sealed holdout 的报告不输出问题和候选 SQL。
+每个 Case 都调用同一套 `plan-first-text2sql-v3` 主链：五个 Agent 在 11 个固定节点内协作，非 Agent Harness 负责确定性门禁与只读执行。运行时只接收 `question`；Gold SQL、Gold 结果指纹、必需表列和关系只存在于评测器一侧，sealed holdout 的报告不输出问题和候选 SQL。
 
 ## 重建与校验
 
@@ -51,9 +51,7 @@ sealed holdout 只能通过同一评测入口运行：
 python scripts/run_text2sql_evaluation.py --split sealed_holdout --max-cases 0
 ```
 
-结果默认写入 `artifacts/text2sql/evaluation/latest.json`，并固定数据库、stable 知识索引、Memory、Policy、数据集、模型、温度和运行时间。
-
-评测同时使用两层恢复：JSONL 记录已完成 Case，并在 Header 固定一次 `evaluation_run_id`；`artifacts/text2sql/checkpoints/runtime.sqlite3` 记录 Case 内部 8 个 Agent Runtime 节点。每个 Case 的运行键由本轮 evaluation_run_id 和 case_id 确定，因此 `--resume` 不用重跑已完成节点，而新建评测不会静默复用旧模型输出。
+结果默认写入 `artifacts/text2sql/evaluation/latest.json`，并固定数据库、stable 知识索引、Vanna 索引、Memory、Policy、数据集、模型、温度和运行时间。
 
 ## 指标与失败归因
 

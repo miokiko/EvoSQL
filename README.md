@@ -1,140 +1,166 @@
 # EvoSQL
 
-> 可进化多智能体 Text2SQL 系统：用角色化推理提高可解释性，用确定性代码守住证据、权限、恢复和执行边界。
+> Plan-first、可审计、可恢复的 Multi-Agent Text2SQL 系统。模型负责理解与提出候选，确定性 Harness 负责绑定、验真、限权和决定是否执行。
 
-EvoSQL 将自然语言问题转换为可审计、可拒绝、可恢复的只读 SQL。它不是把整个数据库 Schema 塞进一次 Prompt，而是把一次查询拆成 8 个运行节点，由 Leader、Schema Grounding、SQL Strategy 和 Blind Critic 分工，再通过 Hybrid RAG、SchemaPlan、AST/EXPLAIN、安全白名单和只读数据库连接完成最终执行。
+EvoSQL 把“一次 Prompt 直接生成 SQL”拆成五个职责隔离的 Agent 和一个不可演化的确定性 Harness：Schema Grounding 负责物理世界，Query Planning 负责逻辑语义，SQL Generation 只翻译已经冻结的计划，Blind Critic 独立质疑候选，Lead 只做路由、审批与选择。失败经验不会在线改 Prompt，而是经过离线评测、Shadow、Canary 和人工批准后受控进入稳定 Memory / Policy。
 
-当前仓库定位为**具备真实模型全量 baseline 的工程原型**，不是已经完成线上自进化的生产系统。项目保留了旧 EvoAgent PR Review 子系统；`evoagent` Python 包名和 `EVOAGENT_*` 环境变量作为兼容接口暂不修改。
-
-## 为什么需要 EvoSQL
-
-单 Agent 一次性生成 SQL，容易把多个问题混在同一条推理链里：
-
-- Schema 幻觉：引用不存在或含义相近但错误的表列；
-- 业务口径错误：语法正确，却把“案例数”算成明细行数；
-- Join fanout：连接后重复计数，或者使用未经审核的关联关系；
-- 自我确认偏差：同一个模型既生成又批准自己的 SQL；
-- 执行风险：Prompt 中的“只读要求”不能构成真正的权限边界；
-- 长链路重跑：进程中断后重复调用模型、重复计费或串用旧状态。
-
-EvoSQL 的核心原则是：
-
-> 模型负责提出候选，确定性 Harness 负责验证证据、限制能力并决定是否执行。
+当前仓库定位为工程原型，不宣称已经完成生产部署。历史 EvoAgent PR Review 子系统仍以兼容模式保留；Python 包名 `evoagent` 与 `EVOAGENT_*` 环境变量暂不改名。
 
 ## 系统架构
 
-![EvoSQL Multi-Agent Text2SQL 与受控自进化系统架构](docs/assets/evosql-system-architecture.png)
+```mermaid
+flowchart TD
+    U["User Question"] --> L1["① Agent · Text2SQL Lead<br/>Routing / Decomposition"]
+    L1 --> E["② Runtime · Evidence Orchestration<br/>KnowledgeStore + Vanna retrieval-only + Snapshot"]
 
-在线查询由 `AgentRuntime` 按 8 个阶段顺序推进，Runtime Node 与 Agent 并非一一对应：Lead 参与节点 1、4、7，`schema-grounding` 与 `sql-strategy` 在节点 3 内由线程池并行，Critic 对应节点 6；节点 2 负责证据编排并可选调用 Draft Planner，节点 5 按 Lead 指令对指定 Worker 最多返工一次，节点 8 由确定性 Harness 完成安全门禁与只读执行。四个核心 Agent 是进程内的逻辑角色，分别拥有独立的 Prompt、输入输出契约、Tool ACL 和可演化 Policy。
+    subgraph PW["③ plan-workers · parallel"]
+      direction LR
+      G["Agent · Schema Grounding<br/>→ SchemaPlan"]
+      P["Agent · Query Planning<br/>→ logical QuerySpec"]
+    end
 
-## 核心设计
+    E --> G
+    E --> P
+    G --> B["④ Harness · bind_query_plan<br/>→ BoundQueryPlan / BindingConflicts"]
+    P --> B
+    B --> A["⑤ Agent · Lead Plan Assessment"]
+    A --> R["⑥ Runtime · Targeted Revision + Rebind<br/>each Plan Worker at most once"]
+    R --> AP["Harness · mint immutable ApprovedQueryPlan"]
+    AP --> S["⑦ Agent · SQL Generation<br/>→ SQLCandidate ≤ 4"]
+    S --> CG["⑧ Harness · validate → conformance → EXPLAIN<br/>zero-pass: one Generation repair"]
+    CG --> C["⑨ Agent · Blind Critic<br/>Accept / Reject / Objections"]
+    C --> LF["⑩ Agent · Lead Final<br/>select accepted candidate only"]
+    LF --> X["⑪ Harness · Final Gates + Execute<br/>immutable / query-only SQLite"]
+    X --> O["Query Result"]
 
-### 1. Leader–Workers–Critic 编排
+    M["Governed Evolution<br/>Experience → RCA → single-role candidate<br/>Benchmark → Shadow → Canary → Human Approval"] -. reviewed Memory / Policy .-> L1
+    M -. reviewed Memory / Policy .-> G
+    M -. reviewed Memory / Policy .-> P
+    M -. reviewed Memory / Policy .-> S
+    M -. reviewed Memory / Policy .-> C
+```
 
-| 角色 | 主要职责 | 输出边界 |
-|---|---|---|
-| `text2sql-lead` | 路由、委派、冲突检查、有限返工和最终选择 | 最终只能选择已有候选，不能临时创造新 SQL |
-| `schema-grounding` | 绑定表、列、值、结果粒度与有证据的 Join | 生成机器可检查的 `SchemaPlan` |
-| `sql-strategy` | 推导过滤、聚合、去重、排序和候选 SQL | 生成 `QuerySpec` 与最多 4 个 `SQLCandidate` |
-| `text2sql-critic` | 对去来源化候选做反例审查 | 只能接受、拒绝和提出异议，不能新增候选 |
+生产主链协议为 `plan-first-text2sql-v3`，固定 11 个可恢复 Runtime Node。真正的并发只发生在第 3 个 `plan-workers` 节点内部：Schema Grounding 与 Query Planning 由线程池并行执行。Agent Role、Runtime Node 和 Codex `SKILL.md` 是三个不同概念；这里的五个名称是运行时角色与可演化 Policy 槽位，不是五个独立服务。
 
-Grounding 与 Strategy 当前共享 Harness 通过 `prepare_evidence` Tool 强制预取的同一份 EvidencePack，但使用隔离上下文和不同输出契约。该 Tool 负责 stable / snapshot / ACL 约束下的基础检索，不替代 Grounding 的 SchemaPlan 决策。因此它实现的是**职责隔离**，不是统计意义上的完全独立。
+## Agent 职责、输入与工具
 
-### 2. Hybrid RAG 与 Schema Linking
+| 执行主体 | 核心输入 | 结构化输出 | 当前推理回合工具 |
+|---|---|---|---|
+| `text2sql-lead` | 原始问题、受限会话上下文、Worker / Critic 结果 | Route、Delegation、Plan Approval、Final Candidate Index | 路由阶段可使用受控事实工具；审批与最终选择为零工具 |
+| `schema-grounding` | 固定 Schema Snapshot、ACL 可见的 stable Evidence、SchemaLinkPack | `SchemaPlan`：表、列、值绑定、Join、结果粒度 | Evidence Orchestration 预取后，本轮零工具 |
+| `query-planning` | 用户问题、经过过滤的业务术语 | 不含物理表列与 SQL 的 `QuerySpec` | 零工具，最大 Tool ACL 也是空集 |
+| `sql-generation` | Harness 铸造的不可变 `ApprovedQueryPlan` | 最多 4 个 `SQLCandidate` | 零工具，不能检索或执行 |
+| `text2sql-critic` | ApprovedQueryPlan、通过门禁且去来源化的候选、对应 Gate 结果 | 每个候选恰好一个 Accept / Reject 决定 | 零工具，不能新增或修改 SQL |
+| `text2sql-harness`（非 Agent） | 两类 Plan、候选 SQL、固定版本 Pin | Bound / Approved Plan、Gate 结果、查询结果 | `validate_sql`、`explain_sql`、最终 `execute_sql` |
+
+角色最大权限与阶段权限取交集。`text2sql-lead` 和 `schema-grounding` 的最大 ACL 只包含事实查询能力；Planning、Generation、Critic 的最大 ACL 为空；只有 Harness 拥有 `execute_sql`，且只会在第 11 节点的最终门禁通过后调用。
+
+## 为什么采用 Plan-first
+
+单 Agent 同时做 Schema Linking、业务口径、SQL 生成和自我验收，常见问题包括：
+
+- 引用不存在或语义相近但错误的表列；
+- 把“案例数”算成 Join 后的明细行数；
+- 未经审核地猜测 Join，产生 fanout 或笛卡尔积；
+- SQL 语法正确，但投影、去重、排序、NULL 或结果粒度不符合问题；
+- 模型既生成又批准自己的候选；
+- Prompt 中的“请只读”被误当成数据库权限边界。
+
+EvoSQL 先让两个独立 Worker 产出逻辑计划和物理计划，再由无模型 Binder 做完整、唯一绑定。SQL Generation 看不到原问题和检索材料，只能从 ApprovedQueryPlan 翻译 SQL，因此计划偏移可以在执行前被机器检查。
+
+## RAG 与 Schema Linking
 
 ```text
 MySQL Dump
   → Database Snapshot / Join Candidates
-  → KnowledgeStore：stable / candidate / quarantined / revoked
-  → 词法、精确值、已审核关系图 + Vanna 语义召回
-  → stable / snapshot / ACL 回源重验
-  → prepare_evidence Tool
-  → EvidencePack
-  → LLM 草案 SQL（永不执行）
-  → SQLGlot AST 反向提取表列
-  → DraftLinkPack（不可信候选）
-  → Grounding 校验
-  → SchemaPlan（SQL 表列白名单）
+  → KnowledgeStore: stable / candidate / quarantined / revoked
+  → lexical + exact value + approved graph retrieval
+  → optional Vanna / Chroma semantic recall
+  → stable + snapshot + ACL re-authorization
+  → SchemaLinkPack/v2（候选，不是 SchemaPlan）
+  → Schema Grounding
+  → SchemaPlan
 ```
 
-Vanna 在项目中被裁剪为纯检索器：`ask`、`generate_sql` 和 `run_sql` 均不可用。向量结果只提供候选 evidence ID，必须回到 KnowledgeStore 重新检查知识状态、数据库快照和调用者 ACL。所谓 Draft Planner 仍由项目 LLM 生成草案，Vanna 本身不生成或执行 SQL。
+Vanna 在本项目中是纯检索器：`ask`、`generate_sql`、`submit_prompt` 和 `run_sql` 被显式封锁，也没有数据库连接。向量库只返回候选 `evidence_id`；每次命中都必须回到 KnowledgeStore 重新检查 stable 状态、数据库快照和调用者 ACL。
 
-### 3. 模型外 SQL 安全壳
+Query Planning 只接收白名单化的 `business_glossary` 字段。DDL、物理标识符、实库值、关系和 Question-SQL 示例都会被过滤；SQL Few-shot 只属于 SQL Generation，字段 / 值别名只属于 Schema Grounding。
 
-候选 SQL 即使得到所有模型角色同意，也必须通过以下确定性门禁：
+## 确定性安全边界
 
-1. SQLGlot 解析为单条只读 Query；
-2. 拒绝 DDL、DML、危险节点和禁止函数；
-3. 表、列必须存在于固定 Database Snapshot；
-4. SQL 使用范围必须是 `SchemaPlan` 的子集；
-5. 候选原样通过 `EXPLAIN`；
-6. SQLite 使用 `mode=ro&immutable=1` 与 `PRAGMA query_only=ON`；
-7. 执行器限制超时和最大返回行数。
+模型一致同意也不等于可以执行。当前 Harness 会：
 
-### 4. 持久化 Checkpoint
+1. 对 QuerySpec 与 SchemaPlan 做严格类型、形状、唯一绑定和 fingerprint 校验；
+2. 将模型给出的 Evidence ID 回源到当前 snapshot，并重新执行 Principal ACL 授权；
+3. 要求 stable Join 来自本轮授权证据；`user_explicit` Join 必须由原始问题的精确 qualified-column 等式解析，不能由 Lead 改写或模型声明授权；
+4. 对 `eq` / `in` 值检查只读实库成员关系；范围和 LIKE 检查类型、映射与可信表面来源；
+5. 用 SQLGlot 拒绝 DDL、DML、多语句、注释逃逸、未知表列、`SELECT *` 和未建模查询形状；
+6. 对投影顺序、聚合、`DISTINCT`、过滤、Join、排序、NULL 顺序、LIMIT、EXISTS 等做 ApprovedQueryPlan conformance；
+7. 将候选与 Gate 结果按 Harness 生成的 `candidate_id` 对齐后再交给 Critic；
+8. 在最终节点重新执行 AST 与 plan-conformance 检查；
+9. 通过 `mode=ro&immutable=1`、`PRAGMA query_only=ON`、wall-clock timeout 和最大行数限制执行 SQLite。
 
-每个运行节点成功后都会把增量 State 和累计 ExecutionLedger 写入独立 SQLite Store。恢复时只接受从第一个节点开始的连续完成前缀，并继续第一个未完成节点。
+追问中的 Lead `standalone_question` 只是推理输入，不是事实来源。新值必须来自本轮原始用户问题，或来自同一 user / session 下、最终 Gate 已接受的父 QueryRun 的结构化 QuerySpec；显式 Join 同理继承自可信父 SchemaPlan。FOLLOW_UP 缺少完整认证父快照时会停止，不能继续使用 Lead 改写生成 SQL，也不会静默绑定“最近一轮”。RESULT_QA 只支持明确要求重显上一轮结果的 replay：返回文案由 Harness 根据认证后的列与行确定性生成，不接受 Lead 自由编写的数字或事实；比较、过滤、排序或计算仍需发起新查询。自然语言表面匹配只能证明文本出现，不能形式化证明所有语义，因此新查询的最终语义仍由 Lead 与 Blind Critic 共同审核。
 
-Checkpoint 身份绑定：
+## 持久化 Checkpoint
 
-- Question 与冻结会话上下文；
-- user / session / tenant 与 effective principals；
-- Database、Wiki、Vanna、Memory、Policy 五项版本；
-- LLM provider、model 和 temperature；
-- 节点图、协议、Token/时间/步骤预算；
-- stable / candidate lane。
+每个节点成功后，系统把增量 State 与累计 Execution Ledger 写入 SQLite Checkpoint Store。恢复时只接受从第一个节点开始的连续已完成前缀，并继续第一个未完成节点。
 
-Store 还使用 Lease 防止同一任务并发执行，使用 canonical JSON 与 SHA-256 检测篡改；任务完成后，相同身份的重复请求直接返回持久化结果。
+Checkpoint 身份同时绑定：
 
-### 5. 受控 Memory / Policy 演化
+- 原始问题、冻结会话上下文、user / session / tenant 与 effective principals；
+- Database、Wiki、Vanna、Memory、Policy 五项版本 Pin；
+- LLM provider、model、temperature 与 Token / 时间 / 步骤预算；
+- stable / candidate lane；
+- `plan-first-text2sql-v3`、完整 11 节点图、`BUILD_VERSION=text2sql-agentic-build-v3` 和 `GATE_IMPLEMENTATION_VERSION=text2sql-harness-gates-v2`。
+
+Store 使用 Lease 避免同任务并发执行，使用 canonical JSON 与 SHA-256 检测状态篡改。协议、节点、Gate 实现或任一 Pin 漂移时，旧 Checkpoint 会 fail closed；完成任务在身份完全一致时可直接返回持久化结果。
+
+## Memory 自进化
+
+“自进化”不是让 Agent 在线改自己的 Prompt。当前闭环是：
 
 ```text
-train 或治理后的生产失败
-  → candidate Memory
-  → 人工审核
-  → stable Memory
-  → Root-cause 聚类与角色归因
-  → 单角色 Policy Candidate
+Query Result / Execution Trace / User Feedback / Evaluation Failure
+  → candidate Experience Memory
+  → deterministic Root-cause Attribution
+  → responsible Agent role
+  → single-role Policy or Memory candidate
+  → train diagnostics
   → validation + sealed holdout
-  → Shadow 差异审核
-  → Canary + stable fallback
-  → 人工激活或回滚
+  → Shadow comparison
+  → Canary with stable fallback
+  → Human approval
+  → stable role Policy / Memory
+  → rollback when needed
 ```
 
-候选 Policy 只能修改受限 Prompt Guidance、字段/值别名、安全 Few-shot、工具子集和有界预算；不能修改拓扑、安全门、数据库权限、评测数据或审批状态。
+失败类型会被归因到职责槽位，例如 Schema Linking → `schema-grounding`，计数 / 粒度 → `query-planning`，SQL 翻译 / conformance → `sql-generation`，错误接受候选 → `text2sql-critic`，路由 / 拆解 / 最终选择 → `text2sql-lead`。一次候选只能修改一个角色的白名单字段；拓扑、Binder、SQL Gate、数据库权限、评测集、审批状态和 Harness 永远不参与自修改。
 
-## 当前证据
+晋升门禁不信任评测报告自带的聚合数字：它先校验 baseline / candidate 的匿名逐题 outcome 是否完整、唯一、类型合法且字段语义一致，再自行重算 EX、安全率、可执行率、AST 解析率、framework error、P95 延迟和 SQL Skeleton 分桶；任一声明值不一致、candidate 某个 split 的可执行率 / AST 解析率为零，或 sealed holdout 出现单题回退都会 fail closed。问题文本、Gold SQL 与逐题结果不会写入演化库。
 
-以下数字来自仓库内固定工件，时间为 2026-09-04：
+## 当前可核验证据
+
+以下数字来自仓库内固定工件，日期为 2026-09-04：
 
 | 维度 | 当前结果 | 证据 |
 |---|---:|---|
-| 数据库 | 20 张表、562 行 | `artifacts/text2sql/schema/database_snapshot.json` |
+| 数据库快照 | 20 张表、562 行 | `artifacts/text2sql/schema/database_snapshot.json` |
 | 稳定知识 | 395 条：293 Schema + 102 Value | `artifacts/text2sql/knowledge/manifest.json` |
-| 候选知识 | 101 条：97 Relationship + 4 Business Glossary | 同上，审核前不进入稳定检索 |
-| Vanna 索引 | 395 项：20 DDL + 375 Documentation + 0 Question-SQL | `artifacts/text2sql/vanna/stable-v2-2b44cc2f83/manifest.json` |
-| 评测集 | 240 题，按 SQL Skeleton 切分为 144 / 48 / 48 | `evaluation/datasets/text2sql_eval_v1.json` |
-| 全量 baseline | EX 93.75%，Executable 97.08%，Read-only Safety 100% | `qwen3.7-flash`，240 题 |
-| 延迟与用量 | P50 38.89s，P95 54.05s，1,881 次 LLM 调用，12,506,995 Tokens | 固定全量评测工件 |
-| 失败 | 13 个语义/安全失败 + 2 个 Framework Error | 不隐藏失败项 |
-| Text2SQL 测试 | 79 / 79 通过 | `tests/test_text2sql*.py` |
-| 全仓库测试 | 148 / 148 通过 | 包含保留的 Legacy PR Review 子系统 |
-| 演化状态 | 1 个 baseline Policy，0 Memory，0 candidate deployment | 演化机制已实现，真实候选闭环尚未完成 |
+| 候选知识 | 101 条：97 Relationship + 4 Business Glossary | 同上，审核前不进入 stable |
+| Vanna 索引 | 395 项：20 DDL + 375 Documentation + 0 SQL | `artifacts/text2sql/vanna/stable-v2-2b44cc2f83/manifest.json` |
+| 评测集 | 240 题；144 train / 48 validation / 48 sealed holdout | `evaluation/datasets/text2sql_v1/manifest.json` |
+| 数据审核 | 240 / 240 人工复核，签名证书验证通过 | `evaluation/datasets/text2sql_v1/review_certificate.json` |
+| 自动化测试 | 247 passed | 当前仓库全量 `pytest` |
 
-完整报告见 [`full-240-qwen3.7-flash-draftlink-20260904.json`](artifacts/text2sql/evaluation/full-240-qwen3.7-flash-draftlink-20260904.json)。
+仓库保留的 93.75% Execution Accuracy 是重构前 8 节点版本在 `qwen3.7-flash` 上的历史全量 baseline，只能用于回溯，不能冒充当前 v3 五 Agent 架构的成绩。v3 付费模型全量 benchmark 尚未运行。
 
 ## 快速体验
 
-### 环境要求
-
-- Python 3.11
-- SQLite 3
-- 一个 OpenAI Chat Completions 兼容模型端点；Vanna/Chroma 为可选语义检索层
-
-### 1. 安装
+要求 Python 3.11、SQLite 3，以及一个 OpenAI Chat Completions 兼容模型端点。Vanna / Chroma 为可选依赖。
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/miokiko/EvoSQL.git
 cd EvoSQL
 
 python3.11 -m venv .venv
@@ -145,19 +171,7 @@ cp .env.example .env
 
 `.env` 已被 Git 忽略。不要提交 API Key、审核签名密钥或生产数据库凭据。
 
-### 2. 无 API 成本验证完整协议
-
-脚本化模型可以验证四角色协议、真实只读执行与最终结果，无需调用云模型：
-
-```bash
-python -m unittest \
-  tests.test_text2sql_phase2.Text2SQLSafetyTests.test_original_hierarchical_protocol_runs_before_deterministic_execution \
-  -v
-```
-
-该测试对问题“强烈岩爆案例有多少个”断言最终结果为 `[[6]]`，并检查 Grounding、Strategy 与 6 次脚本化模型调用确实发生。
-
-### 3. 重建本地工件
+重建本地工件：
 
 ```bash
 python scripts/generate_text2sql_schema.py
@@ -167,9 +181,7 @@ python scripts/build_text2sql_vanna.py
 python scripts/bootstrap_text2sql_evolution.py
 ```
 
-### 4. 配置模型
-
-编辑 `.env`。以自定义 OpenAI-compatible 端点为例：
+配置 `.env`，例如：
 
 ```dotenv
 EVOAGENT_LLM_PROVIDER=custom
@@ -178,9 +190,7 @@ EVOAGENT_LLM_API_KEY=your-api-key
 EVOAGENT_LLM_MODEL=your-model
 ```
 
-也可以使用 `.env.example` 中的 DashScope、DeepSeek 或 OpenRouter 配置。Text2SQL 主链路不会在 `local` provider 下模拟真实 LLM。
-
-### 5. 运行单题
+运行单题：
 
 ```bash
 python scripts/run_text2sql.py \
@@ -188,70 +198,61 @@ python scripts/run_text2sql.py \
   --task-id demo-rockburst-001
 ```
 
-中断后使用相同问题和 `task-id` 重试，系统会从持久化节点继续；如果问题、身份、版本或预算发生变化，则拒绝复用旧状态。
+使用相同问题与 `task-id` 重试可以从 Checkpoint 续跑；问题、身份、版本或预算变化时会拒绝复用旧状态。
 
-### 6. 启动 Web 控制台
+无需 API 成本验证 11 节点协议与真实只读执行：
+
+```bash
+python -m pytest -q \
+  tests/test_text2sql_phase2.py::Text2SQLSafetyTests::test_plan_first_protocol_runs_all_eleven_nodes_before_harness_execution
+```
+
+启动 Web 控制台：
 
 ```bash
 python -m evoagent
 ```
 
-浏览器打开 `http://127.0.0.1:8080/`。本地默认关闭登录；对外暴露服务前必须启用认证并更换所有示例凭据。
-
-### 7. 运行 Text2SQL 测试
-
-```bash
-python -m unittest discover -s tests -p 'test_text2sql*.py' -v
-```
+浏览器访问 `http://127.0.0.1:8080/`。对外暴露前必须启用认证、设置强管理员密码并配置随机 `EVOAGENT_AUTH_SECRET`。
 
 ## 目录结构
 
 | 路径 | 作用 |
 |---|---|
-| `evoagent/text2sql/agentic.py` | 8 节点 Multi-Agent 主链路 |
-| `evoagent/runtime.py` | 通用节点 Runtime、预算与 Checkpoint 协议 |
-| `evoagent/text2sql/checkpoint_store.py` | SQLite 节点状态、Lease、Hash 与完成结果缓存 |
-| `evoagent/text2sql/knowledge_store.py` | 版本化知识、ACL、状态机和结构化检索 |
-| `evoagent/text2sql/vanna_retriever.py` | Retriever-only Vanna/Chroma 适配层 |
-| `evoagent/text2sql/schema_linking.py` | 问题直连、Draft AST 与 DraftLinkPack |
-| `evoagent/text2sql/sql_safety.py` | AST、Schema、EXPLAIN 与只读执行门禁 |
-| `evoagent/text2sql/evaluation.py` | Execution Accuracy、结果规范化与失败归因 |
-| `evoagent/text2sql/evolution.py` | Memory、Policy、评测 Gate 与审批账本 |
-| `evoagent/text2sql/shadow.py` | Shadow、Canary、Fallback 与回滚状态机 |
+| `evoagent/text2sql/agentic.py` | 五 Agent、11 节点主链与阶段协议 |
+| `evoagent/text2sql/contracts.py` | QuerySpec / SchemaPlan / Candidate 等严格领域契约 |
+| `evoagent/text2sql/query_plan.py` | deterministic bind、ApprovedPlan 与 SQL conformance |
+| `evoagent/runtime.py` | 通用 Runtime、预算与节点 Checkpoint 协议 |
+| `evoagent/text2sql/checkpoint_store.py` | SQLite 状态、Lease、Hash 与结果缓存 |
+| `evoagent/text2sql/knowledge_store.py` | 版本化知识、ACL、状态机与结构化检索 |
+| `evoagent/text2sql/vanna_retriever.py` | Retrieval-only Vanna / Chroma 适配层 |
+| `evoagent/text2sql/schema_linking.py` | 问题直连与 SchemaLinkPack |
+| `evoagent/text2sql/sql_safety.py` | AST 白名单与只读执行器 |
+| `evoagent/text2sql/memory_attribution.py` | 失败根因与角色责任归因 |
+| `evoagent/text2sql/memory_release.py` | Memory benchmark、审批、激活与回滚 |
+| `evoagent/text2sql/evolution.py` | Policy / Experience / 发布治理账本 |
+| `evoagent/text2sql/evaluation.py` | Execution Accuracy、规范化与失败分类 |
 | `web/` | EvoSQL Web 控制台 |
-| `tests/test_text2sql*.py` | Text2SQL 专项单元与集成测试 |
 
 ## 深入阅读
 
-- [项目导学](导学-EvoSQL.md)
 - [Text2SQL 设计与适配方案](Text2SQL自进化适配方案.md)
 - [Multi-Agent 基线](docs/text2sql/PHASE2_AGENTIC_BASELINE.md)
 - [Checkpoint 运行手册](docs/text2sql/CHECKPOINT_RUNBOOK.md)
-- [Vanna 与 Memory 边界](docs/text2sql/VANNA_MEMORY_RUNBOOK.md)
+- [Vanna 与会话 Memory](docs/text2sql/VANNA_MEMORY_RUNBOOK.md)
 - [评测协议](docs/text2sql/PHASE3_EVALUATION.md)
 - [受控自进化](docs/text2sql/PHASE4_SELF_EVOLUTION.md)
 - [Shadow / Canary](docs/text2sql/PHASE5_SHADOW_RELEASE.md)
 
-## 已知限制
+## 当前限制
 
-- 当前全量评测题普遍显式包含物理表名或字段名，因此 93.75% EX 不能证明自然业务问法上的 RAG 泛化能力；
-- 当前 stable 知识只有 Schema 与观测值，97 条推断关系和 4 条 Wiki 术语仍处于 candidate；
-- 当前 Vanna 索引没有经人工批准的 Question-SQL 样例；
-- Grounding 与 Strategy 共享 Grounding 视图检索结果，Strategy 自己的检索权重在主路径尚未单独生效；
-- Lead 的静态 ACL 仍包含只读执行工具，阶段级 delegation / assessment / selection 零工具约束尚待收紧；
-- Checkpoint 已固定 Vanna 版本，但离线晋升 Gate 与 Shadow 漂移检查尚未完整显式比较 `vanna_index_version`；
-- 当前演化库没有 stable failure Memory、候选 Policy 或真实 deployment，尚未完成一次有净提升证据的端到端演化实验；
-- 本地 SQLite 是当前 MVP 执行后端，远程数据库的事务、资源隔离和生产压测仍需补充。
-
-## Roadmap
-
-- 清零现有 Framework Error，并按失败类型复盘 13 个未通过案例；
-- 建立不暴露物理标识符的自然语言 relevance set，分别评测 Retrieval Recall、Context Precision 与 Schema Linking；
-- 审核高价值 Join/Wiki 候选，构建首批稳定业务口径与 Question-SQL；
-- 为 Leader 增加阶段级 Tool ACL，并补齐 Vanna 版本的 promotion/shadow 负向测试；
-- 从 train failure 完成首个“Memory → 单角色 Policy → validation/holdout → Shadow/Canary”闭环；
-- 增加 CI、远程数据库故障注入、浏览器并发与端到端可观测性证据。
+- 97 条推断 Relationship 和 4 条 Business Glossary 仍为 candidate；未审核关系不会进入稳定检索。
+- 当前 Vanna stable 索引没有人工批准的 Question-SQL 样例。
+- `QueryPlan/v1` 保守拒绝复合 Join、自连接、CTE、集合运算、通用子查询、OR、HAVING，以及尚无 cardinality / uniqueness 证明的明细 `rows + JOIN`；聚合、分组与存在性查询仍可使用受证据约束的 Join。
+- 中文自然语言值的表面来源检查不是完整语义证明；系统依赖双计划、Lead 审批和 Blind Critic 共同降低误解风险。
+- 本地 SQLite 是当前执行后端；远程数据库事务、资源隔离和生产压测尚待补充。
+- 当前没有 v3 架构的付费模型全量 benchmark，也没有已经带来净提升的线上 Memory / Policy 发布案例。
 
 ## 数据与开源说明
 
-仓库中的数据库 dump、Wiki 示例和评测工件仅用于当前项目的本地研究与演示。公开发布前请再次确认原始数据、第三方内容和模型输出的授权范围。仓库当前未附带开源许可证，未经许可不代表可以自由再分发。
+仓库中的数据库 dump、Wiki 示例和评测工件用于本地研究与演示。公开发布前应确认原始数据、第三方内容和模型输出的授权范围。仓库当前未附带开源许可证；公开可见不等于自动授予再分发或商用许可。

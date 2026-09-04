@@ -18,9 +18,7 @@ canary_passed
 active stable Policy
 ```
 
-没有 candidate 时只运行 active stable，不增加模型调用。5% shadow 命中时，本地 CLI 会并发运行两个独立 `Text2SQLAgenticEngine`；candidate 只能读同一只读数据库，拥有独立 Policy 实例和运行轨迹。shadow candidate 的结果绝不会成为用户响应。
-
-两条 lane 的节点 checkpoint 也按 `task_id + lane + policy_version` 隔离；恢复 stable 不会误读 candidate 状态，候选版本变化也不会复用旧候选节点。
+没有 candidate 时只运行 active stable，不增加模型调用。5% shadow 命中时，本地 CLI 会并发运行两个独立 `Text2SQLAgenticEngine`；两条 lane 都执行 `plan-first-text2sql-v3` 的五 Agent、非 Agent Harness 与 11 个固定节点，candidate 只能读同一只读数据库，并拥有独立 Policy 实例和运行轨迹。shadow candidate 的结果绝不会成为用户响应。
 
 ## 配置 Shadow
 

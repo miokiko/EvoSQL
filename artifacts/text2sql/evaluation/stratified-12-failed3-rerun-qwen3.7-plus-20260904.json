@@ -13,7 +13,7 @@
     "model": "qwen3.7-plus",
     "temperature": 0
   },
-  "checkpoint": "/Users/tyl/Desktop/EvoAgent-Text2SQL/artifacts/text2sql/evaluation/stratified-12-failed3-rerun-qwen3.7-plus-20260904.checkpoint.jsonl",
+  "checkpoint": "artifacts/text2sql/evaluation/stratified-12-failed3-rerun-qwen3.7-plus-20260904.checkpoint.jsonl",
   "resume_from": "",
   "budget": {
     "enforcement": "between_completed_cases_with_in_flight_overshoot",

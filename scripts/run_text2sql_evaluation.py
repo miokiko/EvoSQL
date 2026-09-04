@@ -20,7 +20,6 @@ from evoagent.config import Settings
 from evoagent.llm import JsonChatClient
 from evoagent.text2sql.agentic import Text2SQLAgenticEngine
 from evoagent.text2sql.benchmark import ResumableEvaluationCheckpoint
-from evoagent.text2sql.checkpoint_store import Text2SQLRuntimeCheckpointStore
 from evoagent.text2sql.evaluation import Text2SQLEvaluator, load_dataset
 from evoagent.text2sql.evolution import Text2SQLEvolutionStore
 
@@ -28,6 +27,16 @@ from evoagent.text2sql.evolution import Text2SQLEvolutionStore
 def _project_path(value: str) -> Path:
     path = Path(value)
     return path if path.is_absolute() else PROJECT_ROOT / path
+
+
+def _portable_artifact_path(path: Path) -> str:
+    """Serialize repository paths without leaking a developer home directory."""
+
+    resolved = path.resolve()
+    try:
+        return resolved.relative_to(PROJECT_ROOT).as_posix()
+    except ValueError:
+        return resolved.name
 
 
 def _fatal_provider_outcome(outcome) -> bool:
@@ -113,6 +122,19 @@ def main() -> int:
         help="Evaluate a specific stored candidate; defaults to the active policy.",
     )
     parser.add_argument(
+        "--memory-candidate-id",
+        default="",
+        help=(
+            "Evaluate one human-approved Semantic Memory candidate without "
+            "making it visible to the stable runtime."
+        ),
+    )
+    parser.add_argument(
+        "--experience-candidate-id",
+        default="",
+        help="Bind this artifact to one isolated Question-SQL candidate.",
+    )
+    parser.add_argument(
         "--output",
         type=Path,
         default=PROJECT_ROOT / "artifacts" / "text2sql" / "evaluation" / "latest.json",
@@ -122,17 +144,6 @@ def main() -> int:
         type=Path,
         default=None,
         help="Append-only resume log; defaults to <output>.checkpoint.jsonl.",
-    )
-    parser.add_argument(
-        "--runtime-checkpoint-store",
-        type=Path,
-        default=_project_path(
-            os.getenv(
-                "EVOAGENT_TEXT2SQL_CHECKPOINT_STORE",
-                "artifacts/text2sql/checkpoints/runtime.sqlite3",
-            )
-        ),
-        help="SQLite store for resumable checkpoints inside each eight-node case run.",
     )
     parser.add_argument("--resume", action="store_true")
     parser.add_argument(
@@ -224,11 +235,21 @@ def main() -> int:
         timeout=settings.agent_time_budget_seconds,
         extra_headers=dict(llm.get("headers") or {}),
     )
-    runtime_checkpoint_store = Text2SQLRuntimeCheckpointStore(
-        args.runtime_checkpoint_store
-    )
     with Text2SQLEvolutionStore(args.evolution_store, snapshot) as evolution:
         policy = evolution.get_policy(args.policy_version or None)
+        memory_candidate_id = args.memory_candidate_id.strip()
+        if memory_candidate_id:
+            memory_snapshot_id = evolution.memory_snapshot_id_for(
+                memory_candidate_id
+            )
+
+            def memory_provider(skill, limit):
+                return evolution.evaluation_memory(
+                    skill, memory_candidate_id, limit
+                )
+        else:
+            memory_snapshot_id = evolution.memory_snapshot_id
+            memory_provider = evolution.stable_memory
         engine = Text2SQLAgenticEngine(
             client=client,
             database_path=args.database,
@@ -236,11 +257,10 @@ def main() -> int:
             knowledge_store_path=args.knowledge_store,
             vanna_index_root=args.vanna_index_root,
             principals=args.principal,
-            memory_snapshot_id=evolution.memory_snapshot_id,
+            memory_snapshot_id=memory_snapshot_id,
             policy_version=policy.version,
             policy_artifact=policy,
-            stable_memory_provider=evolution.stable_memory,
-            checkpoint_store=runtime_checkpoint_store,
+            stable_memory_provider=memory_provider,
             token_budget=settings.agent_token_budget,
             time_budget=settings.agent_time_budget_seconds,
         )
@@ -273,7 +293,6 @@ def main() -> int:
             )
             for outcome in existing_outcomes:
                 checkpoint.append_outcome(outcome)
-        evaluation_run_id = checkpoint.run_id
 
         def persist_outcome(outcome):
             if _fatal_provider_outcome(outcome):
@@ -318,16 +337,6 @@ def main() -> int:
             return True
 
         evaluator = Text2SQLEvaluator(args.database, snapshot, engine.version_pins)
-
-        def execute_case(case):
-            return engine.run(
-                case.question,
-                task_id="text2sql-eval:%s:%s" % (
-                    evaluation_run_id,
-                    case.case_id,
-                ),
-            )
-
         if args.workers == 1:
             report = evaluator.evaluate(
                 cases,
@@ -336,7 +345,6 @@ def main() -> int:
                 existing_outcomes=existing_outcomes,
                 progress_callback=persist_outcome,
                 should_continue=should_continue,
-                case_runner=execute_case,
             )
         else:
             outcomes = [dict(item) for item in existing_outcomes]
@@ -350,7 +358,6 @@ def main() -> int:
                     (case,),
                     engine.run,
                     redact_holdout=True,
-                    case_runner=execute_case,
                 )
                 return dict(one["outcomes"][0])
 
@@ -383,7 +390,6 @@ def main() -> int:
                 redact_holdout=True,
                 existing_outcomes=outcomes,
                 should_continue=lambda _outcomes: False,
-                case_runner=execute_case,
             )
     complete = len(report["outcomes"]) == len(cases)
     measured_usage = usage(report["outcomes"])
@@ -393,13 +399,13 @@ def main() -> int:
         "created_at": datetime.now(timezone.utc).isoformat(),
         "dataset_id": bundle.dataset_id,
         "dataset_sha256": bundle.dataset_sha256,
-        "evaluation_run_id": evaluation_run_id,
         "evaluated_splits": splits,
         "evaluated_case_count": len(cases),
         "model": {"provider": llm["provider"], "model": llm["model"], "temperature": 0},
-        "checkpoint": str(checkpoint_path.resolve()),
-        "runtime_checkpoint_store": str(args.runtime_checkpoint_store.resolve()),
-        "resume_from": str(args.resume_from.resolve()) if args.resume_from else "",
+        "memory_candidate_id": args.memory_candidate_id.strip(),
+        "experience_candidate_id": args.experience_candidate_id.strip(),
+        "checkpoint": _portable_artifact_path(checkpoint_path),
+        "resume_from": _portable_artifact_path(args.resume_from) if args.resume_from else "",
         "budget": {
             "enforcement": (
                 "between_cases"

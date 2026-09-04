@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run one Text2SQL question through EvoSQL's hierarchical four-role protocol."""
+"""Run one question through EvoSQL's five-agent, 11-node Text2SQL protocol."""
 
 from __future__ import annotations
 
@@ -26,6 +26,14 @@ from evoagent.text2sql.shadow import Text2SQLShadowReleaseManager
 def _project_path(value: str) -> Path:
     path = Path(value)
     return path if path.is_absolute() else PROJECT_ROOT / path
+
+
+def _lane_task_id(task_id: str, lane: str, policy_version: str) -> str:
+    """Return a checkpoint key isolated by external request, lane, and policy."""
+
+    if lane not in {"stable", "candidate"}:
+        raise ValueError("unknown Text2SQL release lane: %s" % lane)
+    return "%s:%s:%s" % (task_id, lane, policy_version)
 
 
 def main() -> int:
@@ -78,7 +86,7 @@ def main() -> int:
                 "artifacts/text2sql/checkpoints/runtime.sqlite3",
             )
         ),
-        help="Durable node-level runtime checkpoint database.",
+        help="Durable SQLite store for 11-node runtime checkpoints.",
     )
     parser.add_argument("--max-rows", type=int, default=200)
     parser.add_argument("--task-id", default="")
@@ -101,7 +109,7 @@ def main() -> int:
     )
     checkpoint_store = Text2SQLRuntimeCheckpointStore(args.checkpoint_store)
     with Text2SQLEvolutionStore(args.evolution_store, snapshot) as evolution:
-        task_id = args.task_id or "text2sql-%s" % uuid.uuid4().hex
+        task_id = str(args.task_id or "").strip() or "text2sql-%s" % uuid.uuid4().hex
 
         def engine_for(version):
             policy = evolution.get_policy(version)
@@ -128,8 +136,9 @@ def main() -> int:
             candidate_engine = engine_for(version)
             return lambda question: candidate_engine.run(
                 question,
-                task_id="%s:candidate:%s" % (
+                task_id=_lane_task_id(
                     task_id,
+                    "candidate",
                     candidate_engine.policy_version,
                 ),
             )
@@ -139,8 +148,9 @@ def main() -> int:
             task_id,
             lambda question: stable_engine.run(
                 question,
-                task_id="%s:stable:%s" % (
+                task_id=_lane_task_id(
                     task_id,
+                    "stable",
                     stable_engine.policy_version,
                 ),
             ),

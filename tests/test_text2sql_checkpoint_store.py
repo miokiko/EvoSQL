@@ -4,6 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from evoagent.runtime import AgentRuntime, RuntimeNode
 from evoagent.text2sql.checkpoint_store import (
     Text2SQLCheckpointBusy,
     Text2SQLCheckpointCorruptionError,
@@ -13,6 +14,82 @@ from evoagent.text2sql.checkpoint_store import (
 
 
 class Text2SQLRuntimeCheckpointStoreTests(unittest.TestCase):
+    def test_runtime_rejects_duplicate_node_names_before_execution(self):
+        calls = []
+        runtime = AgentRuntime(max_steps=2, timeout_seconds=5)
+
+        def nodes():
+            yield RuntimeNode(
+                "duplicate", lambda _state: calls.append("first") or {}
+            )
+            yield RuntimeNode(
+                "duplicate", lambda _state: calls.append("second") or {}
+            )
+
+        with self.assertRaisesRegex(ValueError, "node names must be unique"):
+            runtime.execute({}, nodes())
+        self.assertEqual(calls, [])
+
+    def test_runtime_rejects_checkpoint_bound_graph_sequence_mismatch(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "runtime.sqlite3"
+            store = Text2SQLRuntimeCheckpointStore(path)
+            identity = {
+                "question_sha256": "q1",
+                "runtime": {"nodes": ["n1", "n2"]},
+            }
+            session = store.acquire("task-1", identity)
+            calls = []
+            runtime = AgentRuntime(max_steps=2, timeout_seconds=5)
+
+            class Adapter:
+                def __init__(self, value):
+                    self.session = value
+
+            with self.assertRaisesRegex(ValueError, "checkpoint-bound graph"):
+                runtime.execute(
+                    {},
+                    (
+                        RuntimeNode(
+                            "n1", lambda _state: calls.append("n1") or {}
+                        ),
+                        RuntimeNode(
+                            "different", lambda _state: calls.append("different") or {}
+                        ),
+                    ),
+                    task_id="task-1",
+                    checkpoint_store=Adapter(session),
+                )
+            self.assertEqual(calls, [])
+            self.assertEqual(store.inspect("task-1")["checkpoint_count"], 0)
+            session.fail("graph mismatch", {})
+
+    def test_runtime_accepts_exact_checkpoint_bound_graph_and_completes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            store = Text2SQLRuntimeCheckpointStore(
+                Path(directory) / "runtime.sqlite3"
+            )
+            identity = {
+                "question_sha256": "q1",
+                "runtime": {"nodes": ["n1", "n2"]},
+            }
+            session = store.acquire("task-1", identity)
+            runtime = AgentRuntime(max_steps=2, timeout_seconds=5)
+
+            state = runtime.execute(
+                {},
+                (
+                    RuntimeNode("n1", lambda _state: {"value": 1}),
+                    RuntimeNode("n2", lambda value: {"value": value["value"] + 1}),
+                ),
+                task_id="task-1",
+                checkpoint_store=session,
+            )
+            session.complete({"status": "success", "value": state["value"]}, {})
+
+            self.assertEqual(state["value"], 2)
+            self.assertEqual(store.inspect("task-1")["status"], "completed")
+
     def test_failed_run_releases_lease_and_restores_node_and_ledger(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "runtime.sqlite3"
@@ -122,6 +199,47 @@ class Text2SQLRuntimeCheckpointStoreTests(unittest.TestCase):
                 )
             with self.assertRaises(Text2SQLCheckpointCorruptionError):
                 store.acquire("task-1", identity)
+
+    def test_bound_graph_cannot_complete_with_missing_or_failed_nodes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "runtime.sqlite3"
+            store = Text2SQLRuntimeCheckpointStore(path)
+            identity = {
+                "question_sha256": "q1",
+                "runtime": {"nodes": ["n1", "n2"]},
+            }
+
+            missing = store.acquire("missing-tail", identity)
+            missing.save_checkpoint("missing-tail", "n1", {"value": 1})
+            with self.assertRaisesRegex(
+                Text2SQLCheckpointCorruptionError,
+                "before every bound runtime node is completed",
+            ):
+                missing.complete({"status": "success"}, {})
+            self.assertEqual(store.inspect("missing-tail")["status"], "running")
+            missing.fail("missing tail", {})
+
+            failed = store.acquire("failed-tail", identity)
+            failed.save_checkpoint("failed-tail", "n1", {"value": 1})
+            failed.save_checkpoint(
+                "failed-tail", "n2", {}, status="failed", error="boom"
+            )
+            with self.assertRaisesRegex(
+                Text2SQLCheckpointCorruptionError,
+                "before every bound runtime node is completed",
+            ):
+                failed.complete({"status": "success"}, {})
+            self.assertEqual(store.inspect("failed-tail")["status"], "running")
+            failed.fail("failed tail", {})
+
+    def test_legacy_session_without_node_order_can_complete_directly(self):
+        with tempfile.TemporaryDirectory() as directory:
+            store = Text2SQLRuntimeCheckpointStore(
+                Path(directory) / "runtime.sqlite3"
+            )
+            session = store.acquire("legacy", {"question_sha256": "q1"})
+            session.complete({"status": "success"}, {})
+            self.assertEqual(store.inspect("legacy")["status"], "completed")
 
 
 if __name__ == "__main__":

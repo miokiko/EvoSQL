@@ -595,6 +595,19 @@ class Text2SQLRuntimeCheckpointSession:
     def complete(
         self, result: Mapping[str, Any], execution: Mapping[str, Any]
     ) -> None:
+        if self.node_order:
+            checkpoints = self.store._load_checkpoints(self.run_key)
+            self._validate_prefix(checkpoints)
+            incomplete = [
+                node
+                for node in self.node_order
+                if (checkpoints.get(node) or {}).get("status") != "completed"
+            ]
+            if incomplete:
+                raise Text2SQLCheckpointCorruptionError(
+                    "checkpoint run cannot complete before every bound runtime "
+                    "node is completed: %s" % ", ".join(incomplete)
+                )
         self.execution = dict(execution)
         self.store._finish(
             self.run_key,

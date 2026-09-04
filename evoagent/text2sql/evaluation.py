@@ -244,14 +244,50 @@ def load_dataset(
 
 
 def _failure_from_gate(errors: Sequence[str]) -> str:
-    if any(value == "parse_error" for value in errors):
+    codes = {
+        str(value).casefold().split(":", 1)[0].strip()
+        for value in errors
+        if str(value).strip()
+    }
+    raw = {str(value).casefold().strip() for value in errors if str(value).strip()}
+    if "parse_error" in codes or "sql_safety:parse_error" in raw:
         return "PARSE_ERROR"
-    if any(value.startswith("unknown_table") for value in errors):
+    if "unknown_table" in codes:
         return "UNKNOWN_TABLE"
-    if any(value.startswith("unknown_column") for value in errors):
+    if "unknown_column" in codes:
         return "UNKNOWN_COLUMN"
-    if any(value in {"sql_tables_outside_schema_plan", "sql_columns_outside_schema_plan"} for value in errors):
+    if codes.intersection(
+        {
+            "sql_tables_outside_schema_plan",
+            "sql_columns_outside_schema_plan",
+            "unexpected_table",
+            "missing_table",
+            "unexpected_column",
+            "unresolved_sql_column",
+            "missing_bound_column",
+            "missing_schema_binding",
+            "ambiguous_schema_binding",
+            "invalid_schema_binding",
+            "missing_value_binding",
+            "ambiguous_value_binding",
+        }
+    ):
         return "SCHEMA_LINK_MISMATCH"
+    if codes.intersection({"filter_mismatch", "unsupported_filter_expression"}):
+        return "FILTER_MISMATCH"
+    if codes.intersection(
+        {
+            "aggregation_mismatch",
+            "distinct_mismatch",
+            "group_by_mismatch",
+            "result_shape_mismatch",
+        }
+    ):
+        return "AGGREGATION_MISMATCH"
+    if codes.intersection(
+        {"missing_join", "unexpected_join", "result_grain_mismatch"}
+    ):
+        return "JOIN_OR_GRAIN_MISMATCH"
     if errors:
         return "UNSAFE_SQL"
     return "RESULT_MISMATCH"
@@ -388,15 +424,29 @@ class Text2SQLEvaluator:
             ast_valid = bool(candidate_sql and validate_sql(candidate_sql, self.snapshot).accepted)
             actual = result.get("answer") or {}
             actual_rows = list(actual.get("rows") or ())
+            collaboration = result.get("collaboration") or {}
+            approved_plan = collaboration.get("approved_query_plan") or {}
+            bound_plan = (
+                approved_plan.get("bound_plan")
+                if isinstance(approved_plan, Mapping)
+                else {}
+            ) or collaboration.get("bound_query_plan") or {}
+            schema_plan = (
+                bound_plan.get("schema_plan")
+                if isinstance(bound_plan, Mapping)
+                else {}
+            ) or {}
             schema_worker = next(
                 (
                     item
-                    for item in (result.get("collaboration") or {}).get("worker_results") or ()
+                    for item in collaboration.get("worker_results") or ()
                     if isinstance(item, Mapping) and item.get("worker") == "schema-grounding"
                 ),
                 {},
             )
-            schema_plan = (schema_worker.get("output") or {}).get("schema_plan") or {}
+            if not schema_plan:
+                # Read compatibility for traces produced before BoundQueryPlan/v1.
+                schema_plan = (schema_worker.get("output") or {}).get("schema_plan") or {}
             planned_tables = set(schema_plan.get("tables") or ())
             planned_columns = set(schema_plan.get("columns") or ())
             planned_relationships = {

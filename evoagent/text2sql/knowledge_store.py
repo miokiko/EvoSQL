@@ -666,7 +666,7 @@ class KnowledgeStore:
         self._publish_index("candidate")
         return self._publish_index("stable")
 
-    def promote_verified_example(
+    def stage_verified_example(
         self,
         question: str,
         sql: str,
@@ -675,7 +675,7 @@ class KnowledgeStore:
         source_id: str,
         dependencies: Sequence[str] = (),
     ) -> Mapping[str, str]:
-        """Idempotently publish one explicitly reviewed question-SQL example."""
+        """Create an isolated Question-SQL candidate without changing stable retrieval."""
 
         question = question.strip()
         sql = sql.strip()
@@ -689,10 +689,7 @@ class KnowledgeStore:
         existing = self.connection.execute(
             "SELECT state FROM knowledge_items WHERE evidence_id=?", (evidence_id,)
         ).fetchone()
-        if not existing or existing["state"] != "stable":
-            review_id = "review_" + _hash(
-                [evidence_id, "approve", reviewer, source_id]
-            )[:20]
+        if not existing:
             with self.connection:
                 self._put_item(
                     evidence_id=evidence_id,
@@ -709,27 +706,46 @@ class KnowledgeStore:
                     acl=("*",),
                     dependencies=tuple(dict.fromkeys(dependencies)),
                 )
-                self.connection.execute(
-                    "UPDATE knowledge_items SET state='stable',updated_at=? WHERE evidence_id=?",
-                    (_now(), evidence_id),
-                )
-                self.connection.execute(
-                    "INSERT OR IGNORE INTO knowledge_reviews("
-                    "review_id,evidence_id,decision,reviewer,reason,created_at"
-                    ") VALUES(?,?,?,?,?,?)",
-                    (
-                        review_id,
-                        evidence_id,
-                        "approve",
-                        reviewer[:200],
-                        "Explicit Text2SQL experience promotion",
-                        _now(),
-                    ),
-                )
-        self._publish_index("candidate")
         return {
             "evidence_id": evidence_id,
-            "stable_index_version": self._publish_index("stable"),
+            "state": str((existing or {"state": "candidate"})["state"]),
+            "candidate_index_version": self._publish_index("candidate"),
+        }
+
+    def promote_verified_example(
+        self,
+        question: str,
+        sql: str,
+        reviewer: str,
+        *,
+        source_id: str,
+        dependencies: Sequence[str] = (),
+    ) -> Mapping[str, str]:
+        """Compatibility helper for explicit offline promotion."""
+
+        staged = self.stage_verified_example(
+            question,
+            sql,
+            reviewer,
+            source_id=source_id,
+            dependencies=dependencies,
+        )
+        evidence_id = str(staged["evidence_id"])
+        row = self.connection.execute(
+            "SELECT state FROM knowledge_items WHERE evidence_id=?", (evidence_id,)
+        ).fetchone()
+        if row and row["state"] == "candidate":
+            version = self.review(
+                evidence_id,
+                "approve",
+                reviewer,
+                "Explicit Text2SQL experience promotion",
+            )
+        else:
+            version = self.current_index_version("stable")
+        return {
+            "evidence_id": evidence_id,
+            "stable_index_version": version,
         }
 
     def _publish_index(self, kind: str) -> str:

@@ -470,7 +470,13 @@ def build_snapshot_from_dump(path: Path, database_name: str = "evo_text2sql_eval
         "database": database_name,
         "source": {
             "kind": "mysql_dump",
-            "path": str(dump_path),
+            # Artifact metadata must be portable and must not disclose the
+            # workstation path of the person who generated the snapshot.
+            "path": (
+                "database/%s" % dump_path.name
+                if dump_path.parent.name == "database"
+                else dump_path.name
+            ),
             "dump_sha256": dump_sha256,
         },
         "generated_at": datetime.now(timezone.utc).isoformat(),
