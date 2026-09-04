@@ -23,34 +23,7 @@ EvoSQL 的核心原则是：
 
 ## 系统架构
 
-```mermaid
-flowchart TD
-    U[用户问题] --> W[Web / CLI]
-    W --> C[冻结上下文、Principals 与五项版本]
-    C --> N1[1. Leader 路由与委派]
-    N1 --> N2[2. Evidence Orchestration]
-
-    KS[(KnowledgeStore)] --> N2
-    VA[(Vanna / Chroma)] -->|只返回 evidence_id| N2
-    SS[(Schema Snapshot)] --> N2
-
-    N2 --> N3[3. Grounding / Strategy 并行]
-    N3 --> N4[4. Leader Assessment]
-    N4 --> N5[5. 最多一次定向返工]
-    N5 --> N6[6. Blind Critic]
-    N6 --> N7[7. Leader 选择已有候选]
-    N7 --> N8[8. AST + SchemaPlan Gate]
-    N8 --> DB[(只读 SQLite / MySQL)]
-
-    CP[(SQLite Checkpoint)] -.节点状态与 Ledger.-> N1
-    CP -.恢复.-> N2
-    CP -.恢复.-> N3
-    CP -.恢复.-> N4
-    CP -.恢复.-> N5
-    CP -.恢复.-> N6
-    CP -.恢复.-> N7
-    CP -.恢复.-> N8
-```
+![EvoSQL Multi-Agent Text2SQL 与受控自进化系统架构](docs/assets/evosql-system-architecture.png)
 
 外层是固定的 8 节点状态机；真正的并发发生在 `text2sql-workers` 节点内部，两名 Worker 由线程池并行运行。四个名称是 Runtime Role 与可演化 Policy 槽位，不是四个独立服务或四份 Codex `SKILL.md`。
 
@@ -65,7 +38,7 @@ flowchart TD
 | `sql-strategy` | 推导过滤、聚合、去重、排序和候选 SQL | 生成 `QuerySpec` 与最多 4 个 `SQLCandidate` |
 | `text2sql-critic` | 对去来源化候选做反例审查 | 只能接受、拒绝和提出异议，不能新增候选 |
 
-Grounding 与 Strategy 当前共享 Harness 预取的同一份 EvidencePack，但使用隔离上下文和不同输出契约。因此它实现的是**职责隔离**，不是统计意义上的完全独立。
+Grounding 与 Strategy 当前共享 Harness 通过 `prepare_evidence` Tool 强制预取的同一份 EvidencePack，但使用隔离上下文和不同输出契约。该 Tool 负责 stable / snapshot / ACL 约束下的基础检索，不替代 Grounding 的 SchemaPlan 决策。因此它实现的是**职责隔离**，不是统计意义上的完全独立。
 
 ### 2. Hybrid RAG 与 Schema Linking
 
@@ -75,6 +48,7 @@ MySQL Dump
   → KnowledgeStore：stable / candidate / quarantined / revoked
   → 词法、精确值、已审核关系图 + Vanna 语义召回
   → stable / snapshot / ACL 回源重验
+  → prepare_evidence Tool
   → EvidencePack
   → LLM 草案 SQL（永不执行）
   → SQLGlot AST 反向提取表列
