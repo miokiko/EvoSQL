@@ -40,6 +40,28 @@ def _schema_lookup(snapshot: Mapping[str, Any]) -> tuple[set[str], Mapping[str, 
     return set(columns), columns
 
 
+def _is_projection_alias_reference(column: exp.Column) -> bool:
+    """Return whether an unqualified column references this SELECT's output alias."""
+    if column.table:
+        return False
+    select = column.find_ancestor(exp.Select)
+    if select is None:
+        return False
+    aliases = {
+        projection.alias.casefold()
+        for projection in select.expressions
+        if isinstance(projection, exp.Alias) and projection.alias
+    }
+    if column.name.casefold() not in aliases:
+        return False
+    parent = column.parent
+    while parent is not None and parent is not select:
+        if isinstance(parent, (exp.Order, exp.Group, exp.Having)):
+            return True
+        parent = parent.parent
+    return False
+
+
 def validate_sql(sql: str, snapshot: Mapping[str, Any]) -> SQLGateResult:
     errors: list[str] = []
     if not isinstance(sql, str) or not sql.strip():
@@ -88,6 +110,10 @@ def validate_sql(sql: str, snapshot: Mapping[str, Any]) -> SQLGateResult:
     referenced_tables = {table for table in tables if table in allowed_tables}
     for column in tree.find_all(exp.Column):
         if isinstance(column.this, exp.Star):
+            continue
+        if _is_projection_alias_reference(column):
+            # ORDER BY/GROUP BY/HAVING may legally reuse an output alias. It is
+            # not a physical schema column and must not enter boundary checks.
             continue
         name = column.name
         qualifier = column.table
