@@ -105,6 +105,33 @@ class ResumableEvaluationCheckpoint:
         )
         return ()
 
+    def seed_outcomes(self) -> Sequence[Mapping[str, Any]]:
+        """Read verified outcomes from an incomplete or complete source run.
+
+        A complete checkpoint cannot be resumed in place, but it is still a
+        valid immutable source for a new run that deliberately drops
+        infrastructure-tainted cases and reruns them under a new run id.
+        """
+
+        records = self._records()
+        if not records:
+            raise ValueError("evaluation seed checkpoint does not exist")
+        header = records[0]
+        if (
+            header.get("record_type") != "header"
+            or header.get("identity") != self.identity
+        ):
+            raise ValueError("evaluation checkpoint identity mismatch")
+        outcomes = [
+            dict(record.get("outcome") or {})
+            for record in records
+            if record.get("record_type") == "outcome"
+        ]
+        case_ids = [str(item.get("case_id") or "") for item in outcomes]
+        if "" in case_ids or len(case_ids) != len(set(case_ids)):
+            raise ValueError("evaluation checkpoint contains duplicate outcomes")
+        return tuple(outcomes)
+
     def append_outcome(self, outcome: Mapping[str, Any]) -> None:
         records = self._records()
         if not records or records[0].get("identity") != self.identity:

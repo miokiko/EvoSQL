@@ -1120,11 +1120,48 @@ def check_plan_conformance(
             )
         )
         return PlanConformanceResult(False, tuple(issues), gate)
-    if tree.args.get("distinct") is not None:
+    # Decimal precision is a pinned output transformation. Verify its exact
+    # outer ROUND wrapper before comparing the underlying aggregate semantics.
+    precisions = ([None] * len(bound.query_spec.dimension_specs())
+                  + [item.precision for item in bound.query_spec.measure_specs()])
+    for index, projection in enumerate(list(tree.expressions)):
+        precision = precisions[index] if index < len(precisions) else None
+        if precision is None:
+            continue
+        inner = projection.this if isinstance(projection, exp.Alias) else projection
+        decimals = inner.args.get("decimals") if isinstance(inner, exp.Round) else None
+        valid_precision = (isinstance(decimals, exp.Literal) and not decimals.is_string
+                           and decimals.this == str(precision))
+        if (not isinstance(inner, exp.Round) or not valid_precision
+                or not isinstance(inner.this, exp.AggFunc)):
+            issues.append(_issue("output_precision_mismatch",
+                                 "SELECT must round the completed aggregate to its pinned precision",
+                                 expected=precision, actual=inner.sql(dialect="sqlite")))
+        else:
+            order = tree.args.get("order")
+            if projection.alias and order is not None and any(
+                isinstance(item.this, exp.Column) and not item.this.table
+                and _sqlite_identifier_key(item.this.name) == _sqlite_identifier_key(projection.alias)
+                for item in order.expressions
+            ):
+                issues.append(_issue("output_precision_order_mismatch",
+                                     "ORDER BY must use the unrounded measure, not its rounded display alias"))
+            # Work on the parsed AST only; the original SQL is still executed.
+            inner.replace(inner.this.copy())
+
+    actual_row_distinct = tree.args.get("distinct") is not None
+    if actual_row_distinct and not bound.query_spec.distinct_rows:
         issues.append(
             _issue(
                 "unexpected_row_distinct",
-                "QuerySpec/v1 has no row-level DISTINCT contract",
+                "SQL adds row-level DISTINCT not required by QuerySpec/v1",
+            )
+        )
+    elif bound.query_spec.distinct_rows and not actual_row_distinct:
+        issues.append(
+            _issue(
+                "missing_row_distinct",
+                "SQL omits row-level DISTINCT required by QuerySpec/v1",
             )
         )
     output_aliases = [

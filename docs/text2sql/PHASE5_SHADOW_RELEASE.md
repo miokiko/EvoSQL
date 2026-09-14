@@ -22,7 +22,7 @@ active stable Policy
 
 ## 配置 Shadow
 
-只有已通过完整 validation + sealed holdout、状态为 `shadow_ready`，且 parent 仍是当前 active Policy 的候选可以进入 shadow：
+只有已通过完整 validation + sealed holdout、状态为 `shadow_ready`，且 parent 仍是当前 active Policy 的候选可以进入 shadow。Experience 驱动的候选还必须先完成并绑定通过的 Target Replay；它不能用来替代 validation + sealed holdout：
 
 ```bash
 python scripts/manage_text2sql_evolution.py shadow-configure \
@@ -33,7 +33,7 @@ python scripts/manage_text2sql_evolution.py shadow-configure \
   --max-p95-multiplier 1.2
 ```
 
-配置时会再次核对 database snapshot、stable Wiki index 和 stable Memory snapshot 是否与离线评测一致。shadow/canary 运行期间任一版本漂移都会停止部署，保留 stable 响应。
+配置时会再次核对 Database Snapshot、Vanna corpus 和兼容 Runtime Memory snapshot 是否与离线评测一致；Confirmed Experience 不进入该 snapshot。业务文档摘要已包含在 corpus fingerprint 中。shadow/canary 运行期间任一版本漂移都会停止部署，保留 stable 响应。
 
 `scripts/run_text2sql.py` 已自动读取 release 配置。抽样使用 `deployment_id + task_id` 的 SHA-256 桶，同一任务稳定落在同一桶：
 
@@ -43,16 +43,16 @@ python scripts/run_text2sql.py "强烈岩爆案例有多少个" --task-id reques
 
 ## 差异记录
 
-Shadow Store 不保存用户问题、原始 SQL、结果行、Wiki 页面 ID 或候选异常正文，只保存：
+Shadow Store 不保存用户问题、原始 SQL、结果行、业务文档正文或候选异常正文，只保存：
 
 - task key SHA-256；
 - stable/candidate SQL SHA-256；
 - 将 Literal 替换为占位符后的 SQL Skeleton；
 - 结果集指纹及是否等价；
-- Wiki 引用 ID 的不可逆哈希增删集合；
+- Vanna 证据引用 ID 的不可逆哈希增删集合；
 - stable/candidate 延迟；
 - candidate 异常指纹；
-- Policy、数据库、Wiki 和 Memory 版本。
+- Policy、Database Snapshot、Vanna corpus 和 Memory 版本；legacy `wiki_index_version` 与 corpus version 是同一个值。
 
 因此可以判断“SQL 是否变化、结果是否相同、引用是否漂移、延迟是否超限”，但不会把线上问题或敏感结果写进自进化存储。
 
@@ -73,7 +73,7 @@ python scripts/manage_text2sql_evolution.py shadow-observations \
   --deployment shadow-... --review-state pending
 ```
 
-所有 SQL、结果或 Wiki 引用差异都需要人工给出结论：
+所有 SQL、结果或 Vanna 证据引用差异都需要人工给出结论：
 
 ```bash
 python scripts/manage_text2sql_evolution.py shadow-review \

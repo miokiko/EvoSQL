@@ -12,7 +12,8 @@ from evoagent.text2sql.agentic import (
     TEXT2SQL_RUNTIME_NODES,
 )
 from evoagent.text2sql.evolution import Text2SQLEvolutionStore
-from evoagent.text2sql.knowledge_store import KnowledgeStore
+from corpus_fixtures import build_test_corpus
+from evoagent.text2sql.vanna_corpus import VannaCorpus, collect_vanna_corpus, add_confirmed_question_sql, question_sql_registry_path
 from evoagent.text2sql.policy import TEXT2SQL_SKILLS
 from evoagent.text2sql.web_service import Text2SQLWebService
 
@@ -22,20 +23,51 @@ def _settings() -> Settings:
         host="127.0.0.1",
         port=8080,
         db_path=":memory:",
-        max_diff_bytes=10000,
-        max_steps=8,
-        timeout_seconds=10,
+
+
+
         llm_base_url="",
         llm_api_key="",
         llm_model="qwen-plus",
-        github_webhook_secret="",
-        github_token="",
-        auto_post_review=False,
+
+
+
         llm_provider="aliyun",
     )
 
 
 class Text2SQLWebServiceTests(unittest.TestCase):
+    def test_retry_uses_frozen_context_but_rejects_identity_drift(self):
+        root = Path(__file__).resolve().parents[1]
+        snapshot = json.loads((root / "artifacts/text2sql/schema/database_snapshot.json").read_text())
+        service = Text2SQLWebService(_settings(), llm_config={})
+        initial = {"scope": {"user_id": "u", "session_id": "s"}, "recent_query_runs": []}
+        grown = {**initial, "recent_query_runs": [{"task_id": "failed-attempt"}, {"task_id": "other-query"}]}
+        pins = {"policy_version": "p1", "memory_snapshot_id": "m1"}
+        with tempfile.TemporaryDirectory() as directory:
+            with Text2SQLEvolutionStore(Path(directory) / "e.sqlite3", snapshot) as store:
+                runtime = service._query_attempt_runtime_identity(pins, initial)
+                store.prepare_query_attempt("q", "u", "s", "用户补充：按项目统计", ("u",), initial, runtime)
+                store.finish_query_attempt("q", "error", "text2sql_runtime_error")
+                latest_runtime = service._query_attempt_runtime_identity(pins, grown)
+                retry = store.prepare_query_attempt("q", "u", "s", "用户补充：按项目统计", ("u",), grown, latest_runtime)
+                self.assertEqual(retry["conversation_context"], initial)
+                self.assertEqual(latest_runtime, service._query_attempt_runtime_identity(pins, grown))
+                store.finish_query_attempt("q", "completed", response={"status": "success"})
+                cached = store.prepare_query_attempt("q", "u", "s", "用户补充：按项目统计", ("u",), grown, latest_runtime)
+                self.assertEqual(cached["cached_response"], {"status": "success"})
+                for user, session, question, principals, changed in [
+                    ("other", "s", "用户补充：按项目统计", ("u",), latest_runtime),
+                    ("u", "other", "用户补充：按项目统计", ("u",), latest_runtime),
+                    ("u", "s", "另一个问题", ("u",), latest_runtime),
+                    ("u", "s", "用户补充：按项目统计", ("other",), latest_runtime),
+                    ("u", "s", "用户补充：按项目统计", ("u",), {**latest_runtime, "build_version": "changed"}),
+                    ("u", "s", "用户补充：按项目统计", ("u",), {**latest_runtime, "version_pins": {"policy_version": "p2"}}),
+                ]:
+                    with self.subTest(user=user, session=session, question=question, runtime=changed):
+                        with self.assertRaisesRegex(ValueError, "runtime identity"):
+                            store.prepare_query_attempt("q", user, session, question, principals, grown, changed)
+
     def test_query_attempt_freezes_context_caches_response_and_deduplicates_messages(self):
         project_root = Path(__file__).resolve().parents[1]
         snapshot = json.loads(
@@ -144,6 +176,14 @@ class Text2SQLWebServiceTests(unittest.TestCase):
                 current["gate_implementation_version"],
                 GATE_IMPLEMENTATION_VERSION,
             )
+            self.assertEqual(current["policy_source_memory_ids"], [])
+            compiled = service._query_attempt_runtime_identity(
+                pins, context, ("memory-compiled",)
+            )
+            self.assertEqual(
+                compiled["policy_source_memory_ids"], ["memory-compiled"]
+            )
+            self.assertNotEqual(current, compiled)
             changed_context = {
                 **context,
                 "recent_query_runs": [{"task_id": "another-run"}],
@@ -204,12 +244,143 @@ class Text2SQLWebServiceTests(unittest.TestCase):
                 llm_config={},
                 database_path=root / "database.sqlite3",
                 snapshot_path=root / "snapshot.json",
-                knowledge_store_path=root / "knowledge.sqlite3",
+
                 evolution_store_path=root / "evolution.sqlite3",
                 dataset_path=root / "dataset",
             )
             with self.assertRaisesRegex(RuntimeError, "EVOAGENT_DASHSCOPE_API_KEY"):
                 service.query("强烈岩爆案例有多少个？")
+
+    def test_query_runtime_failures_persist_only_safe_error_trace(self):
+        class StubClient:
+            provider = "test"
+            model = "stub-model"
+
+        class StubEngine:
+            def __init__(self, **kwargs):
+                self.policy_version = str(kwargs["policy_version"])
+                self.runtime_identity = {"engine": "stub"}
+                self.version_pins = {
+                    "database_snapshot_id": str(
+                        kwargs["snapshot"]["snapshot_id"]
+                    ),
+                    "wiki_index_version": str(kwargs["vanna_index_version"]),
+                    "vanna_index_version": str(kwargs["vanna_index_version"]),
+                    "memory_snapshot_id": str(kwargs["memory_snapshot_id"]),
+                    "policy_version": self.policy_version,
+                }
+
+        def assert_safe_failure(
+            service: Text2SQLWebService,
+            task_id: str,
+            secret: str,
+            exception_type: str,
+        ) -> None:
+            with Text2SQLEvolutionStore(
+                service.evolution_store_path, service._snapshot()
+            ) as evolution:
+                trace = evolution.get_query_trace(task_id)
+                self.assertEqual(trace["status"], "error")
+                self.assertEqual(trace["final_sql"], "")
+                self.assertFalse(trace["gates"]["accepted"])
+                self.assertEqual(
+                    trace["gates"]["errors"], ["text2sql_runtime_error"]
+                )
+                self.assertEqual(trace["origin"], "web")
+                self.assertEqual(trace["source_lane"], "stable")
+                self.assertEqual(
+                    trace["collaboration"]["diagnostic"],
+                    {"exception_type": exception_type},
+                )
+                serialized_trace = json.dumps(trace, ensure_ascii=False)
+                self.assertNotIn(secret, serialized_trace)
+                attempt = evolution.connection.execute(
+                    "SELECT status,error FROM query_attempts WHERE task_id=?",
+                    (task_id,),
+                ).fetchone()
+                self.assertEqual(dict(attempt), {
+                    "status": "error",
+                    "error": "text2sql_runtime_error",
+                })
+                self.assertEqual(evolution.list_memory(), ())
+                self.assertEqual(evolution.list_experiences(), ())
+            feedback = service.feedback(
+                task_id,
+                "incorrect",
+                "这是运行异常，不是可验证的 Agent 语义修正",
+                "SELECT COUNT(*) FROM t_caseinfo",
+                user_id="local-user",
+                session_id="failure-session",
+            )
+            self.assertEqual(
+                feedback["experience_skipped_reason"],
+                "source_run_not_experience_eligible",
+            )
+            self.assertEqual(feedback["experience_id"], "")
+            self.assertEqual(feedback["memory_id"], "")
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            engine_service = Text2SQLWebService(
+                _settings(),
+                client=StubClient(),
+                llm_config={"provider": "test", "model": "stub-model"},
+                evolution_store_path=root / "engine-failure.sqlite3",
+                checkpoint_store_path=root / "engine-checkpoints.sqlite3",
+            )
+            engine_secret = "Authorization: Bearer engine-secret-token"
+            with patch.object(
+                engine_service,
+                "_runtime_vanna_pin",
+                return_value=("test-vanna", True),
+            ), patch(
+                "evoagent.text2sql.web_service.Text2SQLAgenticEngine",
+                side_effect=RuntimeError(engine_secret),
+            ):
+                with self.assertRaises(RuntimeError):
+                    engine_service.query(
+                        "强烈岩爆案例有多少个？",
+                        task_id="engine-construction-failure",
+                        session_id="failure-session",
+                    )
+            assert_safe_failure(
+                engine_service,
+                "engine-construction-failure",
+                engine_secret,
+                "RuntimeError",
+            )
+
+            release_service = Text2SQLWebService(
+                _settings(),
+                client=StubClient(),
+                llm_config={"provider": "test", "model": "stub-model"},
+                evolution_store_path=root / "release-failure.sqlite3",
+                checkpoint_store_path=root / "release-checkpoints.sqlite3",
+            )
+            release_secret = "password=release-secret-value"
+            with patch.object(
+                release_service,
+                "_runtime_vanna_pin",
+                return_value=("test-vanna", True),
+            ), patch(
+                "evoagent.text2sql.web_service.Text2SQLAgenticEngine",
+                StubEngine,
+            ), patch(
+                "evoagent.text2sql.web_service.Text2SQLShadowReleaseManager.execute",
+                side_effect=ValueError(release_secret),
+            ):
+                with self.assertRaises(ValueError):
+                    release_service.query(
+                        "强烈岩爆案例有多少个？",
+                        task_id="release-execute-failure",
+                        session_id="failure-session",
+                    )
+            assert_safe_failure(
+                release_service,
+                "release-execute-failure",
+                release_secret,
+                "ValueError",
+            )
 
     def test_public_result_contains_bounded_answer_and_agent_trace(self):
         result = {
@@ -382,7 +553,7 @@ class Text2SQLWebServiceTests(unittest.TestCase):
                 _settings(),
                 llm_config={},
                 snapshot_path=snapshot_path,
-                knowledge_store_path=root / "knowledge.sqlite3",
+
                 vanna_index_root=root / "vanna",
                 evolution_store_path=root / "evolution.sqlite3",
             )
@@ -522,6 +693,550 @@ class Text2SQLWebServiceTests(unittest.TestCase):
                 {"memory-lead-1", "memory-plan-1", "memory-generation-1"},
             )
 
+    def test_status_exposes_experience_counts_and_policy_candidate_lineage(self):
+        project_root = Path(__file__).resolve().parents[1]
+        snapshot = json.loads(
+            (project_root / "artifacts/text2sql/schema/database_snapshot.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            snapshot_path = root / "snapshot.json"
+            snapshot_path.write_text(json.dumps(snapshot), encoding="utf-8")
+            service = Text2SQLWebService(
+                _settings(),
+                llm_config={},
+                snapshot_path=snapshot_path,
+                vanna_index_root=root / "vanna",
+                evolution_store_path=root / "evolution.sqlite3",
+            )
+            with Text2SQLEvolutionStore(
+                root / "evolution.sqlite3", snapshot
+            ) as evolution:
+                memory_id = evolution.add_experience_memory(
+                    {
+                        "contract": "ExperienceMemory/v1",
+                        "source_task_id": "task-status-experience",
+                        "source_revision": 1,
+                        "source_stage": "user-feedback",
+                        "target_agent": "query-planning",
+                        "problem_code": "ordering_limit_mismatch",
+                        "scenario": "用户要求按等级从高到低排序。",
+                        "problem": "逻辑计划采用了升序。",
+                        "correction": "逻辑计划必须明确采用降序。",
+                        "applicability": {"query_intent": "ranking"},
+                        "before": {"direction": "ASC"},
+                        "after": {
+                            "direction": "DESC",
+                            "sql_fingerprint": "a" * 64,
+                        },
+                        "evidence": {"review_note": "用户明确纠正排序方向。"},
+                        "evidence_grade": "human_confirmed",
+                        "state": "candidate",
+                    }
+                )
+                evolution.review_experience_memory(
+                    memory_id, "confirm", "reviewer"
+                )
+                runtime_snapshot = evolution.runtime_memory_snapshot()
+                self.assertTrue(
+                    all(
+                        memory_id
+                        not in {item["memory_id"] for item in items}
+                        for items in runtime_snapshot["items"].values()
+                    )
+                )
+                parent = evolution.get_policy()
+                artifact = parent.as_dict()
+                artifact["prompt_fragments"]["query-planning"] = (
+                    "When ranking is requested, make the sort direction explicit."
+                )
+                candidate_version = evolution.propose_policy(
+                    artifact,
+                    "query-planning",
+                    "Compile confirmed ordering experience",
+                    "reviewer",
+                    proposal_metadata={
+                        "contract": "ExperiencePolicyProposal/v1",
+                        "source": "confirmed-experiences",
+                        "memory_ids": [memory_id],
+                        "memory_field_bindings": {
+                            memory_id: ["prompt_fragment"]
+                        },
+                        "target_replay_required": True,
+                    },
+                )
+
+            status = service.status()
+            self.assertEqual(
+                status["evolution"]["semantic_experience_counts"],
+                {
+                    "candidate": 0,
+                    "confirmed": 1,
+                    "needs_evidence": 0,
+                    "rejected": 0,
+                },
+            )
+            candidates = status["evolution"]["policy_candidates"]
+            self.assertEqual(len(candidates), 1)
+            self.assertEqual(candidates[0]["policy_version"], candidate_version)
+            self.assertEqual(
+                candidates[0]["proposal_metadata"]["memory_ids"], [memory_id]
+            )
+            self.assertEqual(candidates[0]["target_replay"], {})
+            self.assertEqual(
+                candidates[0]["prompt_fragment_change"],
+                {
+                    "target_agent": "query-planning",
+                    "before": "",
+                    "after": (
+                        "When ranking is requested, make the sort direction explicit."
+                    ),
+                    "changed": True,
+                },
+            )
+
+    def test_shadow_sampled_stable_output_is_not_a_production_experience_lane(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            service = Text2SQLWebService(
+                _settings(),
+                llm_config={},
+                evolution_store_path=root / "evolution.sqlite3",
+            )
+            collaboration = {
+                "delegations": [
+                    {
+                        "assignment_id": "ground-shadow",
+                        "worker": "schema-grounding",
+                    }
+                ],
+                "worker_results": [
+                    {
+                        "assignment_id": "ground-shadow",
+                        "worker": "schema-grounding",
+                        "status": "completed",
+                        "output": {"schema_plan": {"tables": ["t_casedesc"]}},
+                    }
+                ],
+                "revision_requests": [
+                    {
+                        "assignment_id": "ground-shadow",
+                        "worker": "schema-grounding",
+                        "guidance": "补齐字段绑定",
+                        "issue_codes": ["missing_schema_binding"],
+                    }
+                ],
+                "revisions_applied": 1,
+                "binding_conflicts": [],
+                "plan_approval_errors": [],
+                "approved_query_plan": {
+                    "fingerprint": "a" * 64,
+                    "bound_plan": {"fingerprint": "b" * 64},
+                },
+            }
+            result = {
+                "task_id": "trace-shadow-source-lane",
+                "status": "success",
+                "question": "案例数",
+                "standalone_question": "案例数",
+                "query_type": "DATA_QUERY",
+                "final_sql": "SELECT COUNT(*) FROM t_casedesc",
+                "gates": {"accepted": True, "errors": []},
+                "answer": {"columns": ["count"], "rows": [[1]], "row_count": 1},
+                "version_pins": {},
+                "release": {
+                    "lane": "stable",
+                    "shadow_sampled": True,
+                    "candidate_output_used": False,
+                },
+            }
+
+            write_status = service._remember_trace(
+                result,
+                {"collaboration": collaboration},
+                user_id="reviewer",
+                session_id="shadow-session",
+            )
+
+            self.assertEqual(write_status["source_lane"], "shadow")
+            self.assertEqual(
+                write_status["experience_skipped_reason"], "non_production_source"
+            )
+            with Text2SQLEvolutionStore(
+                root / "evolution.sqlite3", service._snapshot()
+            ) as evolution:
+                trace = evolution.get_query_trace("trace-shadow-source-lane")
+                self.assertEqual(trace["source_lane"], "shadow")
+                self.assertEqual(evolution.list_memory(), ())
+
+    def test_feedback_cannot_turn_non_production_traces_into_experiences(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            service = Text2SQLWebService(
+                _settings(),
+                llm_config={},
+                evolution_store_path=root / "evolution.sqlite3",
+            )
+            snapshot = service._snapshot()
+            rejected_sources = (
+                ("web", "shadow"),
+                ("web", "candidate"),
+                ("web", "canary"),
+                ("cli", "candidate"),
+                ("evaluation", "stable"),
+                ("debug", "stable"),
+            )
+            with Text2SQLEvolutionStore(
+                root / "evolution.sqlite3", snapshot
+            ) as evolution:
+                for index, (origin, source_lane) in enumerate(rejected_sources):
+                    evolution.save_query_trace(
+                        {
+                            "task_id": "non-production-feedback-%d" % index,
+                            "status": "success",
+                            "question": "按岩爆等级排序 %d" % index,
+                            "standalone_question": "按岩爆等级排序 %d" % index,
+                            "query_type": "DATA_QUERY",
+                            "final_sql": (
+                                "SELECT c_rockLevel FROM t_casedesc "
+                                "ORDER BY c_rockLevel ASC"
+                            ),
+                            "gates": {"accepted": True, "errors": []},
+                            "answer": {
+                                "columns": ["c_rockLevel"],
+                                "row_count": 1,
+                            },
+                            "user_id": "reviewer",
+                            "session_id": "lane-guard-session",
+                            "origin": origin,
+                            "source_lane": source_lane,
+                            "source_revision": 1,
+                            "version_pins": {},
+                        }
+                    )
+                evolution.save_query_trace(
+                    {
+                        "task_id": "non-production-correct-feedback",
+                        "status": "success",
+                        "question": "强烈岩爆案例有多少个？",
+                        "standalone_question": "强烈岩爆案例有多少个？",
+                        "query_type": "DATA_QUERY",
+                        "final_sql": (
+                            "SELECT COUNT(DISTINCT c_caseCode) AS n "
+                            "FROM t_casedesc WHERE c_rockLevel='强烈'"
+                        ),
+                        "gates": {"accepted": True, "errors": []},
+                        "answer": {"columns": ["n"], "row_count": 1},
+                        "user_id": "reviewer",
+                        "session_id": "lane-guard-session",
+                        "origin": "web",
+                        "source_lane": "shadow",
+                        "source_revision": 1,
+                        "version_pins": {},
+                    }
+                )
+
+            for index, (origin, source_lane) in enumerate(rejected_sources):
+                with self.subTest(origin=origin, source_lane=source_lane):
+                    feedback = service.feedback(
+                        "non-production-feedback-%d" % index,
+                        "incorrect",
+                        "排序方向错误，应该从高到低",
+                        (
+                            "SELECT c_rockLevel FROM t_casedesc "
+                            "ORDER BY c_rockLevel DESC"
+                        ),
+                        user_id="reviewer",
+                        session_id="lane-guard-session",
+                    )
+                    self.assertEqual(feedback["experience_id"], "")
+                    self.assertEqual(feedback["memory_id"], "")
+                    self.assertEqual(feedback["attribution"], {})
+                    self.assertEqual(
+                        feedback["experience_skipped_reason"],
+                        "non_production_source",
+                    )
+                    self.assertEqual(feedback["source_origin"], origin)
+                    self.assertEqual(feedback["source_lane"], source_lane)
+                    self.assertEqual(feedback["next_step"], "feedback_recorded")
+                    self.assertEqual(feedback["decision"]["outcome"], "rejected")
+
+            correct_feedback = service.feedback(
+                "non-production-correct-feedback",
+                "correct",
+                "结果与业务含义一致",
+                "",
+                user_id="reviewer",
+                session_id="lane-guard-session",
+            )
+            self.assertEqual(correct_feedback["experience_id"], "")
+            self.assertEqual(correct_feedback["memory_id"], "")
+            self.assertEqual(
+                correct_feedback["experience_skipped_reason"],
+                "non_production_source",
+            )
+            self.assertEqual(correct_feedback["source_lane"], "shadow")
+            self.assertEqual(correct_feedback["decision"]["outcome"], "accepted")
+            self.assertEqual(correct_feedback["next_step"], "feedback_recorded")
+
+            with Text2SQLEvolutionStore(
+                root / "evolution.sqlite3", snapshot
+            ) as evolution:
+                self.assertEqual(evolution.list_memory(), ())
+                self.assertEqual(evolution.list_experiences(), ())
+                for index in range(len(rejected_sources)):
+                    self.assertEqual(
+                        evolution.connection.execute(
+                            "SELECT feedback_status FROM query_traces WHERE task_id=?",
+                            ("non-production-feedback-%d" % index,),
+                        ).fetchone()[0],
+                        "incorrect",
+                    )
+
+    def test_experience_feedback_only_records_non_production_review(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            service = Text2SQLWebService(
+                _settings(),
+                llm_config={},
+                evolution_store_path=root / "evolution.sqlite3",
+            )
+            snapshot = service._snapshot()
+            task_id = "shadow-experience-feedback"
+            with Text2SQLEvolutionStore(
+                root / "evolution.sqlite3", snapshot
+            ) as evolution:
+                evolution.save_query_trace(
+                    {
+                        "task_id": task_id,
+                        "status": "success",
+                        "question": "最小累计事件数是多少？",
+                        "standalone_question": "最小累计事件数是多少？",
+                        "query_type": "DATA_QUERY",
+                        "final_sql": "SELECT MAX(d_sumEvent) FROM t_activeinfo",
+                        "gates": {"accepted": True, "errors": []},
+                        "answer": {"columns": ["max"], "row_count": 1},
+                        "user_id": "reviewer",
+                        "session_id": "shadow-review-session",
+                        "origin": "web",
+                        "source_lane": "shadow",
+                        "source_revision": 1,
+                        "version_pins": {},
+                    }
+                )
+                experience_id = evolution.add_experience_candidate(
+                    task_id,
+                    "最小累计事件数是多少？",
+                    "SELECT MAX(d_sumEvent) FROM t_activeinfo",
+                    eligible=False,
+                    eligibility_reasons=["requires_human_feedback"],
+                )
+
+            pending = service.experiences()["experiences"][0]
+            self.assertEqual(pending["experience_id"], experience_id)
+            self.assertFalse(pending["confirmable"])
+            feedback = service.feedback_experience(
+                experience_id,
+                "incorrect",
+                "聚合口径错误，应该取最小值",
+                "SELECT MIN(d_sumEvent) FROM t_activeinfo",
+                "reviewer",
+            )
+
+            self.assertEqual(feedback["state"], "rejected")
+            self.assertEqual(feedback["memory_id"], "")
+            self.assertEqual(feedback["corrected_experience_id"], "")
+            self.assertEqual(feedback["attribution"], {})
+            self.assertEqual(
+                feedback["experience_skipped_reason"], "non_production_source"
+            )
+            self.assertEqual(feedback["source_origin"], "web")
+            self.assertEqual(feedback["source_lane"], "shadow")
+            self.assertEqual(feedback["next_step"], "feedback_recorded")
+            with Text2SQLEvolutionStore(
+                root / "evolution.sqlite3", snapshot
+            ) as evolution:
+                self.assertEqual(evolution.list_memory(), ())
+                self.assertEqual(len(evolution.list_experiences()), 1)
+                self.assertEqual(
+                    evolution.connection.execute(
+                        "SELECT feedback_status FROM query_traces WHERE task_id=?",
+                        (task_id,),
+                    ).fetchone()[0],
+                    "incorrect",
+                )
+
+    def test_correct_feedback_cannot_promote_shadow_experience(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            service = Text2SQLWebService(
+                _settings(),
+                llm_config={},
+                evolution_store_path=root / "evolution.sqlite3",
+            )
+            snapshot = service._snapshot()
+            task_id = "shadow-experience-correct-feedback"
+            with Text2SQLEvolutionStore(
+                root / "evolution.sqlite3", snapshot
+            ) as evolution:
+                evolution.save_query_trace(
+                    {
+                        "task_id": task_id,
+                        "status": "success",
+                        "question": "最大累计事件数是多少？",
+                        "standalone_question": "最大累计事件数是多少？",
+                        "query_type": "DATA_QUERY",
+                        "final_sql": "SELECT MAX(d_sumEvent) FROM t_activeinfo",
+                        "gates": {"accepted": True, "errors": []},
+                        "answer": {"columns": ["max"], "row_count": 1},
+                        "user_id": "reviewer",
+                        "session_id": "shadow-review-session",
+                        "origin": "web",
+                        "source_lane": "shadow",
+                        "source_revision": 1,
+                        "version_pins": {},
+                    }
+                )
+                experience_id = evolution.add_experience_candidate(
+                    task_id,
+                    "最大累计事件数是多少？",
+                    "SELECT MAX(d_sumEvent) FROM t_activeinfo",
+                    eligible=False,
+                    eligibility_reasons=["requires_human_feedback"],
+                )
+
+            feedback = service.feedback_experience(
+                experience_id,
+                "correct",
+                "结果看起来正确，但来源是 shadow",
+                "",
+                "reviewer",
+            )
+            self.assertEqual(feedback["state"], "ineligible")
+            self.assertEqual(feedback["user_feedback"], "correct")
+            self.assertEqual(feedback["memory_id"], "")
+            self.assertEqual(feedback["corrected_experience_id"], "")
+            self.assertEqual(
+                feedback["experience_skipped_reason"], "non_production_source"
+            )
+            self.assertEqual(feedback["next_step"], "feedback_recorded")
+            with self.assertRaisesRegex(ValueError, "stable Web/CLI"):
+                service.confirm_experience(experience_id, "reviewer")
+            with Text2SQLEvolutionStore(
+                root / "evolution.sqlite3", snapshot
+            ) as evolution:
+                self.assertEqual(evolution.list_memory(), ())
+                self.assertEqual(len(evolution.list_experiences()), 1)
+                self.assertEqual(evolution.list_experiences()[0]["state"], "ineligible")
+
+    def test_feedback_evidence_rehydrates_compiled_policy_memory_lineage(self):
+        project_root = Path(__file__).resolve().parents[1]
+        snapshot = json.loads(
+            (project_root / "artifacts/text2sql/schema/database_snapshot.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            snapshot_path = root / "snapshot.json"
+            snapshot_path.write_text(json.dumps(snapshot), encoding="utf-8")
+            service = Text2SQLWebService(
+                _settings(),
+                llm_config={},
+                snapshot_path=snapshot_path,
+                evolution_store_path=root / "evolution.sqlite3",
+            )
+            with Text2SQLEvolutionStore(
+                root / "evolution.sqlite3", snapshot
+            ) as evolution:
+                source_memory_id = evolution.add_experience_memory(
+                    {
+                        "contract": "ExperienceMemory/v1",
+                        "source_task_id": "task-policy-source",
+                        "source_revision": 1,
+                        "source_stage": "user-feedback",
+                        "target_agent": "query-planning",
+                        "problem_code": "ordering_limit_mismatch",
+                        "scenario": "排序请求需要明确方向。",
+                        "problem": "计划没有确定排序方向。",
+                        "correction": "明确排序方向。",
+                        "before": {"direction": "unknown"},
+                        "after": {
+                            "direction": "explicit",
+                            "sql_fingerprint": "a" * 64,
+                        },
+                        "evidence": {"reviewed": True},
+                        "evidence_grade": "human_confirmed",
+                        "state": "candidate",
+                    }
+                )
+                evolution.review_experience_memory(
+                    source_memory_id, "confirm", "reviewer"
+                )
+                parent = evolution.get_policy()
+                artifact = parent.as_dict()
+                artifact["prompt_fragments"]["query-planning"] = (
+                    "Always state the requested sort direction."
+                )
+                policy_version = evolution.propose_policy(
+                    artifact,
+                    "query-planning",
+                    "Compile ordering guidance",
+                    "reviewer",
+                    proposal_metadata={
+                        "contract": "ExperiencePolicyProposal/v1",
+                        "source": "confirmed-experiences",
+                        "memory_ids": [source_memory_id],
+                        "memory_field_bindings": {
+                            source_memory_id: ["prompt_fragment"]
+                        },
+                    },
+                )
+
+            service._remember_trace(
+                {
+                    "task_id": "trace-derived-feedback",
+                    "status": "success",
+                    "question": "按岩爆等级排序",
+                    "standalone_question": "按岩爆等级排序",
+                    "query_type": "DATA_QUERY",
+                    "final_sql": (
+                        "SELECT c_rockLevel FROM t_casedesc "
+                        "ORDER BY c_rockLevel ASC"
+                    ),
+                    "gates": {"accepted": True, "errors": []},
+                    "answer": {
+                        "columns": ["c_rockLevel"],
+                        "rows": [["强烈"]],
+                        "row_count": 1,
+                    },
+                    "version_pins": {"policy_version": policy_version},
+                },
+                user_id="reviewer",
+                session_id="lineage-session",
+            )
+            feedback = service.feedback(
+                "trace-derived-feedback",
+                "incorrect",
+                "排序方向错误，应该从高到低",
+                (
+                    "SELECT c_rockLevel FROM t_casedesc "
+                    "ORDER BY c_rockLevel DESC"
+                ),
+                user_id="reviewer",
+                session_id="lineage-session",
+            )
+            with Text2SQLEvolutionStore(
+                root / "evolution.sqlite3", snapshot
+            ) as evolution:
+                learned = evolution.get_memory(feedback["memory_id"])
+            self.assertEqual(
+                learned["rule"]["evidence"]["derived_from_memory_ids"],
+                [source_memory_id],
+            )
+
     def test_memory_dashboard_separates_three_layers_and_hides_private_payloads(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -577,6 +1292,11 @@ class Text2SQLWebServiceTests(unittest.TestCase):
             episode = dashboard["layers"]["episodic"]["items"][0]
             self.assertNotIn("result_rows", episode)
             self.assertNotIn("collaboration", episode)
+            self.assertNotIn("execution", episode)
+            self.assertNotIn("version_pins", episode)
+            self.assertEqual(episode["temporal_context"]["turn_number"], 1)
+            self.assertTrue(episode["temporal_context"]["recorded_at"])
+            self.assertIn("database_snapshot_id", episode["version_context"])
             self.assertEqual(
                 episode["decisions"]["harness"]["outcome"], "rejected"
             )
@@ -668,7 +1388,7 @@ class Text2SQLWebServiceTests(unittest.TestCase):
             {item["role"] for item in public["agents"]}, set(TEXT2SQL_SKILLS)
         )
 
-    def test_confirmed_query_is_persisted_as_stable_vanna_memory(self):
+    def test_confirmed_query_is_persisted_in_vanna_question_sql(self):
         project_root = Path(__file__).resolve().parents[1]
         snapshot = json.loads(
             (project_root / "artifacts/text2sql/schema/database_snapshot.json").read_text(
@@ -683,16 +1403,13 @@ class Text2SQLWebServiceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             snapshot_path = root / "snapshot.json"
-            knowledge_path = root / "knowledge.sqlite3"
             evolution_path = root / "evolution.sqlite3"
             snapshot_path.write_text(json.dumps(snapshot), encoding="utf-8")
-            with KnowledgeStore(knowledge_path) as store:
-                store.ingest_database(snapshot, join_catalog)
+            build_test_corpus(root / "vanna", snapshot, join_catalog)
             service = Text2SQLWebService(
                 _settings(),
                 llm_config={},
                 snapshot_path=snapshot_path,
-                knowledge_store_path=knowledge_path,
                 evolution_store_path=evolution_path,
                 vanna_index_root=root / "vanna",
             )
@@ -720,8 +1437,6 @@ class Text2SQLWebServiceTests(unittest.TestCase):
             self.assertEqual(pending["state"], "ineligible")
             self.assertIn("requires_human_feedback", pending["eligibility_reasons"])
             self.assertTrue(pending["confirmable"])
-            with KnowledgeStore(knowledge_path) as store:
-                stable_before = store.current_index_version("stable")
             with patch(
                 "evoagent.text2sql.web_service.VannaRetrieverOnly.build",
                 return_value={
@@ -740,8 +1455,12 @@ class Text2SQLWebServiceTests(unittest.TestCase):
                     session_id="session-1",
                 )
             self.assertTrue(feedback["experience_id"])
-            self.assertEqual(feedback["next_step"], "available_in_vanna_and_memory")
+            self.assertEqual(feedback["next_step"], "available_in_vanna")
             self.assertEqual(feedback["experience"]["state"], "promoted")
+            self.assertEqual(
+                feedback["experience"]["memory_kind"], "vanna_question_sql"
+            )
+            self.assertFalse(feedback["experience"]["semantic_memory_written"])
             confirmed = service.experiences("promoted")["experiences"][0]
             self.assertEqual(confirmed["experience_id"], feedback["experience_id"])
             self.assertEqual(confirmed["user_feedback"], "correct")
@@ -756,15 +1475,18 @@ class Text2SQLWebServiceTests(unittest.TestCase):
                 ],
                 ["verified_example"],
             )
-            with KnowledgeStore(knowledge_path) as store:
-                self.assertEqual(store.stats()["types"]["verified_example"], 1)
-                self.assertNotEqual(store.current_index_version("stable"), stable_before)
-                self.assertNotIn(
-                    "verified_example",
-                    {item["knowledge_type"] for item in store.candidates()},
-                )
+            from evoagent.text2sql.vanna_corpus import load_confirmed_question_sql
+            confirmed_pairs = load_confirmed_question_sql(
+                question_sql_registry_path(root / "vanna"), snapshot["snapshot_id"],
+            )
+            self.assertEqual(len(confirmed_pairs), 1)
+            self.assertEqual(confirmed_pairs[0]["sql"], confirmed["sql"])
             dashboard = service.memory("reviewer", "session-1", 10)
             self.assertEqual(dashboard["question_sql"]["counts"]["promoted"], 1)
+            self.assertFalse(dashboard["question_sql"]["semantic_memory"])
+            self.assertEqual(
+                sum(dashboard["layers"]["semantic"]["counts"].values()), 0
+            )
             self.assertEqual(
                 dashboard["question_sql"]["items"][0]["experience_id"],
                 feedback["experience_id"],
@@ -780,15 +1502,12 @@ class Text2SQLWebServiceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             snapshot_path = root / "snapshot.json"
-            knowledge_path = root / "knowledge.sqlite3"
             snapshot_path.write_text(json.dumps(snapshot), encoding="utf-8")
-            with KnowledgeStore(knowledge_path) as store:
-                store.ingest_database(snapshot)
+            build_test_corpus(root / "vanna", snapshot)
             service = Text2SQLWebService(
                 _settings(),
                 llm_config={},
                 snapshot_path=snapshot_path,
-                knowledge_store_path=knowledge_path,
                 evolution_store_path=root / "evolution.sqlite3",
                 vanna_index_root=root / "vanna",
             )
@@ -830,9 +1549,10 @@ class Text2SQLWebServiceTests(unittest.TestCase):
             self.assertEqual(confirmed["user_feedback"], "correct")
             self.assertEqual(confirmed["source_kind"], "human_confirmed_query")
             self.assertEqual(
-                confirmed["next_step"], "available_in_vanna_and_memory"
+                confirmed["next_step"], "available_in_vanna"
             )
-            self.assertEqual(confirmed["memory_kind"], "question_sql_semantic")
+            self.assertEqual(confirmed["memory_kind"], "vanna_question_sql")
+            self.assertFalse(confirmed["semantic_memory_written"])
             self.assertTrue(confirmed["knowledge_evidence_id"])
 
     def test_ineligible_experience_can_be_rejected_from_review_surface(self):
@@ -886,7 +1606,7 @@ class Text2SQLWebServiceTests(unittest.TestCase):
                 self.assertEqual(corrected["source_kind"], "human_corrected_sql")
                 self.assertEqual(len(evolution.list_memory("candidate")), 1)
 
-    def test_incorrect_production_feedback_creates_reviewable_semantic_memory(self):
+    def test_feedback_without_correction_needs_evidence_and_stays_out_of_runtime(self):
         project_root = Path(__file__).resolve().parents[1]
         snapshot = json.loads(
             (project_root / "artifacts/text2sql/schema/database_snapshot.json").read_text(
@@ -964,29 +1684,66 @@ class Text2SQLWebServiceTests(unittest.TestCase):
             self.assertEqual(feedback["decision"]["outcome"], "rejected")
             dashboard = service.memory("reviewer", "session-1", 10)
             self.assertEqual(
-                dashboard["layers"]["semantic"]["counts"]["candidate"], 1
+                dashboard["layers"]["semantic"]["counts"]["candidate"], 0
             )
-            candidate = dashboard["layers"]["semantic"]["items"][0]
-            self.assertEqual(candidate["state"], "candidate")
-            self.assertEqual(candidate["origin_split"], "production_feedback")
-            reviewed = service.review_memory_candidate(
-                feedback["memory_id"],
-                "approve",
-                "human-reviewer",
-                target_skill="query-planning",
-                failure_kind="ordering_limit_mismatch",
-                content="Planning 必须明确排序指标、方向与 LIMIT。",
-            )
-            self.assertEqual(reviewed["state"], "approved")
             self.assertEqual(
-                reviewed["content"], "Planning 必须明确排序指标、方向与 LIMIT。"
+                dashboard["layers"]["semantic"]["counts"]["needs_evidence"], 1
             )
+            experience = dashboard["layers"]["semantic"]["items"][0]
+            self.assertEqual(experience["state"], "needs_evidence")
+            self.assertEqual(experience["origin_split"], "production_feedback")
+            self.assertEqual(experience["memory_kind"], "experience")
+            self.assertEqual(experience["rule"]["contract"], "ExperienceMemory/v1")
+            self.assertEqual(experience["rule"]["evidence_grade"], "human_feedback_only")
+            self.assertEqual(experience["target_agent"], "query-planning")
+            self.assertEqual(experience["problem_code"], "ordering_limit_mismatch")
+            self.assertFalse(experience["runtime_eligible"])
+            with Text2SQLEvolutionStore(
+                root / "evolution.sqlite3", service._snapshot()
+            ) as evolution:
+                runtime_before = evolution.runtime_memory_snapshot()
+            with self.assertRaisesRegex(ValueError, "not awaiting review"):
+                service.review_memory_candidate(
+                    feedback["memory_id"],
+                    "confirm",
+                    "human-reviewer",
+                )
             refreshed = service.memory("reviewer", "session-1", 10)
             self.assertEqual(
                 refreshed["layers"]["semantic"]["counts"]["candidate"], 0
             )
             self.assertEqual(
-                refreshed["layers"]["semantic"]["counts"]["approved"], 1
+                refreshed["layers"]["semantic"]["counts"]["confirmed"], 0
+            )
+            self.assertEqual(
+                refreshed["layers"]["semantic"]["counts"]["needs_evidence"], 1
+            )
+            self.assertEqual(
+                refreshed["layers"]["semantic"]["experience_counts"],
+                {
+                    "candidate": 0,
+                    "confirmed": 0,
+                    "needs_evidence": 1,
+                    "rejected": 0,
+                },
+            )
+            self.assertFalse(
+                refreshed["boundaries"]["experience_direct_runtime_injection"]
+            )
+            with Text2SQLEvolutionStore(
+                root / "evolution.sqlite3", service._snapshot()
+            ) as evolution:
+                runtime_after = evolution.runtime_memory_snapshot()
+            self.assertEqual(
+                runtime_after["memory_snapshot_id"],
+                runtime_before["memory_snapshot_id"],
+            )
+            self.assertTrue(
+                all(
+                    feedback["memory_id"]
+                    not in {item["memory_id"] for item in items}
+                    for items in runtime_after["items"].values()
+                )
             )
 
 

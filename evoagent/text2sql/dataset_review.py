@@ -70,14 +70,15 @@ def certificate_file_sha256(path: Path) -> str:
 
 def verify_review_certificate(
     certificate: Mapping[str, Any],
-    signing_key: bytes,
+    signing_key: Optional[bytes],
     *,
     dataset_id: str,
     dataset_sha256: str,
     database_snapshot_id: str,
     cases: Sequence[Mapping[str, Any]],
+    require_signature: bool = True,
 ) -> Mapping[str, Any]:
-    """Verify HMAC authenticity, complete case coverage, and all review decisions."""
+    """Verify review coverage and optionally authenticate the certificate with HMAC."""
 
     if certificate.get("contract_version") != CERTIFICATE_CONTRACT_VERSION:
         raise ValueError("unsupported dataset review certificate contract")
@@ -87,12 +88,19 @@ def verify_review_certificate(
     signing = body.get("signing") or {}
     if signing.get("algorithm") != "hmac-sha256":
         raise ValueError("unsupported dataset review signature algorithm")
-    expected_key_id = _sha256(signing_key)[:20]
-    if signing.get("key_id") != expected_key_id:
-        raise ValueError("dataset review signing key does not match certificate")
-    expected_signature = _certificate_signature(body, signing_key)
-    if not hmac.compare_digest(str(certificate.get("signature") or ""), expected_signature):
-        raise ValueError("dataset review certificate signature mismatch")
+    certificate_key_id = str(signing.get("key_id") or "")
+    if not certificate_key_id:
+        raise ValueError("dataset review certificate is missing its signing key id")
+    signature_verified = signing_key is not None
+    if require_signature and signing_key is None:
+        raise ValueError("dataset review signing key is required")
+    if signing_key is not None:
+        expected_key_id = _sha256(signing_key)[:20]
+        if certificate_key_id != expected_key_id:
+            raise ValueError("dataset review signing key does not match certificate")
+        expected_signature = _certificate_signature(body, signing_key)
+        if not hmac.compare_digest(str(certificate.get("signature") or ""), expected_signature):
+            raise ValueError("dataset review certificate signature mismatch")
 
     expected_identity = (dataset_id, dataset_sha256, database_snapshot_id)
     actual_identity = (
@@ -140,8 +148,10 @@ def verify_review_certificate(
         raise ValueError("dataset review certificate approval count mismatch")
     return {
         "verified": True,
+        "signature_verified": signature_verified,
+        "verification_mode": "hmac-sha256" if signature_verified else "local-manifest",
         "certificate_kind": CERTIFICATE_KIND,
-        "key_id": expected_key_id,
+        "key_id": certificate_key_id,
         "reviewed_case_count": len(expected_cases),
         "dataset_sha256": dataset_sha256,
         "chain_head": str(certificate.get("review_chain_head") or ""),

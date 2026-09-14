@@ -51,7 +51,7 @@ sealed holdout 只能通过同一评测入口运行：
 python scripts/run_text2sql_evaluation.py --split sealed_holdout --max-cases 0
 ```
 
-结果默认写入 `artifacts/text2sql/evaluation/latest.json`，并固定数据库、stable 知识索引、Vanna 索引、Memory、Policy、数据集、模型、温度和运行时间。
+结果默认写入 `artifacts/text2sql/evaluation/latest.json`，并固定 Database Snapshot、Vanna corpus、Memory、Policy、数据集、模型、温度和运行时间。业务文档摘要已包含在 Vanna corpus fingerprint 中，不作为独立版本；报告中的 legacy `wiki_index_version` 与 corpus version 相同。
 
 ## 指标与失败归因
 
@@ -65,8 +65,8 @@ python scripts/run_text2sql_evaluation.py --split sealed_holdout --max-cases 0
 - 按 SQL Skeleton 分桶的 EX；
 - `NO_SQL`、`PARSE_ERROR`、`UNSAFE_SQL`、`UNKNOWN_TABLE`、`UNKNOWN_COLUMN`、`SCHEMA_LINK_MISMATCH`、`FILTER_MISMATCH`、`AGGREGATION_MISMATCH`、`JOIN_OR_GRAIN_MISMATCH`、`EXECUTION_ERROR`、`TIMEOUT`、`UNEXPECTED_EMPTY`、`RESULT_MISMATCH`、`FRAMEWORK_ERROR` 等确定性分类。
 
-当前 Join Catalog 仍未人工批准，因此 Join 题会诚实暴露 Join Edge Recall 和知识缺口。不能为提高分数把候选 Join 自动升为 stable。
+当前 Join Catalog 仍缺完整的 cardinality / uniqueness 确认，因此 Join 题会诚实暴露 Join Edge Recall 和关系缺口。不能为提高分数把自动发现的 Join 直接标记为可执行关系。
 
 ## 自进化隔离要求
 
-后续 Candidate 生成器只能读取 train 的失败摘要；validation 仅用于晋升判断；sealed holdout 只返回聚合指标和匿名 case_id。任何 holdout 问题、Gold SQL、结果或失败细节都不得写入 Wiki、Memory、Few-shot 或 Candidate Prompt。
+后续 Candidate 生成器只能读取 train 的失败摘要；validation 仅用于晋升判断；sealed holdout 只返回聚合指标和匿名 case_id。任何 holdout 问题、Gold SQL、结果或失败细节都不得写入业务 Markdown、Vanna、Memory、Few-shot 或 Candidate Prompt。

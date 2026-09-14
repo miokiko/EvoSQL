@@ -4,7 +4,10 @@ import unittest
 from pathlib import Path
 
 from evoagent.text2sql.benchmark import ResumableEvaluationCheckpoint
-from scripts.run_text2sql_evaluation import _fatal_provider_outcome
+from scripts.run_text2sql_evaluation import (
+    _fatal_provider_outcome,
+    _provider_tainted_outcome,
+)
 
 
 class ResumableText2SQLBenchmarkTests(unittest.TestCase):
@@ -55,6 +58,10 @@ class ResumableText2SQLBenchmarkTests(unittest.TestCase):
         checkpoint.mark_complete({"evaluated_case_count": 1})
         with self.assertRaisesRegex(ValueError, "already complete"):
             checkpoint.start(resume=True)
+        self.assertEqual(
+            [item["case_id"] for item in checkpoint.seed_outcomes()],
+            ["case-1"],
+        )
 
     def test_fatal_provider_outcomes_abort_but_transient_disconnects_do_not(self):
         self.assertTrue(
@@ -70,6 +77,31 @@ class ResumableText2SQLBenchmarkTests(unittest.TestCase):
                 {
                     "failure_kind": "FRAMEWORK_ERROR",
                     "framework_error": "Remote end closed connection without response",
+                }
+            )
+        )
+        self.assertTrue(
+            _provider_tainted_outcome(
+                {
+                    "failure_kind": "PLANNING_FAILURE",
+                    "binding_conflicts": [
+                        {
+                            "message": (
+                                "aliyun-dashscope JSON request failed: "
+                                "Remote end closed connection without response"
+                            )
+                        }
+                    ],
+                }
+            )
+        )
+        self.assertTrue(
+            _fatal_provider_outcome(
+                {
+                    "failure_kind": "NEEDS_CLARIFICATION",
+                    "binding_conflicts": [
+                        {"message": "provider code=Arrearage overdue-payment"}
+                    ],
                 }
             )
         )

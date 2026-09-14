@@ -4,7 +4,7 @@ The runtime deliberately separates orchestration from agent behaviour:
 
 * ``AgentRuntime`` executes named nodes with budgets, retry policy, cancellation
   checks and application-owned checkpoints.
-Tool-using model loops live in ``agentic_core.BoundedRole``. Persistence remains
+Tool-using model loops live in ``bounded_role.BoundedRole``. Persistence remains
 in the application store so a worker restart does not depend on a
 framework-owned checkpoint format.
 """

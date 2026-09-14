@@ -1,8 +1,10 @@
 # Text2SQL Phase 4：受控自进化闭环
 
+> Memory 主链已升级为 `ExperienceMemory/v1 → SemanticRule/v1 → Policy Candidate`。默认生产治理仍使用 Shadow/Canary/人工发布；另有仅接纳机器可验证证据、通过 Target Replay 与完整独立评测后自动激活的本地 MVP。当前操作以 [Memory / Policy MVP 运行手册](MEMORY_EVOLUTION_MVP_RUNBOOK.md) 为准。
+
 ## 结论
 
-本阶段没有替换原 EvoAgent Multi-Agent 框架。当前 `plan-first-text2sql-v3` 以 11 个固定节点承载以下运行拓扑：
+本阶段基于独立的 Text2SQL AgentRuntime 与 BoundedRole。当前 `plan-first-text2sql-v3` 以 11 个固定节点承载以下运行拓扑：
 
 ```text
 Lead 路由 → Evidence Orchestration
@@ -15,7 +17,7 @@ Lead 路由 → Evidence Orchestration
           → Harness 最终门禁 + 只读执行
 ```
 
-五个 Agent Role 是 `text2sql-lead`、`schema-grounding`、`query-planning`、`sql-generation` 和 `text2sql-critic`。“进化”只发生在这五个角色的受限 Policy 和经过评测、人工激活的 stable Memory 中。Harness 是非 Agent、非 Skill 的应用执行主体，不参与进化。模型不能改 Agent 拓扑、系统代码、确定性绑定、SQL 安全门、数据库权限、数据集或审批状态。当前没有 Critic reject 后的候选修复；唯一一次 SQL 修复发生在 Blind Critic 之前且仅由“首轮零候选通过门禁”触发。
+五个 Agent Role 是 `text2sql-lead`、`schema-grounding`、`query-planning`、`sql-generation` 和 `text2sql-critic`。“进化”只发生在这五个角色的受限 Policy 中；Semantic Experience 只是有证据的离线来源，不能直接改变运行时。Harness 是非 Agent、非 Skill 的应用执行主体，不参与进化。模型不能改 Agent 拓扑、系统代码、确定性绑定、SQL 安全门、数据库权限、数据集或审批状态。当前没有 Critic reject 后的候选修复；唯一一次 SQL 修复发生在 Blind Critic 之前且仅由“首轮零候选通过门禁”触发。
 
 ## Policy 可变面
 
@@ -32,58 +34,45 @@ Lead 路由 → Evidence Orchestration
 
 历史 `text2sql-policy-v1` 在读取时会把旧策略槽迁移到 Planning/Generation；旧 Memory 也按失败类型迁移到新的单一 owner。这个兼容过程只用于加载既有数据，新 Policy、Memory 和命令行写入必须使用上述五个 canonical Skill 名称。
 
-## Memory 状态机
+## Experience 到 Policy 的状态机
 
 ```text
-train / production feedback
+production QueryTrace + 可验证修订
             ↓
-      candidate memory
-       ├─ 人工拒绝 ──────────────→ rejected
-       └─ 人工批准 ──────────────→ approved
-                                      ↓ 240 题评测
-                             evaluated 或 evaluation_failed
-                                      ↓ 显式人工激活
-                                    stable
-                                      ↓ 回滚
-                                    retired
+Experience candidate / needs_evidence
+            ↓ 人工确认
+      confirmed Experience（仍非 Runtime）
+            ↓ 人工选择同一 Agent 来源
+prompt_fragment-only Policy candidate
+            ↓ Target Replay
+validation 48 + sealed_holdout 48
+            ↓
+Shadow → 人工差异审核 → Canary → 人工激活
 ```
 
-只有 `stable` 可进入角色上下文。人工批准只把候选推进到 `approved`，不会直接改变运行时 Memory；候选还必须通过固定 240 题评测并由人显式激活。`validation` 不写 Memory，`sealed_holdout` 被代码硬拒绝；这样不会一边看考题一边学习。Memory 只是提示，schema snapshot、stable KnowledgeStore、确定性绑定、SQL Gate 和只读执行器永远优先。
+Experience 只记录“哪里出错、如何修正、证据是什么”，始终 `runtime_eligible=false`。人工确认不会改变 `memory_snapshot_id`；只有由 Experience 编译出的 Policy 通过完整发布链并被显式激活，后续请求行为才会改变。`validation`、`sealed_holdout`、Shadow 和 Candidate lane 都不能反向生成生产 Experience。
 
-从 train 评测报告提取“结果粒度/聚合策略”类失败候选到 Query Planning：
+受限自动链不复用普通 Prompt 候选：它只允许 `ExperiencePolicyProposal/v1` 且必须带完整 `SemanticRulePolicyCompilation/v1` 来源，随后强制执行来源 Target Replay、Validation/Holdout 非退化与安全门禁，并在激活前再次核对 Policy parent、数据库/Vanna/Memory pins、模型、Runtime 与 Principal。任一条件不满足均保持旧 Policy。
 
-```bash
-python scripts/manage_text2sql_evolution.py capture-training-failures \
-  --report artifacts/text2sql/evaluation/train.json \
-  --skill query-planning
-```
-
-查看、审核：
+查看并审核 Experience：
 
 ```bash
 python scripts/manage_text2sql_evolution.py memory-list --state candidate
 python scripts/manage_text2sql_evolution.py memory-review \
-  --memory-id memory-... --decision approve --actor reviewer-name --human-reviewed
+  --memory-id memory-... --decision confirm \
+  --actor reviewer-name --human-reviewed
 ```
 
-审核通过后从管理页启动 240 题 Memory 评测；只有状态达到 `evaluated` 才能显式激活：
-
-```bash
-python scripts/manage_text2sql_evolution.py memory-activate \
-  --memory-id memory-... --actor reviewer-name \
-  --reason "240 题评测通过并复核" --human-approved
-```
-
-只有激活成功后 `memory_snapshot_id` 才变化，后续运行和评测会固定这个新版本。SQL AST/Gate 或 ApprovedQueryPlan conformance 类失败应写入 `sql-generation`；Schema/value/Join 物理绑定问题仍归 `schema-grounding`。
-
-如果已配置原项目支持的 LLM，可以让 EvoAgent 的 root-cause evolution role 对 stable failure Memory 聚类，并自动生成“单角色、白名单字段”的候选：
+从一条或多条同 Agent 的 Confirmed Experience 生成候选：
 
 ```bash
 python scripts/manage_text2sql_evolution.py auto-propose \
-  --skill query-planning --actor author-name
+  --memory-id memory-... \
+  --actor author-name \
+  --reason "修复重复计数与结果粒度规划"
 ```
 
-这一步只生成 `candidate`，不会自动评测、批准或上线；模型输出还会再次经过 `PolicyArtifact` 的确定性校验。
+这一步只能替换目标 Agent 的完整 `prompt_fragment`，不能修改 aliases、Question-SQL、工具权限、预算或 Gate。候选必须先执行 `scripts/run_text2sql_target_replay.py --candidate policy-...`，之后才可进入独立发布评测。
 
 ## Policy 生命周期
 
@@ -108,7 +97,7 @@ python scripts/manage_text2sql_evolution.py propose \
 
 如果候选只修改从 ApprovedQueryPlan 到 SQL 的构造或门禁对齐规则，则同一命令应使用 `--skill sql-generation`；不能在一个候选里同时修改 Planning 与 Generation。
 
-分别固定 parent/candidate Policy 跑 validation 和 sealed holdout。评测命令从演化库加载完整 Policy 与 stable Memory；Gold SQL 从不进入 Agent 输入：
+分别固定 parent/candidate Policy 跑 validation 和 sealed holdout。评测命令从演化库加载完整 Policy 与兼容保留的 Runtime Memory snapshot；新 Confirmed Experience 不在该 snapshot 中。Gold SQL 从不进入 Agent 输入：
 
 ```bash
 python scripts/run_text2sql_evaluation.py \

@@ -26,7 +26,8 @@ python scripts/generate_text2sql_schema.py
 先在 `.env` 中替换两个示例密码，再运行：
 
 ```bash
-docker compose up -d text2sql-mysql
+python -m pip install -r requirements-mysql.txt
+docker compose --profile mysql up -d text2sql-mysql
 docker compose exec text2sql-mysql mysql -uevo_text2sql_ro -p evo_text2sql_eval -e "SHOW TABLES"
 python scripts/verify_text2sql_mysql.py
 ```
@@ -57,6 +58,6 @@ python scripts/prepare_navicat_import.py
 
 然后在 Navicat 的 `rockburst` 连接中使用“执行 SQL 文件”，选择 `database/evo_text2sql_eval.local.sql`。该文件先创建并切换到 `evo_text2sql_eval`，所以源 dump 中的 `DROP TABLE` 不会作用到原 `test1`；导入结束后创建仅限本机的只读账号并输出表数与授权。生成文件含本地开发密码，已被 `.gitignore` 排除，不能提交或发送。
 
-## 当前机器状态
+## 当前执行后端
 
-2026-09-03 检查结果：本机未安装 Docker；Anaconda 附带的 `mysqld 8.4.0` 在初始化全新数据目录时发生 SIGSEGV。因此首版工件使用 dump 冷解析生成，真实导入命令和隔离配置已就绪，但需要可用的 Docker 或独立 MySQL 8 实例后才能完成在线验证。禁止改用现有业务数据库绕过此限制。
+在线 Text2SQL 使用只读 SQLite；本手册中的 MySQL 为独立的可选导入核验环境。

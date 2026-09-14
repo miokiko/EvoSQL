@@ -140,6 +140,16 @@ class Text2SQLDatasetReviewTests(unittest.TestCase):
         self.assertTrue(manifest["release_eligible"])
         verified = load_dataset(self.dataset, review_signing_key=self.key)
         self.assertTrue(verified.review_evidence["verified"])
+        self.assertTrue(verified.review_evidence["signature_verified"])
+
+        local_default = load_dataset(
+            self.dataset, require_review_signature=False
+        )
+        self.assertTrue(local_default.review_evidence["verified"])
+        self.assertFalse(local_default.review_evidence["signature_verified"])
+        self.assertEqual(
+            local_default.review_evidence["verification_mode"], "local-manifest"
+        )
 
         tampered = json.loads(destination.read_text(encoding="utf-8"))
         tampered["case_attestations"][0]["reviewer"] = "forged"

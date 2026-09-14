@@ -1,0 +1,37 @@
+---
+page_id: replace-with-stable-business-id
+title: 业务概念标题
+owner_id: text2sql-knowledge-owner
+allowed_principals:
+  - "*"
+knowledge_type: business_glossary
+business_kind: entity
+knowledge_status: candidate
+database_snapshot_id: dbs_57a4a4c99520477b1c8e
+---
+# 业务语义
+
+<!-- planning -->
+在这里用纯业务语言说明统计对象、范围与粒度，不写物理表名、字段名、SQL 或预先算好的答案。
+<!-- /planning -->
+
+- 规范名称：
+- 常用叫法：
+- 定义：
+- 适用范围：
+- 排除范围：
+- 业务粒度：
+
+# 数据绑定
+
+- 绑定字段：使用完整字段名，例如 `t_caseinfo.c_caseCode`。
+- 值映射：
+- NULL 规则：
+- 重复规则：
+- 时间口径：
+- 单位：
+- 依赖关系：只引用已经审核的关系。
+
+# 待确认事项
+
+- 没有业务证据的内容留在这里，不写成确定事实。

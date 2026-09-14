@@ -23,9 +23,11 @@ class Evidence:
     source_url: str = ""
     dependencies: Sequence[str] = field(default_factory=tuple)
     score: float = 0.0
+    planning_content: str = ""
+    knowledge_status: str = ""
 
     def as_dict(self) -> Mapping[str, Any]:
-        return {
+        value = {
             "evidence_id": self.evidence_id,
             "source_kind": self.source_kind,
             "knowledge_type": self.knowledge_type,
@@ -37,6 +39,11 @@ class Evidence:
             "dependencies": list(self.dependencies),
             "score": self.score,
         }
+        if self.planning_content:
+            value["planning_content"] = self.planning_content
+        if self.knowledge_status:
+            value["knowledge_status"] = self.knowledge_status
+        return value
 
 
 @dataclass(frozen=True)

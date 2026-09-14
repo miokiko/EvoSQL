@@ -9,6 +9,8 @@ from evoagent.text2sql.dataset_builder import CATEGORY_TARGETS, build_dataset
 from evoagent.text2sql.evaluation import (
     Text2SQLEvaluator,
     _failure_from_gate,
+    _join_edge_recall,
+    _sql_join_edges,
     _sql_features,
     classify_result_mismatch,
     load_dataset,
@@ -167,6 +169,29 @@ class Text2SQLDatasetTests(unittest.TestCase):
             "AGGREGATION_MISMATCH",
         )
 
+    def test_join_edge_metric_uses_physical_endpoints_when_provenance_is_blank(self):
+        gold_sql = (
+            "SELECT COUNT(*) FROM t_harm AS l INNER JOIN t_support AS r "
+            "ON l.c_caseCode = r.c_caseCode"
+        )
+        expected = {("t_harm.c_caseCode", "t_support.c_caseCode")}
+        self.assertEqual(_sql_join_edges(gold_sql), expected)
+        self.assertEqual(
+            _join_edge_recall(
+                gold_sql,
+                [
+                    {
+                        "left": "t_harm.c_caseCode",
+                        "right": "t_support.c_caseCode",
+                        "source": "user_explicit",
+                        "evidence_id": "",
+                    }
+                ],
+                ["join:join-example"],
+            ),
+            1.0,
+        )
+
     def test_plan_gate_failures_keep_semantic_evaluation_categories(self):
         self.assertEqual(
             _failure_from_gate(["missing_value_binding"]),
@@ -184,6 +209,92 @@ class Text2SQLDatasetTests(unittest.TestCase):
             _failure_from_gate(["unexpected_join"]),
             "JOIN_OR_GRAIN_MISMATCH",
         )
+        self.assertEqual(
+            _failure_from_gate(
+                [
+                    "worker_failed",
+                    "missing_bound_query_plan",
+                    "lead_plan_not_approved",
+                ]
+            ),
+            "PLANNING_FAILURE",
+        )
+        self.assertEqual(
+            _failure_from_gate(["unverified_value_binding"]),
+            "VALUE_GROUNDING_MISMATCH",
+        )
+        self.assertEqual(
+            _failure_from_gate(["no_accepted_sql_candidate"]),
+            "CANDIDATE_GENERATION_FAILURE",
+        )
+
+    def test_evaluator_persists_bounded_stage_diagnostics(self):
+        case = next(
+            item
+            for item in load_dataset(self.dataset, ["validation"]).cases
+            if item.split == "validation"
+        )
+        pins = {
+            "database_snapshot_id": SNAPSHOT["snapshot_id"],
+            "wiki_index_version": "stable-v1-test",
+            "memory_snapshot_id": "memory-empty-v1",
+            "policy_version": "policy-v1",
+        }
+
+        def failed_runner(_question):
+            return {
+                "status": "rejected",
+                "final_sql": "",
+                "answer": {},
+                "gates": {
+                    "accepted": False,
+                    "errors": [
+                        "worker_failed",
+                        "missing_bound_query_plan",
+                        "lead_plan_not_approved",
+                    ],
+                },
+                "version_pins": pins,
+                "collaboration": {
+                    "worker_results": [
+                        {
+                            "worker": "schema-grounding",
+                            "status": "completed",
+                            "output": {},
+                            "error": "",
+                        },
+                        {
+                            "worker": "query-planning",
+                            "status": "failed",
+                            "output": {},
+                            "error": "QuerySpec subject is required",
+                        },
+                    ],
+                    "binding_conflicts": [
+                        {
+                            "code": "worker_failed",
+                            "owner": "query-planning",
+                            "message": "QuerySpec subject is required",
+                        }
+                    ],
+                    "plan_approval_errors": ["missing_bound_query_plan"],
+                },
+            }
+
+        outcome = Text2SQLEvaluator(self.database, SNAPSHOT, pins).evaluate(
+            (case,), failed_runner
+        )["outcomes"][0]
+        self.assertEqual(outcome["failure_kind"], "PLANNING_FAILURE")
+        self.assertEqual(outcome["failure_stage"], "planning_workers")
+        self.assertEqual(
+            outcome["stage_diagnostics"]["worker_statuses"]["query-planning"],
+            "failed",
+        )
+        self.assertEqual(
+            outcome["stage_diagnostics"]["binding_conflict_codes"],
+            ["worker_failed"],
+        )
+        self.assertIn("QuerySpec subject", outcome["query_worker_error"])
 
     def test_value_grounding_normalizes_equivalent_numeric_literals(self):
         quoted = _sql_features("SELECT * FROM t_activeinfo WHERE c_energy='4.986E+06'")

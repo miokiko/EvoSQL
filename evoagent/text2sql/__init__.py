@@ -1,11 +1,5 @@
 """Text2SQL domain components built on top of EvoAgent's control plane."""
 
-from .knowledge_policy import (
-    AuthorityDecision,
-    KnowledgeAssertion,
-    QueryVersionPin,
-    resolve_authority,
-)
 from .agentic import Text2SQLAgenticEngine
 from .benchmark import ResumableEvaluationCheckpoint
 from .checkpoint_store import (
@@ -47,8 +41,7 @@ from .evaluation import (
     result_fingerprint,
 )
 from .evolution import Text2SQLEvolutionStore, evaluate_promotion_gate
-from .knowledge_store import KnowledgeStore, ROLE_VIEWS
-from .markdown_wiki import MarkdownWikiConnector
+from .vanna_corpus import ROLE_VIEWS, VannaCorpus
 from .models import Evidence, EvidencePack
 from .policy import PolicyArtifact, TEXT2SQL_SKILLS
 from .policy_generator import Text2SQLPolicyCandidateGenerator
@@ -70,7 +63,6 @@ from .web_service import Text2SQLWebService
 
 __all__ = [
     "ApprovedQueryPlan",
-    "AuthorityDecision",
     "BindingConflict",
     "BoundQueryPlan",
     "CATEGORY_TARGETS",
@@ -78,10 +70,6 @@ __all__ = [
     "DatasetReviewStore",
     "EvaluationCase",
     "JoinSpec",
-    "KnowledgeAssertion",
-    "KnowledgeStore",
-    "MarkdownWikiConnector",
-    "QueryVersionPin",
     "QuerySpec",
     "ROLE_TOOL_PERMISSIONS",
     "ReadOnlySQLiteExecutor",
@@ -95,6 +83,7 @@ __all__ = [
     "Evidence",
     "EvidencePack",
     "ROLE_VIEWS",
+    "VannaCorpus",
     "SnapshotArtifacts",
     "SQLiteBuildResult",
     "Text2SQLAgenticEngine",
@@ -125,7 +114,6 @@ __all__ = [
     "generate_cases",
     "case_fingerprint",
     "load_dataset",
-    "resolve_authority",
     "result_fingerprint",
     "evaluate_promotion_gate",
     "compare_shadow_results",

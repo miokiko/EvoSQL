@@ -38,15 +38,15 @@ class DotenvTests(unittest.TestCase):
             host="127.0.0.1",
             port=8080,
             db_path=":memory:",
-            max_diff_bytes=10000,
-            max_steps=8,
-            timeout_seconds=10,
+
+
+
             llm_base_url="",
             llm_api_key="",
             llm_model="qwen-plus",
-            github_webhook_secret="",
-            github_token="",
-            auto_post_review=False,
+
+
+
             llm_provider="aliyun",
             dashscope_api_key="dashscope-test-key",
         )
@@ -63,15 +63,15 @@ class DotenvTests(unittest.TestCase):
             host="127.0.0.1",
             port=8080,
             db_path=":memory:",
-            max_diff_bytes=10000,
-            max_steps=8,
-            timeout_seconds=10,
+
+
+
             llm_base_url="",
             llm_api_key="",
             llm_model="qwen-plus",
-            github_webhook_secret="",
-            github_token="",
-            auto_post_review=False,
+
+
+
             llm_provider="aliyun",
         )
         self.assertEqual(settings.resolved_llm(), {})

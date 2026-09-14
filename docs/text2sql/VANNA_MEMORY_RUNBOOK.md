@@ -1,26 +1,49 @@
-# Text2SQL 会话记忆与 Vanna 检索
+# Text2SQL Vanna 与 Memory 运行手册
 
-## 1. 运行拓扑
+> 当前 Memory 治理以 [Memory / Policy MVP 运行手册](MEMORY_EVOLUTION_MVP_RUNBOOK.md) 为准。本文保留 Vanna、会话 Memory 和 Legacy `AgentSemanticRule/v1` 的背景说明；Legacy Rule 仅兼容读取，不再是新自进化主链。
+
+## 1. 一眼看清边界
+
+```text
+Schema Snapshot ────────→ Vanna DDL / Schema Documentation ─┐
+Business Markdown ──────→ Vanna Documentation ──────────────┼─→ RAG 召回
+Confirmed Question-SQL ─→ Vanna Question-SQL ───────────────┘
+
+Join Catalog ───────────→ Schema Grounding / Binder
+Working Memory ─────────→ 当前会话上下文
+Episodic Memory ────────→ QueryRun 历史与追问
+Semantic Experience ────→ 离线 Policy Candidate 的有审计来源
+```
+
+当前是单用户模式。业务 Markdown 默认可信并直接构建 Vanna，不设置独立 KnowledgeBase、业务知识审批流或 ACL。Join Catalog 和 Memory 各自独立，不能因为某段内容被 Vanna 召回就改变其确定性边界。
+
+## 2. 运行拓扑
 
 ```text
 用户问题
    |
    v
 Text2SQL Lead（Query Router + 会话上下文）
-   |-- RESULT_QA ------> 认证 QueryRun 快照，Harness 只做确定性结果 replay
+   |-- RESULT_QA ------> 认证 QueryRun 快照，Harness 确定性 replay
    |
    `-- DATA_QUERY / FOLLOW_UP_QUERY
-           Evidence Orchestration：stable KnowledgeStore + 可选 Vanna retrieval-only
+           Evidence Orchestration：Vanna + Schema Snapshot + Join Catalog
                         |
                +--------+--------+
                |                 |
+      GroundingPack/v1    PlanningBusinessPack/v1
+      物理 Schema/值/关系    schema-blind 业务语义
+               |                 |
       Schema Grounding      Query Planning
-      物理 Schema/值/关系    schema-blind，仅业务术语
                +--------+--------+
                         |
         deterministic bind → Lead 语义审核/有界返工
                         |
           Harness 铸造 ApprovedQueryPlan
+                        |
+        Vanna Question-SQL → SQL/plan scope 复验
+                        |
+             VerifiedExamplePack/v1（≤3）
                         |
                  SQL Generation
                         |
@@ -32,59 +55,78 @@ Text2SQL Lead（Query Router + 会话上下文）
        Harness：最终门禁 / SQLite 只读执行
 ```
 
-这是 `plan-first-text2sql-v3` 实现 Multi-Agent 语义的固定、有限 11 节点运行图。五个 Agent Role 是 `text2sql-lead`、`schema-grounding`、`query-planning`、`sql-generation`、`text2sql-critic`；并发只发生在 plan-workers 节点内的 Schema Grounding 与 Query Planning 之间。Lead 负责路由、委派、计划语义审核、有界返工和最终候选选择。Harness 负责绑定、批准计划铸造、候选门禁和只读执行，是不可绕过的确定性边界，不是 Agent，也不是 Skill。当前不会在 Critic reject 后再次修复 SQL。
+这是 `plan-first-text2sql-v3` 的 11 节点运行图。并发只发生在 Schema Grounding 与 Query Planning 两个 Plan Worker 之间。Vanna backend 仍只检索、不执行 SQL；第 2 节点另有一个无工具、无连接的请求级组件，使用冻结的 Vanna 上下文生成仅供 Schema 反向提取的草稿 SQL。草稿不能绕过 Binder、Critic 或最终 Gate。
 
-## 2. 四层记忆
+## 3. 三种 Memory 与一种 RAG 案例
 
-- Working Memory：保存当前 user / session 最近 100 条用户与助手消息，用于本轮上下文。
-- Episodic Memory：每个 user / session 保存最近 50 个 QueryRun；每个 QueryRun 包含独立问题、路由类型、结构化 QuerySpec / SchemaPlan、SQL、最终 Gate、结果摘要和最多 50 行结果快照，用于追问、结果问答与审计。
-- Question-SQL Memory：用户确认正确的 Question-SQL 以 `verified_example` 写入 stable KnowledgeStore，再构建版本化 Vanna Stable 索引；经验账本同步标记为 `promoted`，并用 `knowledge_evidence_id` 关联两侧记录。
-- Agent Semantic Memory：五个 Agent 的失败归因经验按 stable / candidate 分层治理；Query Planning 与 SQL Generation 使用独立策略槽，不与 Vanna 混合。Harness 没有 Skill Memory。
+| 类型 | 保存内容 | 写入时机 | 用途 |
+|---|---|---|---|
+| Working Memory | 最近消息：`role + content + task_id + session_id + created_at` | 每轮自动写入，滚动保留 | Lead 理解当前会话 |
+| Episodic Memory | 完整 QueryRun：问题、Plan、SQL、Gate、结果、反馈、时间、轮次和版本 | 每次查询结束写入 | 追问、结果回看、根因分析与审计 |
+| Semantic Experience | `ExperienceMemory/v1`：来源任务、owner Agent、问题、修正、适用条件和不可变证据 | 用户纠错或确定性修订后形成 candidate / needs_evidence | 不直接注入 Agent；Confirmed 只能编译为 Policy Candidate |
+| Vanna Question-SQL | 用户问题与确认正确、复验通过的 SQL | 用户确认正确后直接写入 | ApprovedQueryPlan 后召回相似结构 |
 
-使用阿里云模型时，Leader 路由会收到最近 QueryRun 的问题、SQL 与结果元数据；`RESULT_QA` 还会收到所引用 QueryRun 的列名及最多 50 行有限结果快照。完整 SQLite 文件不会上传，历史快照也不会提供给其他用户或会话。
+Question-SQL 是 Vanna RAG 案例，不是 Memory。正确反馈不会修改 Agent Policy；错误反馈才可能沉淀为 Semantic Experience Candidate。
 
-记忆中心默认读取当前浏览器会话；如果当前会话为空但同一用户存在历史记录，页面会明确标注“历史会话回看”并展示最近一个会话。该回看只影响可视化，不会把历史 Working Memory 合并进新会话的 Agent 上下文。
+新 Experience 始终 `runtime_eligible=false`，不会被 Vanna 或 Runtime Prompt 直接检索。默认生产治理链为：`candidate / needs_evidence → 人工 confirm → prompt_fragment-only Policy Candidate → Target Replay → 96 条独立评测 → Shadow → Canary → 人工激活`。受限自动 MVP 只接纳机器可验证 Experience，经离线 SemanticRule 归纳与同 Agent Prompt 编译后，必须通过 Target Replay、96 条评测及身份/来源复核才可原子激活。
 
-FOLLOW_UP_QUERY 必须显式选择一个当前会话内的 parent；系统不会在 Lead 漏填时静默绑定最近任务。父快照还必须通过 task、user/session、success、最终 Gate、完整版本 pins、严格 QuerySpec/SchemaPlan 与绑定指纹校验，否则整个追问 fail closed，Lead 的 standalone rewrite 也不会继续驱动 Worker。独立问题改写不是事实来源：新 filter 值只能来自本轮原始问题，或来自认证父 QuerySpec；显式 Join 只能来自原始问题的确定性等式解析或可信父 SchemaPlan。该结构化 provenance 只供 Harness 校验，不会把父物理 Schema 暴露给 Query Planning。RESULT_QA 同样要求认证父快照，并且仅允许明确的结果重显；文案从缓存列/行确定性生成，任何比较、过滤、排序或计算要求都会转为新查询。
+## 4. Vanna 的三种数据
 
-## 3. Vanna 的权限边界
+### DDL / Schema Documentation
 
-`VannaRetrieverOnly` 只暴露三类检索：DDL、Documentation、Question-SQL。包装层显式封锁 `ask`、`generate_sql`、`submit_prompt` 和 `run_sql`；数据库连接也不会交给 Vanna。Vanna 不起草候选 SQL，也不会绕过计划协议直接向 SQL Generation 喂入 SQL；它只在 Evidence Orchestration 中增强 stable 证据召回。
+来自当前 Schema Snapshot，向 Schema Grounding 提供表、列、类型、注释和值域线索。最终物理绑定仍须回到 Snapshot 校验，不能仅凭向量结果使用表列。
 
-Vanna 命中不能直接成为事实。每个向量条目携带 KnowledgeStore 的 `evidence_id`，返回后必须重新检查：
+### Business Documentation
 
-1. 条目仍为 `stable`；
-2. 数据库快照仍一致；
-3. 当前 Principal 仍满足 ACL；
-4. 当前消费阶段允许使用该知识类型。
+来自 `knowledge/business`，向 Query Planning 提供实体、维度、指标、粒度、过滤、去重、NULL 和值语义。业务 Markdown 在单用户模式下默认可信，修改后直接重建，不经过 Candidate / Stable。
 
-任何检查失败都丢弃命中。Query Planning 还会再次过滤检索结果，只保留已审核的 `business_glossary`，不接收 DDL、物理列、实库值、关系或 Question-SQL 示例；Schema Grounding 可使用授权的物理证据。SQL Generation 只接收不可变 `ApprovedQueryPlan`，Blind Critic 只接收通过 Harness 门禁的匿名候选。索引缺失、依赖不可用或版本不匹配时，系统自动回退到 KnowledgeStore 原检索。
+### Question-SQL
 
-## 4. 构建稳定索引
+只保存用户确认正确且重新通过 SQL Gate 的样例。它只在 ApprovedQueryPlan 形成后召回；候选 SQL 必须满足当前计划的表列范围和安全规则，最多 3 条进入 `VerifiedExamplePack/v1`。
+
+## 5. Vanna 的安全边界
+
+`VannaRetrieverOnly` 只暴露 DDL、Documentation 和 Question-SQL 检索。包装层封锁 `ask`、`generate_sql`、`submit_prompt` 和 `run_sql`，数据库连接不会交给 Vanna。
+
+单用户模式不做 Principal ACL 或 KnowledgeStore 状态回源，但保留以下确定性检查：
+
+1. Schema 证据必须与当前 Snapshot 一致；
+2. Query Planning 只能看到业务语义，不能看到 DDL、Join 或 SQL 示例；
+3. Join 必须由独立 Join Catalog 或用户问题中的确定性等式提供；
+4. Question-SQL 必须再次通过只读 AST Gate；
+5. Question-SQL 的表列、Join、谓词值和结果粒度不能超出 ApprovedQueryPlan；
+6. 最终 SQL 仍须通过 validate、plan conformance、EXPLAIN 与执行前复验。
+
+## 6. 构建索引
 
 ```bash
-python scripts/build_text2sql_knowledge.py
 python scripts/build_text2sql_vanna.py
 ```
 
-索引目录为 `artifacts/text2sql/vanna/<stable-index-version>/`。构建脚本只读取 KnowledgeStore 中已经审核为稳定的条目，并写入固定版本目录。
-
-可通过以下环境变量控制：
+索引位于 `artifacts/text2sql/vanna/`，corpus version 由 Schema Snapshot、业务文档摘要和 Question-SQL 集合共同决定。业务文档摘要不是独立运行时 Pin；wire 兼容字段 `wiki_index_version` 当前保存同一个 Vanna corpus version，`vanna_index_version` 出现时也只是该版本的镜像。
 
 ```env
 EVOAGENT_TEXT2SQL_VANNA_ENABLED=true
 EVOAGENT_TEXT2SQL_VANNA_ROOT=artifacts/text2sql/vanna
 ```
 
-## 5. Question-SQL 经验闭环
+当前项目只保留 VannaCorpus 检索链路。业务 Markdown 使用 `evoagent/text2sql/business_documents.py` 解析；重建命令为 `python scripts/build_text2sql_vanna.py`。
 
-1. 每次成功的独立查询记录为 QueryRun；在收到用户反馈前，Question-SQL 经验处于 `ineligible / requires_human_feedback`。
-2. 用户点击“确认结果正确”后，系统重新检查 QueryRun 来源、最终 Harness Gate 和当前 Schema Snapshot，并再次执行确定性 SQL Gate。
-3. 校验通过后，Question-SQL 以 `verified_example` 直接写入 stable KnowledgeStore，并同步构建新的不可变 Vanna Stable 版本。
-4. 经验账本把该记录标记为 `promoted`；后续查询可以立即从 Vanna 召回，但命中仍必须回到 KnowledgeStore 复验 stable、snapshot 与 ACL。
-5. 用户点击“结果不正确”时，原经验变为 `rejected`，系统执行确定性错误归因并生成单一 Agent Role 的 Semantic Memory Candidate；可选修正 SQL 作为独立 Question-SQL 候选保存，避免覆盖原始证据。
-6. 错误归因产生的 Agent Memory 与 Policy 候选仍走人工审核、240 题 Validation/Sealed Holdout、Shadow、Canary 和显式激活。正反馈 Question-SQL 只增强检索，不修改 Agent Policy，也不绕过 Binder、Critic 或最终 SQL Gate。
+## 7. Question-SQL 闭环
 
-## 6. 可观测性
+1. 查询完成后形成 Episodic QueryRun；尚未收到反馈时，不写入 Vanna Question-SQL。
+2. 用户点击“确认结果正确”，系统检查 QueryRun 来源、最终 Gate 和当前 Schema Snapshot，并重新运行 SQL Gate。
+3. 复验通过后，Question-SQL 直接写入 Vanna；QueryRun 保存其来源关联。
+4. 后续查询只在 ApprovedQueryPlan 形成后召回它，并执行当前计划范围复验。
+5. 用户点击“结果不正确”，该 SQL 不进入或从 Question-SQL 集合移除；有充分证据时，系统按错误类型生成单一 Agent Role 的 Semantic Experience Candidate。
+6. Experience 只能先生成同一 Agent 的 `prompt_fragment` Policy Candidate；默认生产链继续走 Shadow/Canary/人工发布，受限自动链必须走 Target Replay、96 条独立评测与完整身份复核，且两条链都支持回滚。
 
-前端“运行轨迹”显示 Query Router 类型、父 QueryRun、独立问题、SchemaPlan、QuerySpec、Bound/ApprovedQueryPlan、Vanna 检索批次、五 Agent 轨迹、版本固定和 Harness 结果。“数据与知识”显示 Vanna 是否可用、条目数量以及生成/执行能力保持关闭。
+## 8. 会话规则
+
+Working Memory 可以保存多条消息，但只属于当前 session；Episodic Memory 每次 QueryRun 形成一条记录，一个会话可以有多条。历史会话回看只影响可视化，不会自动并入新会话上下文。
+
+FOLLOW_UP_QUERY 必须引用当前会话内通过最终 Gate 的父 QueryRun。父快照的计划、结果与版本不完整时 fail closed，不会静默绑定最近任务。RESULT_QA 只允许重显已认证结果；比较、过滤、排序或重新计算会进入新的 DATA_QUERY。
+
+## 9. 可观测性
+
+Execution Ledger 记录三类检索批次、`VerifiedExamplePack/v1` 的接收数量与拒绝原因。前端展示 Vanna 的 DDL / Documentation / Question-SQL 数量，以及 Working、Episodic、Semantic Experience；Legacy Runtime Memory 单独标为兼容区。

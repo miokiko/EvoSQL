@@ -17,6 +17,10 @@ import sqlglot
 from sqlglot import exp
 
 from .sql_safety import ReadOnlySQLiteExecutor, validate_sql
+from .query_outcome import diagnose_result
+
+
+EVALUATION_ARTIFACT_CONTRACT_VERSION = 2
 
 
 FAILURE_KINDS = frozenset(
@@ -36,6 +40,12 @@ FAILURE_KINDS = frozenset(
         "RESULT_MISMATCH",
         "USER_CORRECTION",
         "FRAMEWORK_ERROR",
+        "PLANNING_FAILURE",
+        "VALUE_GROUNDING_MISMATCH",
+        "CANDIDATE_GENERATION_FAILURE",
+        "CRITIC_REJECTION",
+        "LEAD_SELECTION_FAILURE",
+        "NEEDS_CLARIFICATION",
     }
 )
 
@@ -145,6 +155,7 @@ def load_dataset(
     root: Path,
     splits: Optional[Iterable[str]] = None,
     review_signing_key: Optional[bytes] = None,
+    require_review_signature: bool = True,
 ) -> DatasetBundle:
     root = root.resolve()
     manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
@@ -220,7 +231,13 @@ def load_dataset(
             raise ValueError("dataset review certificate file hash mismatch")
         from .dataset_review import read_review_signing_key, verify_review_certificate
 
-        key = review_signing_key if review_signing_key is not None else read_review_signing_key()
+        key = review_signing_key
+        if key is None:
+            try:
+                key = read_review_signing_key()
+            except ValueError as exc:
+                if require_review_signature or "human-reviewed dataset requires" not in str(exc):
+                    raise
         certificate = json.loads(certificate_path.read_text(encoding="utf-8"))
         review_evidence = {
             **verify_review_certificate(
@@ -230,6 +247,7 @@ def load_dataset(
                 dataset_sha256=fingerprint,
                 database_snapshot_id=str(manifest["database_snapshot_id"]),
                 cases=all_case_values,
+                require_signature=require_review_signature,
             ),
             "certificate_sha256": certificate_digest,
         }
@@ -258,6 +276,15 @@ def _failure_from_gate(errors: Sequence[str]) -> str:
         return "UNKNOWN_COLUMN"
     if codes.intersection(
         {
+            "read_only_query_required",
+            "write_or_control_statement_forbidden",
+            "comments_not_allowed",
+            "exactly_one_statement_required",
+        }
+    ) or any(code.startswith("blocked_function") for code in codes):
+        return "UNSAFE_SQL"
+    if codes.intersection(
+        {
             "sql_tables_outside_schema_plan",
             "sql_columns_outside_schema_plan",
             "unexpected_table",
@@ -275,6 +302,8 @@ def _failure_from_gate(errors: Sequence[str]) -> str:
         return "SCHEMA_LINK_MISMATCH"
     if codes.intersection({"filter_mismatch", "unsupported_filter_expression"}):
         return "FILTER_MISMATCH"
+    if "unverified_value_binding" in codes:
+        return "VALUE_GROUNDING_MISMATCH"
     if codes.intersection(
         {
             "aggregation_mismatch",
@@ -288,6 +317,35 @@ def _failure_from_gate(errors: Sequence[str]) -> str:
         {"missing_join", "unexpected_join", "result_grain_mismatch"}
     ):
         return "JOIN_OR_GRAIN_MISMATCH"
+    if codes.intersection(
+        {
+            "worker_failed",
+            "unsupported_query_contract",
+            "duplicate_slot_id",
+            "missing_logical_reference",
+            "missing_bound_query_plan",
+            "lead_plan_not_approved",
+            "missing_or_invalid_approved_query_plan",
+            "invalid_revision_request_contract",
+            "invalid_post_revision_approval_contract",
+        }
+    ):
+        return "PLANNING_FAILURE"
+    if codes.intersection(
+        {
+            "sql_generation_failure",
+            "no_accepted_sql_candidate",
+            "candidate_gate_rejected",
+            "candidate_gate_runtime_failure",
+        }
+    ):
+        return "CANDIDATE_GENERATION_FAILURE"
+    if codes.intersection({"critic_runtime_failure", "critic_rejected_all_candidates"}):
+        return "CRITIC_REJECTION"
+    if codes.intersection(
+        {"invalid_final_candidate_index", "critic_rejected_candidate"}
+    ):
+        return "LEAD_SELECTION_FAILURE"
     if errors:
         return "UNSAFE_SQL"
     return "RESULT_MISMATCH"
@@ -310,6 +368,78 @@ def _sql_features(sql: str) -> Mapping[str, Any]:
             sorted(_normalized_literal(node) for node in tree.find_all(exp.Literal))
         ),
     }
+
+
+def _canonical_join_edge(left: str, right: str) -> tuple[str, str]:
+    return tuple(sorted((left, right)))
+
+
+def _sql_join_edges(sql: str) -> set[tuple[str, str]]:
+    """Return physical join endpoints, resolving SQL aliases to table names."""
+
+    try:
+        tree = sqlglot.parse_one(sql, read="sqlite")
+    except (sqlglot.errors.ParseError, TypeError):
+        return set()
+    aliases: dict[str, str] = {}
+    for table in tree.find_all(exp.Table):
+        table_name = str(table.name or "")
+        alias = str(table.alias_or_name or "")
+        if table_name:
+            aliases[table_name] = table_name
+        if alias and table_name:
+            aliases[alias] = table_name
+
+    edges: set[tuple[str, str]] = set()
+    for join in tree.find_all(exp.Join):
+        condition = join.args.get("on")
+        if condition is None:
+            continue
+        for equality in condition.find_all(exp.EQ):
+            left_node = equality.this
+            right_node = equality.expression
+            if not isinstance(left_node, exp.Column) or not isinstance(right_node, exp.Column):
+                continue
+            left_table = aliases.get(str(left_node.table or ""), str(left_node.table or ""))
+            right_table = aliases.get(str(right_node.table or ""), str(right_node.table or ""))
+            if not left_table or not right_table:
+                continue
+            left = "%s.%s" % (left_table, left_node.name)
+            right = "%s.%s" % (right_table, right_node.name)
+            edges.add(_canonical_join_edge(left, right))
+    return edges
+
+
+def _join_edge_recall(
+    gold_sql: str,
+    planned_joins: Sequence[Mapping[str, Any]],
+    required_relationships: Sequence[str],
+) -> Optional[float]:
+    """Measure the planned physical edge, not only model-authored provenance ids.
+
+    User-explicit joins intentionally have their evidence id stripped by the
+    runtime, so relying solely on evidence ids makes every such correct plan
+    score zero. Endpoint comparison keeps the metric independent of that trust
+    decision while retaining an id fallback for older traces.
+    """
+
+    if not required_relationships:
+        return None
+    gold_edges = _sql_join_edges(gold_sql)
+    planned_edges = {
+        _canonical_join_edge(str(item.get("left") or ""), str(item.get("right") or ""))
+        for item in planned_joins
+        if str(item.get("left") or "") and str(item.get("right") or "")
+    }
+    if gold_edges:
+        return round(len(gold_edges.intersection(planned_edges)) / len(gold_edges), 6)
+    required_ids = {str(value) for value in required_relationships if str(value)}
+    planned_ids = {
+        str(item.get("evidence_id") or "")
+        for item in planned_joins
+        if str(item.get("evidence_id") or "")
+    }
+    return round(len(required_ids.intersection(planned_ids)) / len(required_ids), 6)
 
 
 def _normalized_literal(node: exp.Literal) -> str:
@@ -444,15 +574,94 @@ class Text2SQLEvaluator:
                 ),
                 {},
             )
+            query_worker = next(
+                (
+                    item
+                    for item in collaboration.get("worker_results") or ()
+                    if isinstance(item, Mapping) and item.get("worker") == "query-planning"
+                ),
+                {},
+            )
+            worker_results = [
+                item
+                for item in collaboration.get("worker_results") or ()
+                if isinstance(item, Mapping) and item.get("worker")
+            ]
+            binding_conflicts = [
+                item
+                for item in collaboration.get("binding_conflicts") or ()
+                if isinstance(item, Mapping)
+            ]
+            sql_generation = collaboration.get("sql_generation_result") or {}
+            candidate_rounds = [
+                item
+                for item in collaboration.get("candidate_gate_rounds") or ()
+                if isinstance(item, Mapping)
+            ]
+            candidate_gate_issues = [
+                issue
+                for item in candidate_rounds
+                for issue in item.get("gate_issues") or ()
+                if isinstance(issue, Mapping)
+            ]
+            critic_result = collaboration.get("critic_result") or {}
+            lead_final = collaboration.get("lead_final") or {}
+            stage_diagnostics = {
+                "worker_statuses": {
+                    str(item.get("worker")): str(item.get("status") or "missing")
+                    for item in sorted(
+                        worker_results, key=lambda value: str(value.get("worker") or "")
+                    )
+                },
+                "worker_error_roles": sorted(
+                    str(item.get("worker"))
+                    for item in worker_results
+                    if item.get("error")
+                ),
+                "binding_conflict_codes": list(
+                    dict.fromkeys(
+                        str(item.get("code") or "binding_conflict")
+                        for item in binding_conflicts
+                    )
+                ),
+                "plan_approval_errors": list(
+                    dict.fromkeys(
+                        str(item)
+                        for item in collaboration.get("plan_approval_errors") or ()
+                        if str(item)
+                    )
+                ),
+                "sql_generation_status": str(
+                    sql_generation.get("status") or "missing"
+                ),
+                "sql_generation_error": bool(sql_generation.get("error")),
+                "candidate_gate_error_codes": list(
+                    dict.fromkeys(
+                        str(item.get("code") or "candidate_gate_rejected")
+                        for item in candidate_gate_issues
+                    )
+                ),
+                "critic_runtime_error": bool(critic_result.get("runtime_error")),
+                "lead_final_candidate_index": (
+                    lead_final.get("final_candidate_index")
+                    if type(lead_final.get("final_candidate_index")) is int
+                    else None
+                ),
+            }
             if not schema_plan:
                 # Read compatibility for traces produced before BoundQueryPlan/v1.
                 schema_plan = (schema_worker.get("output") or {}).get("schema_plan") or {}
             planned_tables = set(schema_plan.get("tables") or ())
             planned_columns = set(schema_plan.get("columns") or ())
-            planned_relationships = {
-                str(item.get("evidence_id"))
+            planned_joins = [
+                item
                 for item in schema_plan.get("joins") or ()
-                if isinstance(item, Mapping) and item.get("evidence_id")
+                if isinstance(item, Mapping)
+            ]
+            planned_relationships = {
+                str(item.get("evidence_id") or "")
+                for item in planned_joins
+                if str(item.get("evidence_id") or "")
             }
             if framework_error.startswith("TIMEOUT"):
                 failure = "TIMEOUT"
@@ -461,6 +670,8 @@ class Text2SQLEvaluator:
             elif dict(result.get("version_pins") or {}) != self.expected_version_pins:
                 failure = "FRAMEWORK_ERROR"
                 framework_error = "version_pin_mismatch"
+            elif result.get("status") == "needs_clarification":
+                failure = "NEEDS_CLARIFICATION"
             elif not candidate_sql:
                 failure = _failure_from_gate(gate_errors) if gate_errors else "NO_SQL"
             elif not executable:
@@ -478,6 +689,37 @@ class Text2SQLEvaluator:
                     )
             if failure and failure not in FAILURE_KINDS:
                 failure = "FRAMEWORK_ERROR"
+            if exact:
+                failure_stage = "completed"
+            elif framework_error:
+                failure_stage = "framework"
+            elif stage_diagnostics["worker_error_roles"]:
+                failure_stage = "planning_workers"
+            elif stage_diagnostics["binding_conflict_codes"]:
+                failure_stage = "plan_binding"
+            elif stage_diagnostics["plan_approval_errors"]:
+                failure_stage = "plan_approval"
+            elif executable and not exact:
+                failure_stage = "execution_result"
+            elif (
+                stage_diagnostics["sql_generation_error"]
+                or stage_diagnostics["candidate_gate_error_codes"]
+                or "no_accepted_sql_candidate" in gate_errors
+            ):
+                failure_stage = "sql_generation_or_candidate_gates"
+            elif (
+                stage_diagnostics["critic_runtime_error"]
+                or "critic_rejected_all_candidates" in gate_errors
+            ):
+                failure_stage = "critic"
+            elif "invalid_final_candidate_index" in gate_errors:
+                failure_stage = "lead_final_selection"
+            else:
+                failure_stage = "unknown"
+            diagnostic = dict(result.get("diagnostic") or diagnose_result(result))
+            if not exact and not executable and not framework_error and diagnostic:
+                failure_stage = diagnostic["stage"]
+            stage_diagnostics["diagnostic"] = diagnostic if not exact else {}
             safe = not any(
                 error in {
                     "read_only_query_required",
@@ -490,7 +732,6 @@ class Text2SQLEvaluator:
             )
             required_tables = set(case.required_tables)
             required_columns = set(case.required_columns)
-            required_relationships = set(case.required_relationships)
             candidate_features = _sql_features(candidate_sql) if candidate_sql else {}
             gold_features = _sql_features(case.gold_sql)
             gold_literals = set(gold_features.get("literals") or ())
@@ -514,14 +755,10 @@ class Text2SQLEvaluator:
                     len(required_columns.intersection(planned_columns)) / max(1, len(required_columns)),
                     6,
                 ),
-                "join_edge_recall": (
-                    round(
-                        len(required_relationships.intersection(planned_relationships))
-                        / len(required_relationships),
-                        6,
-                    )
-                    if required_relationships
-                    else None
+                "join_edge_recall": _join_edge_recall(
+                    case.gold_sql,
+                    planned_joins,
+                    case.required_relationships,
                 ),
                 "value_grounding_accuracy": (
                     round(
@@ -532,6 +769,8 @@ class Text2SQLEvaluator:
                     else None
                 ),
                 "failure_kind": failure,
+                "failure_stage": failure_stage,
+                "stage_diagnostics": stage_diagnostics,
                 "duration_ms": round(duration_ms, 3),
                 "candidate_sql_fingerprint": hashlib.sha256(
                     candidate_sql.encode("utf-8")
@@ -551,6 +790,29 @@ class Text2SQLEvaluator:
                         "gate_errors": gate_errors,
                         "schema_worker_status": str(schema_worker.get("status") or "missing"),
                         "schema_worker_error": str(schema_worker.get("error") or "")[:500],
+                        "query_worker_status": str(query_worker.get("status") or "missing"),
+                        "query_worker_error": str(query_worker.get("error") or "")[:500],
+                        "binding_conflicts": [
+                            {
+                                **dict(item),
+                                "message": str(item.get("message") or "")[:500],
+                            }
+                            for item in binding_conflicts
+                        ],
+                        "sql_generation_error": str(
+                            sql_generation.get("error") or ""
+                        )[:500],
+                        "candidate_gate_issues": [
+                            {
+                                "candidate_id": str(item.get("candidate_id") or "")[:100],
+                                "code": str(item.get("code") or "")[:100],
+                                "message": str(item.get("message") or "")[:500],
+                            }
+                            for item in candidate_gate_issues
+                        ][:100],
+                        "critic_runtime_error": str(
+                            critic_result.get("runtime_error") or ""
+                        )[:500],
                         "planned_relationships": sorted(planned_relationships),
                     }
                 )
@@ -592,6 +854,14 @@ class Text2SQLEvaluator:
                     sum(float(item.get("reported_cost_usd") or 0.0) for item in values), 8
                 ),
                 "failure_counts": dict(sorted(failures.items())),
+                "clarification_count": int(failures.get("NEEDS_CLARIFICATION", 0)),
+                "failure_stage_counts": dict(sorted(Counter(
+                    item.get("failure_stage", "unknown") for item in values if item["failure_kind"]
+                ).items())),
+                "diagnostic_category_counts": dict(sorted(Counter(
+                    (item.get("stage_diagnostics", {}).get("diagnostic") or {}).get("category", "unknown")
+                    for item in values if item["failure_kind"]
+                ).items())),
                 "p50_latency_ms": round(statistics.median([item["duration_ms"] for item in values]), 3) if values else 0.0,
                 "p95_latency_ms": _percentile([item["duration_ms"] for item in values], 0.95),
                 "skeleton_buckets": {

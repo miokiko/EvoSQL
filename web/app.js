@@ -10,6 +10,7 @@ const views = {
   evaluation: { title: "评测与审核", kicker: "EVALUATION & REVIEW" },
   evolution: { title: "自进化中心", kicker: "SELF-EVOLUTION" },
 };
+const governanceViews = new Set(["trace", "memory", "data", "skills", "evaluation", "evolution"]);
 
 const roleDetails = {
   "text2sql-lead": ["Lead", "查询路由、任务委派、语义计划审批与最终选择"],
@@ -32,7 +33,7 @@ const traceStageDetails = {
 
 const runtimeNodeCatalog = [
   { id: "text2sql-lead-routing", label: "Lead Routing", actor: "text2sql-lead", kind: "agent", phase: "ROUTE", description: "识别 DATA / FOLLOW-UP / RESULT QA" },
-  { id: "text2sql-evidence-orchestration", label: "Evidence", actor: "runtime", kind: "runtime", phase: "GROUND", description: "固定 Snapshot、Knowledge 与 Memory 证据" },
+  { id: "text2sql-evidence-orchestration", label: "Evidence", actor: "runtime", kind: "runtime", phase: "GROUND", description: "固定 Snapshot、Vanna 与 Memory 证据" },
   { id: "text2sql-plan-workers", label: "Plan Workers", actor: "schema-grounding ∥ query-planning", kind: "agent", phase: "PLAN", description: "两个 Worker 在同一节点内并行", parallel: true },
   { id: "text2sql-plan-binding", label: "Plan Binding", actor: "text2sql-harness", kind: "harness", phase: "BIND", description: "确定性合并 QuerySpec 与 SchemaPlan" },
   { id: "text2sql-lead-plan-assessment", label: "Lead Assessment", actor: "text2sql-lead", kind: "agent", phase: "ASSESS", description: "检查语义完整性与冲突责任" },
@@ -43,14 +44,6 @@ const runtimeNodeCatalog = [
   { id: "text2sql-lead-final", label: "Lead Final", actor: "text2sql-lead", kind: "agent", phase: "SELECT", description: "只选择 Critic 接受的候选" },
   { id: "text2sql-final-gates-execute", label: "Final Gates", actor: "text2sql-harness", kind: "harness", phase: "EXECUTE", description: "重验后在本机只读执行" },
 ];
-
-const knowledgeLabels = {
-  schema: "Schema 结构",
-  value: "字段取值",
-  relationship: "表间关系",
-  business_glossary: "业务术语",
-  verified_example: "审核 Question-SQL",
-};
 
 let runtimeStatus = null;
 let skillCatalog = null;
@@ -63,7 +56,9 @@ let activeChartModel = null;
 let activeChartType = "bar";
 let toastTimer = null;
 let memoryPollTimer = null;
-let experiencePollTimer = null;
+let governanceMode = false;
+const selectedExperienceIds = new Set();
+const selectedSemanticRuleIds = new Set();
 const sessionHistory = [];
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
@@ -102,6 +97,56 @@ function writePendingQuery(value) {
 }
 
 let pendingText2SQLQuery = readPendingQuery();
+let queryInFlight = false;
+let activeClarification = null;
+try {
+  activeClarification = JSON.parse(sessionStorage.getItem("evosql_clarification") || "null");
+} catch (_) {}
+
+function setClarification(value, clearInput = false) {
+  activeClarification = value;
+  try {
+    if (value) sessionStorage.setItem("evosql_clarification", JSON.stringify(value));
+    else sessionStorage.removeItem("evosql_clarification");
+  } catch (_) {}
+  $("#clarification-panel").classList.toggle("hidden", !value);
+  $("#clarification-original").textContent = value ? `原问题：${value.question}` : "";
+  $("#clarification-questions").innerHTML = (value?.questions || [])
+    .map((question) => `<li>${escapeHtml(question)}</li>`).join("");
+  $("#text2sql-question").placeholder = value ? "请输入补充信息，然后发送" : "例如：强烈岩爆案例有多少个？";
+  if (clearInput) $("#text2sql-question").value = "";
+}
+
+function setQueryStatus(state, message = "", error = null) {
+  const panel = $("#query-status");
+  panel.classList.toggle("hidden", !["running", "error"].includes(state));
+  panel.dataset.state = state;
+  $("#query-status-message").textContent = message;
+  $("#query-status-details").classList.toggle("hidden", !error);
+  $("#query-status-details").open = false;
+  $("#query-status-technical").textContent = error
+    ? `任务：${error.taskId || "未创建"}\n${error.code || "request_failed"}\n${error.message || ""}` : "";
+  $("#query-retry").classList.toggle("hidden", state !== "error" || !pendingText2SQLQuery);
+  $("#query-restart").classList.toggle("hidden", state !== "error" || Boolean(pendingText2SQLQuery));
+  $("#clarification-panel").classList.toggle("hidden", state !== "clarification" || !activeClarification);
+  if (state !== "success") $("#text2sql-result").classList.add("hidden");
+}
+
+function queryFailure(error) {
+  const raw = String(error.message || "");
+  if (error.code === "query_identity_conflict" || raw.includes("task_id was reused")) {
+    return { fresh: true, message: "请求或运行版本已变化，旧任务无法继续。点击“重新发起”使用当前配置查询。" };
+  }
+  if (error.status === 401 || error.status === 403) {
+    return { fresh: true, message: "当前登录状态或权限已变化，请确认登录后重新发起查询。" };
+  }
+  if (error.code === "query_response_contract_error" || /invalid action|final action/.test(raw)) {
+    return { fresh: false, message: "模型未返回有效的查询指令。你的补充内容已保留，可以重试。" };
+  }
+  if (!error.status) return { fresh: false, message: "连接中断，暂时无法确认执行结果。重试会使用同一任务，避免重复执行。" };
+  if (error.status >= 500) return { fresh: false, message: "本次查询未完成。输入内容已保留，请稍后重试。" };
+  return { fresh: true, message: /[\u4e00-\u9fff]/.test(raw) ? raw : "请求未被接受，请检查问题后重新发起。" };
+}
 
 function escapeHtml(value) {
   const node = document.createElement("div");
@@ -118,14 +163,35 @@ function number(value) {
   return Number(value || 0).toLocaleString("zh-CN");
 }
 
+function sourceCount(value) {
+  if (value && typeof value === "object") return Number(value.count ?? value.item_count ?? 0);
+  return Number(value || 0);
+}
+
+function firstCount(...values) {
+  const value = values.find((item) => item !== undefined && item !== null);
+  return sourceCount(value);
+}
+
 async function api(path, options = {}) {
-  const response = await fetch(path, options);
+  const headers = new Headers(options.headers || {});
+  const token = sessionStorage.getItem("evosql_access_token");
+  if (token) headers.set("Authorization", "Bearer " + token);
+  const response = await fetch(path, { ...options, headers });
+  if (response.status === 401) {
+    sessionStorage.removeItem("evosql_access_token");
+    const dialog = $("#login-dialog");
+    if (!dialog.open) dialog.showModal();
+  }
   const contentType = response.headers.get("content-type") || "";
   const data = contentType.includes("json") ? await response.json() : await response.text();
   if (!response.ok) {
     const plain = typeof data === "string" && !/<[a-z][\s\S]*>/i.test(data) ? data.trim() : "";
     const message = typeof data === "object" ? data.error || data.detail : plain;
-    throw new Error(message || `请求失败 (${response.status})`);
+    const error = new Error(message || `请求失败 (${response.status})`);
+    error.status = response.status;
+    error.code = typeof data === "object" ? data.code || "" : "";
+    throw error;
   }
   return data;
 }
@@ -138,8 +204,24 @@ function toast(message) {
   toastTimer = setTimeout(() => element.classList.remove("show"), 2600);
 }
 
+function setGovernanceMode(enabled, { navigate = true } = {}) {
+  governanceMode = Boolean(enabled);
+  document.body.classList.toggle("governance-mode", governanceMode);
+  const toggle = $("#governance-toggle");
+  toggle.classList.toggle("mode-active", governanceMode);
+  toggle.setAttribute("aria-expanded", governanceMode ? "true" : "false");
+  toggle.setAttribute("aria-label", governanceMode ? "退出高级治理" : "打开高级治理");
+  $("span", toggle).textContent = governanceMode ? "退出高级治理" : "高级治理";
+  const modeChip = $("#workspace-mode-chip");
+  modeChip.textContent = governanceMode ? "高级治理模式" : "用户模式";
+  modeChip.classList.toggle("is-governance", governanceMode);
+  const currentView = $(".view.active")?.id.replace("view-", "") || "query";
+  if (!governanceMode && navigate && governanceViews.has(currentView)) show("query");
+}
+
 function show(view, updateHash = true) {
   const selected = views[view] ? view : "query";
+  if (governanceViews.has(selected)) setGovernanceMode(true, { navigate: false });
   $$(".view").forEach((element) => element.classList.toggle("active", element.id === `view-${selected}`));
   $$(".nav-item").forEach((element) => {
     const active = element.dataset.view === selected;
@@ -151,6 +233,22 @@ function show(view, updateHash = true) {
   document.title = views[selected].title + " · EvoSQL";
   if (updateHash || selected !== view) history.replaceState(null, "", `#${selected}`);
   window.scrollTo({ top: 0, behavior: reduceMotion.matches ? "auto" : "smooth" });
+}
+
+function jumpToCurrentFeedback(taskId = "") {
+  show("query");
+  const resultVisible = !$("#text2sql-result").classList.contains("hidden");
+  if (resultVisible && activeTaskId && (!taskId || taskId === activeTaskId)) {
+    $("#query-feedback-panel").scrollIntoView({ behavior: reduceMotion.matches ? "auto" : "smooth", block: "center" });
+    return;
+  }
+  toast("历史记录仅用于回看；请在刚完成的查询结果页提交反馈");
+}
+
+function bindFeedbackJumps(root) {
+  $$(".feedback-jump", root).forEach((button) => button.addEventListener("click", () => {
+    jumpToCurrentFeedback(button.dataset.feedbackTaskId || "");
+  }));
 }
 
 function statusCard(label, value, detail, tone = "") {
@@ -172,15 +270,36 @@ function renderQueryStatus(status) {
   const model = status.model || {};
   const database = status.database || {};
   const dataset = status.dataset || {};
-  const knowledge = status.knowledge || {};
   const vanna = status.vanna || {};
-  const stable = Number(knowledge.states?.stable || 0);
-  const candidate = Number(knowledge.states?.candidate || 0);
+  const knowledgeSources = status.knowledge_sources || {};
+  const counts = vanna.counts || {};
+  const corpusCounts = vanna.corpus_counts || {};
+  const businessDocumentCount = firstCount(
+    knowledgeSources.business_documents,
+    corpusCounts.business_documents,
+    counts.documentation,
+  );
+  const ddlCount = firstCount(counts.ddl, corpusCounts.ddl, corpusCounts.schema);
+  const documentationCount = firstCount(counts.documentation, corpusCounts.documentation, businessDocumentCount);
+  const questionSqlCount = firstCount(
+    counts.question_sql,
+    counts.sql,
+    corpusCounts.question_sql,
+    knowledgeSources.question_sql,
+  );
+  const indexedCount = vanna.item_count === undefined || vanna.item_count === null
+    ? ddlCount + documentationCount + questionSqlCount
+    : Number(vanna.item_count || 0);
   const configured = Boolean(model.configured);
   const ready = Boolean(status.ready);
   const provider = model.provider || model.requested_provider || "aliyun-dashscope";
   const modelName = model.model || "未配置模型";
   const runtime = status.deterministic_runtime || {};
+  const reviewMode = dataset.review_signature_verified
+    ? "签名证书有效 · 审核人 匿名审核员"
+    : dataset.review_verified
+      ? "本地完整性校验通过 · 尚不等同于签名发布认证"
+      : "需要审核证书";
 
   const readyBadge = $("#text2sql-ready");
   readyBadge.className = `status ${ready ? "status-online" : "status-neutral"}`;
@@ -189,7 +308,7 @@ function renderQueryStatus(status) {
   $("#top-model").textContent = configured ? `${provider} · ${modelName}` : "模型未连接";
   $("#text2sql-runtime-note").textContent = configured
     ? "云端仅负责推理，SQLite 数据文件始终留在本机"
-    : "数据库、知识库和评测集可独立检查，问答需要模型配置";
+    : "数据库、业务文档、Vanna 索引和评测集可独立检查，问答需要模型配置";
   $("#runtime-contract-chip").textContent = `${runtime.protocol || "plan-first-text2sql-v3"} · ${number(runtime.node_count || 11)} nodes`;
   $("#runtime-blueprint").innerHTML = renderRuntimeMap(
     { deterministic_runtime: runtime },
@@ -197,58 +316,85 @@ function renderQueryStatus(status) {
   );
   $("#text2sql-status-grid").innerHTML = [
     statusCard("本地数据库", database.ready ? `${number(database.table_count)} 张表` : "不可用", database.readonly ? "SQLite · 强制只读" : "只读状态未确认", database.ready ? "is-ready" : "is-warning"),
-    statusCard("人工审核评测集", dataset.review_verified ? `${number(dataset.reviewed_case_count)} / ${number(dataset.case_count)}` : "未验证", dataset.review_verified ? "签名证书有效 · 审核人 匿名审核员" : "需要审核证书", dataset.review_verified ? "is-ready" : "is-warning"),
-    statusCard("Knowledge Evidence", `${number(stable)} 可用 / ${number(candidate)} 待审核`, `Schema、取值、关系与术语 · ${short(knowledge.stable_index_version, 22)}`, "is-ready"),
-    statusCard("Vanna 语义检索", vanna.ready ? `${number(vanna.item_count)} 条向量` : "回退模式", vanna.ready ? `只检索 · ${short(vanna.index_version, 22)}` : "使用 Wiki/结构化知识检索", vanna.ready ? "is-ready" : "is-warning"),
+    statusCard("人工审核评测集", dataset.review_verified ? `${number(dataset.reviewed_case_count)} / ${number(dataset.case_count)}` : "未验证", reviewMode, dataset.review_verified ? "is-ready" : "is-warning"),
+    statusCard("业务文档", `${number(businessDocumentCount)} 个知识块`, "实体 · 指标 · 维度 · 粒度 · 规则", businessDocumentCount ? "is-ready" : "is-warning"),
+    statusCard("Vanna RAG", vanna.ready ? `${number(indexedCount)} 条索引` : "索引未就绪", vanna.ready ? `DDL / Documentation / Q-SQL · ${short(vanna.index_version, 18)}` : "请重新构建检索索引", vanna.ready ? "is-ready" : "is-warning"),
   ].join("");
 
   const submit = $(".text2sql-submit");
   submit.disabled = !ready;
   submit.title = ready ? "" : "模型或运行资源尚未就绪";
   $("#text2sql-form-note").textContent = ready
-    ? "问题、必要的 Schema / 知识上下文，以及结果追问所需的有限 QueryRun 快照会发送给阿里云百炼；SQLite 文件不上传，SQL 仅在本机只读执行。"
+    ? "业务问题会发送给阿里云百炼进行推理；SQLite 数据文件不上传，最终 SQL 只在本机只读执行。"
     : "当前不能提问：请检查模型、数据库和人工审核评测集状态。";
 }
 
 function renderData(status) {
   const database = status.database || {};
-  const knowledge = status.knowledge || {};
   const vanna = status.vanna || {};
-  const states = knowledge.states || {};
-  const types = knowledge.types || {};
-  const total = Object.values(types).reduce((sum, value) => sum + Number(value || 0), 0);
+  const knowledgeSources = status.knowledge_sources || {};
+  const counts = vanna.counts || {};
+  const corpusCounts = vanna.corpus_counts || {};
+  const schemaCount = firstCount(knowledgeSources.schema, corpusCounts.schema, counts.ddl);
+  const businessDocumentCount = firstCount(
+    knowledgeSources.business_documents,
+    corpusCounts.business_documents,
+    counts.documentation,
+  );
+  const approvedJoinCount = firstCount(knowledgeSources.approved_joins, corpusCounts.approved_joins);
+  const ddlCount = firstCount(counts.ddl, corpusCounts.ddl, schemaCount);
+  const documentationCount = firstCount(counts.documentation, corpusCounts.documentation, businessDocumentCount);
+  const questionSqlCount = firstCount(
+    counts.question_sql,
+    counts.sql,
+    corpusCounts.question_sql,
+    knowledgeSources.question_sql,
+  );
+  const indexedCount = vanna.item_count === undefined || vanna.item_count === null
+    ? ddlCount + documentationCount + questionSqlCount
+    : Number(vanna.item_count || 0);
+  const excludedTables = Array.isArray(knowledgeSources.excluded_tables)
+    ? knowledgeSources.excluded_tables
+    : [];
+  const snapshotId = database.snapshot_id || vanna.database_snapshot_id || "--";
   $("#data-status-grid").innerHTML = [
-    statusCard("数据库表", number(database.table_count), "当前 SQLite 快照"),
-    statusCard("稳定知识", number(states.stable), "问答时可检索"),
-    statusCard("候选知识", number(states.candidate), "默认不参与生产问答"),
-    statusCard("Vanna 向量条目", number(vanna.item_count), vanna.ready ? "语义索引已固定" : "当前自动回退"),
+    statusCard("Schema Snapshot", `${number(database.table_count || schemaCount)} 张表`, "数据库物理事实", database.ready ? "is-ready" : "is-warning"),
+    statusCard("Business Documents", `${number(businessDocumentCount)} 个知识块`, "业务语义真源", businessDocumentCount ? "is-ready" : "is-warning"),
+    statusCard("Vanna RAG", `${number(indexedCount)} 条索引`, "DDL + Documentation + Q-SQL", vanna.ready ? "is-ready" : "is-warning"),
+    statusCard("Confirmed Q-SQL", `${number(questionSqlCount)} 对`, "用户确认后直接写入检索索引", "is-ready"),
   ].join("");
   $("#database-detail").innerHTML = detailRows([
-    ["快照 ID", short(database.snapshot_id, 28), true],
+    ["快照 ID", short(snapshotId, 28), true],
     ["表数量", `${number(database.table_count)} 张`],
-    ["执行模式", database.readonly ? "SQLite Read-only" : "状态异常"],
-    ["数据位置", "仅本机执行，不上传"],
+    ["知识内容", "表、列、类型与字段注释"],
+    ["已确认 Join", `${number(approvedJoinCount)} 条`],
+    ["排除表", excludedTables.length ? excludedTables.join("、") : "无"],
+    ["执行边界", database.readonly ? "SQLite Read-only · 仅本机" : "状态异常"],
   ]);
-  const state = $("#knowledge-state");
-  state.className = `status ${Number(states.stable || 0) > 0 ? "status-online" : "status-neutral"}`;
-  state.innerHTML = `<i></i>${Number(states.stable || 0) > 0 ? "稳定索引可用" : "索引为空"}`;
-  const max = Math.max(...Object.values(types).map(Number), 1);
-  $("#knowledge-bars").innerHTML = Object.entries(knowledgeLabels).map(([key, label]) => {
-    const value = Number(types[key] || 0);
-    const width = Math.max(value ? 5 : 0, Math.round((value / max) * 100));
-    return `<div class="knowledge-bar"><span><b>${escapeHtml(label)}</b><em>${number(value)}</em></span><i><u style="width:${width}%"></u></i></div>`;
-  }).join("");
+  const businessDocState = $("#business-doc-state");
+  businessDocState.className = `status ${businessDocumentCount ? "status-online" : "status-neutral"}`;
+  businessDocState.innerHTML = `<i></i>${businessDocumentCount ? "已接入" : "等待文档"}`;
+  $("#business-doc-detail").innerHTML = detailRows([
+    ["来源形态", "本地 Markdown 文档"],
+    ["目录", "knowledge/business", true],
+    ["知识内容", "实体、指标、维度、粒度与规则"],
+    ["知识块", `${number(businessDocumentCount)} 个`],
+    ["Vanna 映射", `${number(documentationCount)} 条 Documentation`],
+    ["更新方式", "保存后同步索引"],
+  ]);
   const vannaState = $("#vanna-state");
   vannaState.className = `status ${vanna.ready ? "status-online" : "status-neutral"}`;
-  vannaState.innerHTML = `<i></i>${vanna.ready ? "只检索索引可用" : "Wiki 回退模式"}`;
-  const counts = vanna.counts || {};
+  vannaState.innerHTML = `<i></i>${vanna.ready ? "检索就绪" : "索引未就绪"}`;
   $("#vanna-detail").innerHTML = detailRows([
     ["运行模式", vanna.mode || "retriever_only", true],
     ["索引版本", short(vanna.index_version, 30), true],
-    ["DDL", `${number(counts.ddl)} 条`],
-    ["文档", `${number(counts.documentation)} 条`],
-    ["Question-SQL", `${number(counts.sql)} 条`],
-    ["SQL 生成", vanna.generation_enabled ? "开启（异常）" : "永久关闭"],
+    ["DDL", `${number(ddlCount)} 条`],
+    ["Documentation", `${number(documentationCount)} 条`],
+    ["Question-SQL", `${number(questionSqlCount)} 对`],
+    ["绑定快照", short(vanna.database_snapshot_id || snapshotId, 28), true],
+    ["数据来源", "Schema + 业务文档 + 用户确认案例"],
+    ["Vanna 后端 SQL 生成", vanna.generation_enabled ? "开启（异常）" : "关闭"],
+    ["Node 2 草稿", vanna.node2_draft_generation_enabled ? "冻结上下文生成，不执行" : "关闭"],
     ["SQL 执行", vanna.sql_execution_enabled ? "开启（异常）" : "永久关闭"],
   ]);
 }
@@ -257,8 +403,19 @@ function renderEvaluation(status) {
   const dataset = status.dataset || {};
   const splits = dataset.split_counts || {};
   const verified = Boolean(dataset.review_verified);
+  const signatureVerified = Boolean(dataset.review_signature_verified);
+  const caseCount = number(dataset.case_count);
+  const reviewedCount = number(dataset.reviewed_case_count);
+  const verificationLabel = signatureVerified
+    ? "SIGNED VERIFIED"
+    : verified
+      ? "LOCAL INTEGRITY"
+      : "UNVERIFIED";
+  const verificationDetail = signatureVerified
+    ? "审核人：匿名审核员 · HMAC 签名有效 · 数据集和数据库快照已绑定"
+    : "未配置 HMAC 发布签名 · 文件哈希、逐题审核记录和数据库快照已完成本地完整性校验";
   $("#evaluation-banner").className = `evaluation-banner panel ${verified ? "is-verified" : "is-warning"}`;
-  $("#evaluation-banner").innerHTML = `<div><span>${verified ? "VERIFIED" : "UNVERIFIED"}</span><strong>${verified ? "240 条评测样本已完成人工审核" : "评测集审核证据不完整"}</strong><small>${verified ? "审核人：匿名审核员 · 数据集和数据库快照已绑定" : escapeHtml(dataset.error || "请检查审核证书")}</small></div><b>${verified ? "240/240" : "--"}</b>`;
+  $("#evaluation-banner").innerHTML = `<div><span>${verificationLabel}</span><strong>${verified ? `${caseCount} 条样本已完成人工审核` : "评测集审核证据不完整"}</strong>${verified ? '<p class="evaluation-scope">Policy 发布评测：Validation + Sealed Holdout，共 96 条。</p>' : ''}<small>${verified ? verificationDetail : escapeHtml(dataset.error || "请检查审核证书")}</small></div><b>${verified ? `${reviewedCount}/${caseCount}` : "--"}</b>`;
   const splitCards = [
     ["TRAIN", splits.train, "用于构建与错误归因"],
     ["VALIDATION", splits.validation, "用于候选策略离线比较"],
@@ -269,7 +426,8 @@ function renderEvaluation(status) {
     ["数据集 ID", short(dataset.dataset_id, 32), true],
     ["样本数量", `${number(dataset.case_count)} 条`],
     ["已审核", `${number(dataset.reviewed_case_count)} 条`],
-    ["审核结果", verified ? "全部通过" : "未通过"],
+    ["审核证据", verified ? signatureVerified ? "完整（HMAC 签名已验）" : "完整（仅本地完整性校验）" : "不完整"],
+    ["发布评测范围", "Validation 48 + Sealed 48 = 96 条"],
     ["审核人", "匿名审核员"],
     ["证书 SHA", short(dataset.certificate_sha256, 30), true],
     ["数据集 SHA", short(dataset.dataset_sha256, 30), true],
@@ -280,9 +438,20 @@ function renderEvolution(status) {
   const evolution = status.evolution || {};
   const release = evolution.release || {};
   const experiences = evolution.experience_counts || {};
+  const semanticExperiences = evolution.semantic_experience_counts || {};
+  const policyCandidates = Array.isArray(evolution.policy_candidates) ? evolution.policy_candidates : [];
+  const vannaCounts = status.vanna?.counts || {};
+  const vannaCorpusCounts = status.vanna?.corpus_counts || {};
+  const confirmedQuestionSqlCount = firstCount(
+    vannaCounts.question_sql,
+    vannaCounts.sql,
+    vannaCorpusCounts.question_sql,
+    status.knowledge_sources?.question_sql,
+    experiences.promoted,
+  );
   $("#evolution-stats").innerHTML = [
-    statusCard("稳定记忆", number(evolution.stable_memory_count), "生产问答可使用"),
-    statusCard("Question-SQL Memory", number(experiences.promoted), "用户确认后写入 Stable Vanna"),
+    statusCard("已确认经验", number(semanticExperiences.confirmed), "不会直接进入 Agent Prompt"),
+    statusCard("Vanna Question-SQL", number(confirmedQuestionSqlCount), "用户确认的检索案例"),
     statusCard("当前策略", evolution.active_policy_version || "未初始化", "稳定版本"),
     statusCard("发布阶段", release.status && release.status !== "inactive" ? release.status : "未启用", "Shadow / Canary 门禁"),
   ].join("");
@@ -291,10 +460,32 @@ function renderEvolution(status) {
     ["记忆快照", short(evolution.memory_snapshot_id, 32), true],
     ["发布状态", release.status || "inactive"],
     ["候选策略", release.candidate_policy_version || "无"],
-    ["已晋升经验", `${number(experiences.promoted)} 条`],
-    ["已拒绝经验", `${number(experiences.rejected)} 条`],
-    ["演进原则", "失败驱动、候选隔离、门禁发布"],
+    ["已确认 Q-SQL", `${number(confirmedQuestionSqlCount)} 对`],
+    ["演进原则", "经验沉淀、单 Agent 候选、门禁发布"],
   ]);
+  $("#evolution-candidates").innerHTML = policyCandidates.length
+    ? [...policyCandidates].reverse().map((candidate) => {
+        const metadata = candidate.proposal_metadata || {};
+        const memoryIds = metadata.memory_ids || metadata.compiled_memory_ids || [];
+        const ruleIds = metadata.semantic_rule_ids || [];
+        const replay = candidate.target_replay || {};
+        const replayStatus = replay.status || (memoryIds.length ? "pending" : "not_required");
+        const replayArtifact = replay.artifact || {};
+        const replaySummary = replayArtifact.summary || {};
+        const replayFailures = Array.isArray(replayArtifact.results)
+          ? replayArtifact.results.filter((item) => !item.passed)
+              .flatMap((item) => item.reasons || [])
+          : [];
+        const replayDetail = replay.replay_id
+          ? `<details class="policy-prompt-diff target-replay-detail"><summary>查看 Target Replay 结果</summary><div><section><b>RESULT</b><pre>${escapeHtml(`${number(replaySummary.passed_count)}/${number(replaySummary.source_experience_count)} 来源通过 · ${number(replaySummary.failed_count)} 失败`)}</pre></section><section><b>AUDIT</b><pre>${escapeHtml(`Replay ${short(replay.replay_id, 28)}\nArtifact ${short(replay.artifact_sha256, 32)}\n${replay.artifact_path || "Store only"}`)}</pre></section></div>${replayFailures.length ? `<small>失败代码 · ${escapeHtml([...new Set(replayFailures)].join(", "))}</small>` : ""}</details>`
+          : "";
+        const promptChange = candidate.prompt_fragment_change || {};
+        const promptDiff = promptChange.changed
+          ? `<details class="policy-prompt-diff"><summary>查看 Prompt Fragment 前后变化</summary><div><section><b>BEFORE</b><pre>${escapeHtml(promptChange.before || "（空）")}</pre></section><section><b>AFTER</b><pre>${escapeHtml(promptChange.after || "（空）")}</pre></section></div></details>`
+          : "";
+        return `<article class="candidate-item evolution-candidate-item"><span><strong>${escapeHtml(candidate.target_skill || "unknown")}</strong><small>${escapeHtml(candidate.change_reason || "无变更说明")}</small><small>来源 Experience · ${escapeHtml(memoryIds.length ? memoryIds.map((value) => short(value, 18)).join(", ") : "无")}</small>${ruleIds.length ? `<small>来源 Rule · ${escapeHtml(ruleIds.map((value) => short(value, 24)).join(", "))}</small>` : ""}</span><div><b>${escapeHtml(candidate.status || "candidate")}</b><code title="${escapeHtml(candidate.policy_version || "")}">${escapeHtml(short(candidate.policy_version, 20))}</code><em class="replay-status replay-${escapeHtml(replayStatus)}">TARGET REPLAY · ${escapeHtml(replayStatus)}</em></div>${replayDetail}${promptDiff}</article>`;
+      }).join("")
+    : '<div class="empty-state compact"><span><b>暂无 Experience 驱动的 Policy Candidate</b>先在 Memory 页面确认并选择同一 Agent 的经验。</span></div>';
   const roles = status.roles || Object.keys(roleDetails);
   const roleCards = roles.map((role, index) => {
     const [name, detail] = roleDetails[role] || [role, "Text2SQL 协作角色"];
@@ -376,157 +567,31 @@ async function loadSkills() {
   }
 }
 
-function renderExperiences(data) {
-  const items = data.experiences || [];
-  $("#experience-list").innerHTML = items.length
-    ? items.map((item) => {
-      const reasons = (item.eligibility_reasons || []).join("；");
-      const evaluation = item.evaluation || {};
-      const current = Number(evaluation.progress_current || 0);
-      const total = Math.max(1, Number(evaluation.progress_total || 240));
-      const progress = item.state === "evaluating"
-        ? '<div class="memory-evaluation-progress"><div><span>Vanna Candidate · '
-          + escapeHtml(evaluation.phase || "preparing") + '</span><b>' + number(current)
-          + " / " + number(total) + '</b></div><i><u style="width:'
-          + Math.min(100, Math.round(current / total * 100)) + '%"></u></i><small>'
-          + escapeHtml(evaluation.error || "构建候选索引并运行 240 条对照评测") + '</small></div>'
-        : "";
-      const awaitingConfirmation = item.state === "ineligible"
-        && (item.eligibility_reasons || []).includes("requires_human_feedback");
-      const actions = awaitingConfirmation && item.confirmable
-        ? `<div class="experience-review-editor">
-            <input data-experience-confirm-note maxlength="2000" placeholder="确认说明（可选）">
-            <div class="experience-actions"><button class="copy-button experience-incorrect-toggle" type="button">结果不正确</button><button class="button experience-confirm" data-experience-id="${escapeHtml(item.experience_id)}" type="button">确认结果正确</button></div>
-            <div class="experience-incorrect-editor hidden">
-              <label>错误原因（必填）<input data-experience-incorrect-note maxlength="2000" placeholder="说明结果或 SQL 哪里不正确"></label>
-              <label>正确 SQL（可选）<textarea data-experience-corrected-sql rows="4" placeholder="如果知道正确 SQL，可在这里提交"></textarea></label>
-              <button class="button experience-incorrect-submit" data-experience-id="${escapeHtml(item.experience_id)}" type="button">提交错误反馈</button>
-            </div>
-            <small>正确反馈经确定性复验后写入 Stable Vanna 与 Question-SQL Memory；错误反馈进入归因后的 Agent Semantic Memory Candidate。</small>
-          </div>`
-        : awaitingConfirmation
-        ? `<div class="experience-confirm-unavailable"><b>等待确认</b><span>原 QueryRun 已不在当前运行历史中，不能跨过来源校验。</span></div>`
-        : item.state === "candidate"
-        ? `<div class="experience-review-editor"><input data-experience-review-note maxlength="2000" placeholder="审核评论（拒绝时必填）"><div class="experience-actions"><button class="copy-button experience-review" data-experience-id="${escapeHtml(item.experience_id)}" data-decision="reject" type="button">拒绝</button><button class="button experience-review" data-experience-id="${escapeHtml(item.experience_id)}" data-decision="approve" type="button">审核并跑 240 条</button></div></div>`
-        : item.state === "evaluation_failed" || item.state === "evaluated"
-        ? `<div class="experience-actions"><button class="button experience-evaluation" data-experience-id="${escapeHtml(item.experience_id)}" type="button">重新构建并评测</button></div>`
-        : `<b>${escapeHtml(memoryStateLabel(item.state || "unknown"))}</b>`;
-      return `<article class="experience-item">
-        <div class="experience-copy"><span><strong>${escapeHtml(item.question || "未命名问题")}</strong><small>${escapeHtml(item.source_kind || "query_run")} · ${escapeHtml(item.experience_id || "")}</small></span><em class="experience-state state-${escapeHtml(item.state || "unknown")}">${escapeHtml(memoryStateLabel(item.state || "unknown"))}</em></div>
-        <pre>${escapeHtml(item.sql || "--")}</pre>
-        ${reasons ? `<p>${escapeHtml(reasons)}</p>` : ""}
-        ${item.review_note ? `<blockquote class="review-note"><b>审核评论</b>${escapeHtml(item.review_note)}</blockquote>` : ""}
-        ${progress}
-        ${actions}
-      </article>`;
-    }).join("")
-    : '<div class="empty-state compact"><span><b>暂无 Question-SQL 经验</b>成功查询经用户确认后，会写入 Stable Vanna 与长期记忆。</span></div>';
-  $$(".experience-confirm").forEach((button) => button.addEventListener("click", async () => {
-    const card = button.closest(".experience-item");
-    const note = $('[data-experience-confirm-note]', card)?.value.trim() || "";
-    button.disabled = true;
-    try {
-      await api(`/v1/text2sql/experiences/${encodeURIComponent(button.dataset.experienceId)}/confirm`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ note }),
-      });
-      toast("已写入 Stable Vanna 与 Question-SQL Memory");
-      await Promise.all([loadExperiences(), loadStatus(), loadTraces(), loadMemory()]);
-    } catch (error) {
-      toast(error.message);
-      button.disabled = false;
-    }
-  }));
-  $$(".experience-incorrect-toggle").forEach((button) => button.addEventListener("click", () => {
-    $(".experience-incorrect-editor", button.closest(".experience-item"))?.classList.toggle("hidden");
-  }));
-  $$(".experience-incorrect-submit").forEach((button) => button.addEventListener("click", async () => {
-    const card = button.closest(".experience-item");
-    const noteInput = $("[data-experience-incorrect-note]", card);
-    const note = noteInput?.value.trim() || "";
-    if (!note) {
-      toast("结果不正确时必须填写原因");
-      noteInput?.focus();
-      return;
-    }
-    button.disabled = true;
-    try {
-      const result = await api(`/v1/text2sql/experiences/${encodeURIComponent(button.dataset.experienceId)}/feedback`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          decision: "incorrect",
-          note,
-          corrected_sql: $("[data-experience-corrected-sql]", card)?.value.trim() || "",
-        }),
-      });
-      toast(result.corrected_experience_id
-        ? "错误已归因；修正 SQL 与 Semantic Memory 分别进入候选队列"
-        : "错误已归因并生成 Semantic Memory Candidate");
-      await Promise.all([loadExperiences(), loadStatus(), loadTraces(), loadMemory()]);
-    } catch (error) {
-      toast(error.message);
-      button.disabled = false;
-    }
-  }));
-  $$(".experience-review").forEach((button) => button.addEventListener("click", async () => {
-    const decision = button.dataset.decision;
-    const card = button.closest(".experience-item");
-    const reviewNote = $('[data-experience-review-note]', card)?.value.trim() || "";
-    if (decision === "reject" && !reviewNote) {
-      toast("拒绝候选经验时必须填写理由");
-      $('[data-experience-review-note]', card)?.focus();
-      return;
-    }
-    button.disabled = true;
-    try {
-      const result = await api(`/v1/text2sql/experiences/${encodeURIComponent(button.dataset.experienceId)}/review`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ decision, review_note: reviewNote }),
-      });
-      toast(decision === "approve" ? "候选 Vanna 构建与 240 条评测已启动" : "候选经验已拒绝");
-      await Promise.all([loadExperiences(), loadStatus(), loadMemory()]);
-    } catch (error) {
-      toast(error.message);
-      button.disabled = false;
-    }
-  }));
-  $$(".experience-evaluation").forEach((button) => button.addEventListener("click", async () => {
-    button.disabled = true;
-    try {
-      await api("/v1/text2sql/experiences/" + encodeURIComponent(button.dataset.experienceId) + "/evaluation", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: "{}",
-      });
-      toast("Question-SQL 候选评测已重新启动");
-      await loadExperiences();
-    } catch (error) {
-      toast(error.message);
-      button.disabled = false;
-    }
-  }));
-  clearTimeout(experiencePollTimer);
-  if (items.some((item) => item.state === "evaluating")) {
-    experiencePollTimer = setTimeout(loadExperiences, 5000);
-  }
-}
-
-async function loadExperiences() {
-  try {
-    renderExperiences(await api("/api/text2sql/experiences?limit=30"));
-  } catch (error) {
-    $("#experience-list").innerHTML = `<div class="empty-state"><span>经验队列加载失败：${escapeHtml(error.message)}</span></div>`;
-  }
-}
-
 function formatTraceTime(value) {
   if (!value) return "刚刚";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);
   return new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(date);
+}
+
+function formatMemoryDateTime(value) {
+  if (!value) return "时间未记录";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(date);
+}
+
+function formatDuration(value) {
+  const duration = Number(value || 0);
+  if (!duration) return "耗时未记录";
+  if (duration < 1000) return `${number(Math.round(duration))} ms`;
+  return `${(duration / 1000).toFixed(duration < 10000 ? 1 : 0)} s`;
 }
 
 function traceList(value, limit = 6) {
@@ -569,6 +634,11 @@ function runtimeNodeState(payload, node, index, mode) {
   if (mode === "error") return index === 0 ? "blocked" : "pending";
 
   const queryType = payload.query_type || "DATA_QUERY";
+  if (payload.status === "needs_clarification") {
+    const stage = payload.clarification?.stage;
+    const stoppedAt = { routing: 0, planning_workers: 2, plan_approval: 4, plan_revisions: 5 }[stage] ?? 0;
+    return index < stoppedAt ? "completed" : index === stoppedAt ? "awaiting_input" : "bypassed";
+  }
   if (queryType === "RESULT_QA") {
     if (index === 0) return "completed";
     if (index === runtimeNodeCatalog.length - 1) {
@@ -578,7 +648,7 @@ function runtimeNodeState(payload, node, index, mode) {
   }
 
   const agents = Array.isArray(payload.agents) ? payload.agents : [];
-  const agentRan = (stage) => agents.some((item) => item.stage === stage && item.status !== "not-run");
+  const agentRan = (stage) => agents.some((item) => item.stage === stage && !["not-run", "skipped"].includes(item.status));
   const workersRan = agentRan("schema-grounding") && agentRan("query-planning");
   const bound = payload.bound_query_plan || {};
   const approved = payload.approved_query_plan || {};
@@ -601,7 +671,7 @@ function runtimeNodeState(payload, node, index, mode) {
     case "text2sql-plan-revisions-approval":
       return Object.keys(approved).length ? "completed" : "blocked";
     case "text2sql-sql-generation":
-      return generation.status && generation.status !== "not-run" ? "completed" : "bypassed";
+      return generation.status && !["not-run", "skipped"].includes(generation.status) ? "completed" : "bypassed";
     case "text2sql-candidate-gates":
       return rounds.length || gateResults.length
         ? gateResults.some((item) => item.accepted) ? "completed" : "blocked"
@@ -622,6 +692,7 @@ function runtimeStateLabel(state) {
     fixed: "FIXED",
     running: "RUNNING",
     pending: "WAIT",
+    awaiting_input: "待补充",
     completed: "DONE",
     blocked: "BLOCK",
     bypassed: "SKIP",
@@ -632,6 +703,12 @@ function runtimeStateLabel(state) {
 function renderRuntimeMap(payload = {}, { compact = false, mode = "result" } = {}) {
   const nodes = runtimeDefinitions(payload);
   const items = nodes.map((node, index) => {
+    if (node.id === "text2sql-lead-final" && (payload.agents || []).some(
+      (item) => item.stage === "final-selection" && item.detail?.selection_method === "deterministic_single_candidate"
+    )) {
+      node = { ...node, kind: "harness", actor: "text2sql-harness", label: "Candidate Selection",
+        description: "直接选择唯一通过审查的候选，继续执行最终校验" };
+    }
     const state = runtimeNodeState(payload, node, index, mode);
     const parallel = node.parallel ? '<span class="runtime-parallel-badge">PARALLEL × 2</span>' : "";
     return `<li class="runtime-node kind-${escapeHtml(node.kind)} state-${escapeHtml(state)}${node.parallel ? " is-parallel" : ""}" title="${escapeHtml(node.description)}">
@@ -803,11 +880,22 @@ function renderTraceDetail(trace) {
   const vannaHits = retrieval.filter((item) => item.backend === "vanna-chromadb");
   const memoryHits = retrieval.filter((item) => item.backend === "semantic-memory");
   const memoryUsage = memoryHits.length
-    ? `<div class="trace-memory-usage"><span>SEMANTIC MEMORY</span>${memoryHits.map((item) => `<div><b>${escapeHtml(item.role || "agent")} · ${escapeHtml(item.phase || "run")}</b><code>${escapeHtml((item.memory_ids || []).join(", "))}</code></div>`).join("")}</div>`
-    : `<div class="trace-memory-usage empty"><span>SEMANTIC MEMORY</span><small>本次没有命中相关 Stable Memory</small></div>`;
-  const routeDetail = `<div class="trace-route"><span><b>${escapeHtml(queryType)}</b>路由类型</span><span><b>${escapeHtml(trace.parent_task_id ? short(trace.parent_task_id, 24) : "无")}</b>父 QueryRun</span><span><b>${number(retrieval.length)}</b>检索调用</span><span><b>${number(vannaHits.length)}</b>Vanna 命中批次</span><span><b>${number(memoryHits.length)}</b>记忆注入阶段</span></div>`;
+    ? `<div class="trace-memory-usage"><span>LEGACY RUNTIME MEMORY</span>${memoryHits.map((item) => `<div><b>${escapeHtml(item.role || "agent")} · ${escapeHtml(item.phase || "run")}</b><code>${escapeHtml((item.memory_ids || []).join(", "))}</code></div>`).join("")}</div>`
+    : `<div class="trace-memory-usage empty"><span>LEGACY RUNTIME MEMORY</span><small>本次没有命中兼容保留的 AgentSemanticRule</small></div>`;
+  const routeDetail = `<div class="trace-route"><span><b>${escapeHtml(queryType)}</b>路由类型</span><span><b>${escapeHtml(trace.parent_task_id ? short(trace.parent_task_id, 24) : "无")}</b>父 QueryRun</span><span><b>${number(retrieval.length)}</b>检索调用</span><span><b>${number(vannaHits.length)}</b>Vanna 命中批次</span><span><b>${number(memoryHits.length)}</b>Legacy 记忆注入阶段</span></div>`;
   const planning = queryType === "RESULT_QA" ? "" : `<div class="trace-planning"><div><span>SCHEMA PLAN</span><code>${escapeHtml(JSON.stringify({ tables: schemaPlan.tables || [], columns: schemaPlan.columns || [], joins: schemaPlan.joins || [] }))}</code></div><div><span>QUERY SPEC</span><code>${escapeHtml(JSON.stringify(querySpec))}</code></div></div>`;
-  const draftPlanning = queryType === "RESULT_QA" || !draftPack.contract ? "" : `<div class="trace-planning"><div><span>DRAFT SQL · UNTRUSTED</span><code>${escapeHtml(draftPack.draft_sql || "-- 已回退到问题直连")}</code></div><div><span>DRAFT LINK PACK</span><code>${escapeHtml(JSON.stringify({ tables: draftPack.tables || [], columns: draftPack.columns || [], joins: draftPack.joins || [], coverage: draftPack.coverage || {} }))}</code></div></div>`;
+  const forwardSummary = draftPack.forward_linking || {};
+  const reverseSummary = {
+    projection_columns: draftPack.projection_columns || [],
+    filter_columns: draftPack.filter_columns || [],
+    group_columns: draftPack.group_columns || [],
+    order_columns: draftPack.order_columns || [],
+    join_columns: draftPack.join_columns || [],
+    unresolved_columns: draftPack.unresolved_columns || [],
+    ambiguous_columns: draftPack.ambiguous_columns || [],
+    column_owners: draftPack.column_owners || {},
+  };
+  const draftPlanning = queryType === "RESULT_QA" || !draftPack.contract ? "" : `<div class="trace-planning"><div><span>DRAFT SQL · UNTRUSTED</span><code>${escapeHtml(draftPack.draft_sql || "-- Vanna 草稿失败，已回退到正向链接")}</code></div><div><span>FORWARD LINKING · LLM + KEYWORD</span><code>${escapeHtml(JSON.stringify({ model: forwardSummary.model || {}, keyword: forwardSummary.keyword || {} }))}</code></div><div><span>REVERSE AST + SNAPSHOT</span><code>${escapeHtml(JSON.stringify(reverseSummary))}</code></div><div><span>SCHEMA LINK PACK</span><code>${escapeHtml(JSON.stringify({ tables: draftPack.tables || [], columns: draftPack.columns || [], joins: draftPack.joins || [], semantic_completion: draftPack.semantic_completion || {}, coverage: draftPack.coverage || {} }))}</code></div></div>`;
   $("#trace-detail").innerHTML = `<div class="panel-head"><div><p class="eyebrow">TRACE DETAIL</p><h3>${escapeHtml(trace.question || "未命名查询")}</h3></div><span class="status ${accepted ? "status-online" : "status-neutral"}"><i></i>${accepted ? "门禁通过" : "已拦截"}</span></div>
     ${trace.standalone_question && trace.standalone_question !== trace.question ? `<p class="trace-standalone"><b>改写后的独立问题</b>${escapeHtml(trace.standalone_question)}</p>` : ""}
     ${routeDetail}
@@ -852,6 +940,8 @@ function memoryStateLabel(state) {
   return {
     stable: "稳定",
     candidate: "候选",
+    confirmed: "已确认",
+    needs_evidence: "待补证",
     approved: "待评测",
     evaluating: "评测中",
     evaluated: "评测通过",
@@ -867,6 +957,58 @@ function memoryEmpty(title, detail) {
   return '<div class="empty-state compact"><span><b>' + escapeHtml(title) + '</b>' + escapeHtml(detail) + '</span></div>';
 }
 
+function semanticRuleFields(item, editable) {
+  const rule = item && typeof item.rule === "object" ? item.rule : {};
+  const values = {
+    trigger: rule.trigger || "",
+    action: rule.action || item.content || "",
+    avoid: rule.avoid || "",
+    rationale: rule.rationale || "",
+  };
+  const labels = {
+    trigger: "何时触发",
+    action: "应该怎么做",
+    avoid: "禁止什么",
+    rationale: "为什么",
+  };
+  if (editable) {
+    return '<div class="semantic-rule-fields is-editable">'
+      + Object.entries(labels).map(([field, label]) => '<label><span>' + escapeHtml(label)
+        + '</span><textarea data-memory-rule-field="' + field + '" maxlength="900" rows="2">'
+        + escapeHtml(values[field]) + '</textarea></label>').join("")
+      + '</div>';
+  }
+  return '<div class="semantic-rule-fields">'
+    + Object.entries(labels).map(([field, label]) => '<div><b>' + escapeHtml(label)
+      + '</b><span>' + escapeHtml(values[field] || "未记录") + '</span></div>').join("")
+    + '</div>';
+}
+
+function isExperienceMemory(item) {
+  return item?.rule?.contract === "ExperienceMemory/v1" || item?.contract === "ExperienceMemory/v1";
+}
+
+function experienceMemoryFields(item) {
+  const experience = isExperienceMemory(item) ? (item.rule?.contract === "ExperienceMemory/v1" ? item.rule : item) : {};
+  const before = experience.before && typeof experience.before === "object" ? experience.before : {};
+  const after = experience.after && typeof experience.after === "object" ? experience.after : {};
+  const evidence = experience.evidence && typeof experience.evidence === "object" ? experience.evidence : {};
+  const pins = Object.entries(evidence)
+    .filter(([, value]) => typeof value === "string" || typeof value === "number" || typeof value === "boolean")
+    .slice(0, 6)
+    .map(([key, value]) => `<span><b>${escapeHtml(key.replaceAll("_", " "))}</b>${escapeHtml(short(value, 30))}</span>`)
+    .join("");
+  return `<div class="experience-fields">
+    <div><b>适用场景</b><span>${escapeHtml(experience.scenario || "未记录")}</span></div>
+    <div class="experience-problem"><b>发现的问题</b><span>${escapeHtml(experience.problem || "未记录")}</span></div>
+    <div class="experience-correction"><b>验证后的修正</b><span>${escapeHtml(experience.correction || "尚缺少可验证修正")}</span></div>
+  </div>
+  <details class="experience-evidence"><summary>查看前后证据与版本 Pin</summary>
+    <div class="experience-before-after"><div><b>BEFORE</b><code>${escapeHtml(JSON.stringify(before))}</code></div><div><b>AFTER</b><code>${escapeHtml(JSON.stringify(after))}</code></div></div>
+    <div class="experience-pins">${pins || "<span>没有公开版本 Pin</span>"}</div>
+  </details>`;
+}
+
 function renderMemory(data) {
   const layers = data.layers || {};
   const working = layers.working || {};
@@ -875,14 +1017,8 @@ function renderMemory(data) {
   const sessionView = data.session_view || {};
   const showingHistory = sessionView.mode === "latest_history";
   const displaySession = sessionView.display_session_id || data.session_id || "";
-  const semanticCounts = semantic.counts || {};
-  const questionSql = data.question_sql || {};
-  const experienceCounts = questionSql.counts || {};
-  const evaluationJobs = Array.isArray(data.evaluations?.items) ? data.evaluations.items : [];
-  const jobByMemory = new Map();
-  evaluationJobs.forEach((job) => {
-    if (!jobByMemory.has(job.memory_id)) jobByMemory.set(job.memory_id, job);
-  });
+  const semanticCounts = semantic.experience_counts || semantic.counts || {};
+  const ruleCounts = data.semantic_rules?.counts || {};
   const snapshot = short(data.memory_snapshot_id, 22);
   const workingLimit = Number(working.retention_limit_per_session || 100);
   const episodicLimit = Number(episodic.retention_limit || 50);
@@ -891,15 +1027,14 @@ function renderMemory(data) {
     : "当前浏览器会话";
 
   $("#memory-stats").innerHTML = [
-    statusCard("Working Memory", `${number(working.count)} / ${number(workingLimit)}`, `${sessionDetail} · 消息`, "is-ready"),
-    statusCard("Episodic Memory", `${number(episodic.count)} / ${number(episodicLimit)}`, `${sessionDetail} · QueryRun`, "is-ready"),
+    statusCard("Working Memory", `${number(working.count)} 条消息`, `${sessionDetail} · 最多保留 ${number(workingLimit)} 条`, "is-ready"),
+    statusCard("Episodic Memory", `${number(episodic.count)} 次 QueryRun`, `${sessionDetail} · 页面展示最近 ${number(episodicLimit)} 次`, "is-ready"),
     statusCard(
-      "Agent Semantic",
-      `${number(semanticCounts.stable)} 稳定 / ${number(semanticCounts.candidate)} 候选`,
-      "角色级失败经验 · 快照 " + snapshot,
-      semanticCounts.candidate ? "is-warning" : ""
+      "Semantic Rules",
+      `${number(ruleCounts.confirmed)} 条已确认规则`,
+      `${number(ruleCounts.candidate)} 条待审核规则 · ${number(semanticCounts.confirmed)} 条已确认案例 · ${snapshot}`,
+      ruleCounts.candidate || semanticCounts.needs_evidence ? "is-warning" : ""
     ),
-    statusCard("Question-SQL Memory", number(experienceCounts.promoted), "用户确认正确 · Stable Vanna", experienceCounts.promoted ? "is-ready" : ""),
   ].join("");
 
   const sessionNotice = $("#memory-session-notice");
@@ -911,8 +1046,8 @@ function renderMemory(data) {
     ? `历史会话快照 · 最多 ${number(workingLimit)} 条消息`
     : `当前会话 · 最多 ${number(workingLimit)} 条消息`;
   $("#episodic-memory-scope").textContent = showingHistory
-    ? `历史 QueryRun · 每个会话最多 ${number(episodicLimit)} 个`
-    : `当前 QueryRun · 每个会话最多 ${number(episodicLimit)} 个`;
+    ? `历史 QueryRun · 页面展示最近 ${number(episodicLimit)} 个`
+    : `当前 QueryRun · 页面展示最近 ${number(episodicLimit)} 个`;
 
   const workingItems = Array.isArray(working.items) ? working.items : [];
   $("#working-memory-list").innerHTML = workingItems.length
@@ -930,176 +1065,238 @@ function renderMemory(data) {
     ? episodicItems.map((item) => {
         const question = item.standalone_question || item.original_question || "未命名查询";
         const decisions = item.decisions || {};
+        const temporal = item.temporal_context || {};
+        const version = item.version_context || {};
         const harness = decisions.harness || {};
         const human = decisions.human || {};
         const harnessOutcome = harness.outcome || (item.status === "success" ? "accepted" : "rejected");
         const harnessLabel = { accepted: "放行", rejected: "拒绝", failed: "失败", deferred: "待新查询" }[harnessOutcome] || harnessOutcome;
         const humanLabel = { accepted: "确认", rejected: "拒绝" }[human.outcome] || "待审核";
-        const canConfirm = item.status === "success" && Boolean(item.final_sql);
         const humanReview = human.decision_id
           ? '<div class="episodic-human-result state-' + escapeHtml(human.outcome || "unknown") + '"><div><b>HUMAN · '
             + escapeHtml(humanLabel) + '</b><span>' + escapeHtml(human.actor || "人工审核") + '</span></div><p>'
             + escapeHtml(human.reason_text || "未填写评论") + '</p></div>'
-          : '<div class="episodic-review"><input data-episodic-review-note maxlength="2000" placeholder="人工评论（拒绝时必填）"><div>'
-            + (canConfirm ? '<button class="button episodic-review-action" data-decision="correct" type="button">确认结果</button>' : '')
-            + '<button class="copy-button episodic-review-action" data-decision="incorrect" type="button">拒绝结果</button></div></div>';
+          : '<div class="episodic-human-result state-pending"><div><b>HUMAN · 待反馈</b><span>历史记录只读</span></div><p>正确 / 错误反馈统一在刚完成的查询结果页提交。</p><button class="copy-button feedback-jump" data-feedback-task-id="'
+            + escapeHtml(item.task_id || "") + '" type="button">返回问答工作台</button></div>';
         return '<article class="memory-entry episodic-entry" data-task-id="' + escapeHtml(item.task_id || "")
           + '"><div class="memory-entry-head"><span class="memory-state state-' + escapeHtml(harnessOutcome) + '">HARNESS · ' + escapeHtml(harnessLabel)
-          + '</span><time>' + escapeHtml(formatTraceTime(item.recorded_at)) + '</time></div><p>'
+          + '</span><time>' + escapeHtml(formatMemoryDateTime(temporal.recorded_at || item.recorded_at)) + '</time></div>'
+          + '<div class="episodic-time-context"><span><b>TURN</b>第 ' + number(temporal.turn_number || 1)
+          + ' 次 QueryRun</span><span><b>DURATION</b>' + escapeHtml(formatDuration(temporal.duration_ms))
+          + '</span><span><b>LINK</b>' + escapeHtml(item.parent_task_id ? "追问 " + short(item.parent_task_id, 16) : "独立查询")
+          + '</span></div><p>'
           + escapeHtml(short(question, 150)) + '</p><code>' + escapeHtml(short(item.final_sql || "-- 未生成 SQL", 190))
           + '</code><div class="episodic-decision-reason"><b>' + escapeHtml(harness.reason_code || item.status || "unknown")
           + '</b><span>' + escapeHtml(harness.reason_text || "未记录 Harness 原因") + '</span></div><small>'
-          + escapeHtml(item.query_type || "DATA_QUERY") + ' · HUMAN ' + escapeHtml(humanLabel) + '</small>'
+          + escapeHtml(item.query_type || "DATA_QUERY") + ' · HUMAN ' + escapeHtml(humanLabel)
+          + ' · DB ' + escapeHtml(short(version.database_snapshot_id, 13))
+          + ' · POLICY ' + escapeHtml(short(version.policy_version, 13)) + '</small>'
           + humanReview + '</article>';
       }).join("")
     : memoryEmpty("当前会话还没有情景记忆", "每次 QueryRun 的问题、SQL、门禁状态与反馈会形成可追溯片段。");
-  $$(".episodic-review-action", $("#episodic-memory-list")).forEach((button) => button.addEventListener("click", async () => {
-    const card = button.closest("[data-task-id]");
-    const decision = button.dataset.decision;
-    const noteInput = $('[data-episodic-review-note]', card);
-    const note = noteInput?.value.trim() || "";
-    if (decision === "incorrect" && !note) {
-      toast("人工拒绝时必须填写理由");
-      noteInput?.focus();
-      return;
-    }
-    $$(".episodic-review-action", card).forEach((item) => item.disabled = true);
-    try {
-      await api(`/v1/text2sql/queries/${encodeURIComponent(card.dataset.taskId)}/feedback`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ decision, note, corrected_sql: "", session_id: text2sqlSessionId }),
-      });
-      toast(decision === "correct" ? "已保存人工确认" : "已保存人工拒绝及理由");
-      await Promise.all([loadMemory(), loadExperiences(), loadStatus(), loadTraces()]);
-    } catch (error) {
-      toast(error.message);
-      $$(".episodic-review-action", card).forEach((item) => item.disabled = false);
-    }
-  }));
+  bindFeedbackJumps($("#episodic-memory-list"));
 
   const semanticItems = Array.isArray(semantic.items) ? semantic.items : [];
+  const confirmedIds = new Set(
+    semanticItems
+      .filter((item) => isExperienceMemory(item) && item.state === "confirmed")
+      .map((item) => String(item.memory_id || ""))
+  );
+  [...selectedExperienceIds].forEach((memoryId) => {
+    if (!confirmedIds.has(memoryId)) selectedExperienceIds.delete(memoryId);
+  });
   $("#semantic-memory-list").innerHTML = semanticItems.length
     ? semanticItems.map((item) => {
         const state = String(item.state || "candidate");
-        const job = jobByMemory.get(item.memory_id) || {};
+        const isExperience = isExperienceMemory(item);
+        const targetAgent = item.target_agent || item.target_skill || "shared";
+        const problemCode = item.problem_code || item.failure_kind || "general";
         const provenance = item.reviewed_by
           ? "审核人 " + item.reviewed_by
           : "来源 " + (item.origin_split || "production_feedback");
-        const roleOptions = Object.entries(roleDetails).map(([value, detail]) =>
-          '<option value="' + escapeHtml(value) + '"' + (value === item.target_skill ? " selected" : "") + '>'
-          + escapeHtml(detail[0] + " · " + value) + '</option>'
-        ).join("");
-        let lifecycleAction = "";
-        if (state === "approved" || state === "evaluation_failed") {
-          lifecycleAction = '<div class="memory-release-gate"><span><b>240</b> 条人工审核集 · Baseline/Candidate 对照 · 零安全回退</span><button class="button memory-lifecycle-action" data-action="evaluation" type="button">'
-            + (state === "evaluation_failed" ? "重新评测" : "启动后台评测") + '</button></div>';
-        } else if (state === "evaluating") {
-          const current = Number(job.progress_current || 0);
-          const total = Math.max(1, Number(job.progress_total || 240));
-          const percent = Math.min(100, Math.round(current / total * 100));
-          lifecycleAction = '<div class="memory-evaluation-progress"><div><span>后台评测 · '
-            + escapeHtml(job.phase || "preparing") + '</span><b>' + number(current) + " / " + number(total)
-            + '</b></div><i><u style="width:' + percent + '%"></u></i><small>'
-            + escapeHtml(job.error || "Checkpoint 持续写入，可在服务重启后查看进度") + '</small></div>';
-        } else if (state === "evaluated") {
-          lifecycleAction = '<div class="memory-release-gate passed"><span><b>PASS</b> 240 条回归门禁通过，等待最终人工发布</span><button class="button memory-lifecycle-action" data-action="activate" type="button">发布 Stable</button></div>';
-        } else if (state === "stable") {
-          lifecycleAction = '<div class="memory-release-gate stable"><span><b>LIVE</b> 当前可注入目标 Agent</span><button class="copy-button memory-lifecycle-action" data-action="rollback" type="button">撤销记忆</button></div>';
-        }
-        const editor = state === "candidate"
-          ? '<div class="memory-review-editor"><label>目标 Agent<select data-memory-field="target_skill">'
-            + roleOptions + '</select></label><label>失败类型<input data-memory-field="failure_kind" maxlength="100" value="'
-            + escapeHtml(item.failure_kind || "") + '"></label><label class="memory-content-field">可复用经验<textarea data-memory-field="content" maxlength="1500" rows="4">'
-            + escapeHtml(item.content || "") + '</textarea></label><label class="memory-content-field">审核评论<input data-memory-field="review_note" maxlength="2000" placeholder="拒绝时必须填写理由"></label><div class="memory-review-actions"><button class="copy-button memory-review-action" data-decision="reject" type="button">拒绝</button><button class="button memory-review-action" data-decision="approve" type="button">审核并进入评测</button></div></div>'
-          : '<p>' + escapeHtml(short(item.content, 220)) + '</p>'
-            + (item.review_note ? '<blockquote class="review-note"><b>审核评论</b>' + escapeHtml(item.review_note) + '</blockquote>' : '');
+        const selector = isExperience && state === "confirmed" && targetAgent !== "sql-generation"
+          ? '<label class="experience-selector"><input type="checkbox" data-experience-select value="'
+            + escapeHtml(item.memory_id || "") + '"' + (selectedExperienceIds.has(item.memory_id) ? " checked" : "")
+            + '><span>用于生成 Policy</span></label>'
+          : "";
+        const review = isExperience && state === "candidate"
+          ? '<div class="experience-review"><textarea data-experience-review-note maxlength="2000" rows="2" placeholder="审核备注；拒绝或待补证时必填"></textarea><div class="memory-review-actions"><button class="copy-button experience-review-action" data-decision="reject" type="button">拒绝</button><button class="copy-button experience-review-action" data-decision="needs_evidence" type="button">待补证</button><button class="button experience-review-action" data-decision="confirm" type="button">确认经验</button></div></div>'
+          : "";
+        const generateRule = isExperience && state === "confirmed" && Object.prototype.hasOwnProperty.call(roleDetails, targetAgent)
+          ? '<button class="button generate-semantic-rule" type="button">归纳语义规则</button>' : "";
+        const body = isExperience
+          ? experienceMemoryFields(item) + review + generateRule
+          : '<div class="legacy-memory-notice"><b>LEGACY RUNTIME HINT · 只读</b><span>旧 AgentSemanticRule/v1 不再由新流程创建，也不能在这里重新发布。</span></div>' + semanticRuleFields(item, false);
+        const usedPolicies = Array.isArray(item.used_in_policy_versions) && item.used_in_policy_versions.length
+          ? '<div class="experience-policy-links"><b>已用于 Policy</b>' + item.used_in_policy_versions.map((version) => '<code>' + escapeHtml(short(version, 24)) + '</code>').join("") + '</div>'
+          : "";
         return '<article class="memory-entry semantic-entry" data-memory-id="' + escapeHtml(item.memory_id || "")
+          + '" data-target-agent="' + escapeHtml(targetAgent)
           + '"><div class="memory-entry-head"><span class="memory-state state-'
           + escapeHtml(state.replace(/[^a-z0-9_-]/gi, "")) + '">' + escapeHtml(memoryStateLabel(state))
-          + '</span><time>' + escapeHtml(formatTraceTime(item.reviewed_at || item.created_at))
-          + '</time></div>' + editor + '<div class="memory-entry-tags"><span>'
-          + escapeHtml(item.target_skill || "shared") + '</span><span>' + escapeHtml(item.failure_kind || "general")
-          + '</span></div>' + lifecycleAction + '<small>' + escapeHtml(provenance) + '</small></article>';
+          + '</span>' + selector + '<time>' + escapeHtml(formatTraceTime(item.reviewed_at || item.created_at))
+          + '</time></div>' + body + '<div class="memory-entry-tags"><span>'
+          + escapeHtml(targetAgent) + '</span><span>' + escapeHtml(problemCode)
+          + '</span><span>' + escapeHtml((item.rule?.evidence_grade || item.evidence_grade || "legacy"))
+          + '</span></div>' + usedPolicies
+          + (item.review_note ? '<blockquote class="review-note"><b>审核评论</b>' + escapeHtml(item.review_note) + '</blockquote>' : '')
+          + '<small>' + escapeHtml(provenance) + ' · ' + escapeHtml(item.source_task_id || item.source_case_ids?.[0] || "无来源 Task") + '</small></article>';
       }).join("")
-    : memoryEmpty("尚未沉淀长期经验", "错误和反馈不会直接进入长期记忆；需要先归因、审核，再晋升为 Stable。");
-  $$(".memory-review-action", $("#semantic-memory-list")).forEach((button) => button.addEventListener("click", async () => {
+    : memoryEmpty("尚未沉淀 Semantic Experience", "普通成功查询不会生成经验；只有明确纠错或确定性修复才形成候选。");
+  $$(".experience-review-action", $("#semantic-memory-list")).forEach((button) => button.addEventListener("click", async () => {
     const card = button.closest("[data-memory-id]");
     const decision = button.dataset.decision;
+    const reviewNote = $("[data-experience-review-note]", card)?.value.trim() || "";
     const payload = {
       decision,
-      target_skill: $('[data-memory-field="target_skill"]', card)?.value || "",
-      failure_kind: $('[data-memory-field="failure_kind"]', card)?.value.trim() || "",
-      content: $('[data-memory-field="content"]', card)?.value.trim() || "",
-      review_note: $('[data-memory-field="review_note"]', card)?.value.trim() || "",
+      review_note: reviewNote,
     };
-    if (decision === "approve" && (!payload.target_skill || !payload.failure_kind || !payload.content)) {
-      toast("请补全目标 Agent、失败类型和可复用经验");
+    if (["reject", "needs_evidence"].includes(decision) && !reviewNote) {
+      toast(decision === "reject" ? "拒绝 Experience 时必须填写理由" : "标记待补证时必须说明缺什么证据");
+      $("[data-experience-review-note]", card)?.focus();
       return;
     }
-    if (decision === "reject" && !payload.review_note) {
-      toast("拒绝候选记忆时必须填写理由");
-      $('[data-memory-field="review_note"]', card)?.focus();
-      return;
-    }
-    $$(".memory-review-action", card).forEach((item) => item.disabled = true);
+    $$(".experience-review-action", card).forEach((item) => item.disabled = true);
     try {
       const result = await api("/v1/text2sql/memories/" + encodeURIComponent(card.dataset.memoryId) + "/review", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      toast(result.state === "approved" ? "审核通过，等待 240 条回归评测" : "候选记忆已拒绝");
+      toast(result.state === "confirmed" ? "Experience 已确认；运行时尚未改变" : result.state === "needs_evidence" ? "Experience 已标记为待补证" : "Experience 已拒绝");
       await Promise.all([loadMemory(), loadStatus()]);
     } catch (error) {
       toast(error.message);
-      $$(".memory-review-action", card).forEach((item) => item.disabled = false);
+      $$(".experience-review-action", card).forEach((item) => item.disabled = false);
     }
   }));
-  $$(".memory-lifecycle-action", $("#semantic-memory-list")).forEach((button) => button.addEventListener("click", async () => {
-    const card = button.closest("[data-memory-id]");
-    const action = button.dataset.action;
+  $$(".generate-semantic-rule", $("#semantic-memory-list")).forEach((button) => button.addEventListener("click", async () => {
+    const memoryId = button.closest("[data-memory-id]").dataset.memoryId;
     button.disabled = true;
-    button.textContent = action === "evaluation" ? "正在启动…" : action === "activate" ? "正在发布…" : "正在撤销…";
+    button.textContent = "正在归纳…";
     try {
-      const result = await api(
-        "/v1/text2sql/memories/" + encodeURIComponent(card.dataset.memoryId) + "/" + action,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            reason: action === "activate" ? "240 条回归门禁通过后人工发布" : "前端人工撤销稳定记忆",
-          }),
-        }
-      );
-      toast(
-        action === "evaluation"
-          ? "240 条 Memory 对照评测已在后台启动"
-          : action === "activate"
-          ? "Semantic Memory 已发布为 Stable"
-          : "Stable Memory 已撤销"
-      );
-      await Promise.all([loadMemory(), loadStatus()]);
+      const result = await api("/v1/text2sql/semantic-rules/generate", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ memory_id: memoryId }),
+      });
+      toast(result.status === "skipped" ? `未生成规则：${result.reason}` : "已生成语义规则，待审核原因、适用条件与证据");
+      await loadMemory();
+    } catch (error) { toast(error.message); }
+    finally { button.disabled = false; button.textContent = "归纳语义规则"; }
+  }));
+  const updateSelection = () => {
+    const selectedCards = $$('[data-memory-id]', $("#semantic-memory-list"))
+      .filter((card) => selectedExperienceIds.has(card.dataset.memoryId));
+    const agents = new Set(selectedCards.map((card) => card.dataset.targetAgent));
+    const valid = selectedCards.length > 0 && agents.size === 1;
+    $("#experience-selection-count").textContent = selectedCards.length
+      ? `已选择 ${selectedCards.length} 条 · ${agents.size === 1 ? selectedCards[0].dataset.targetAgent : "跨 Agent 不可生成"}`
+      : "已选择 0 条 Confirmed Experience";
+    $("#generate-experience-policy").disabled = !valid;
+  };
+  $$("[data-experience-select]", $("#semantic-memory-list")).forEach((input) => input.addEventListener("change", () => {
+    if (input.checked) selectedExperienceIds.add(input.value);
+    else selectedExperienceIds.delete(input.value);
+    updateSelection();
+  }));
+  updateSelection();
+  $("#generate-experience-policy").onclick = async () => {
+    const button = $("#generate-experience-policy");
+    const memoryIds = [...selectedExperienceIds];
+    if (!memoryIds.length || button.disabled) return;
+    button.disabled = true;
+    button.textContent = "正在生成…";
+    try {
+      const result = await api("/v1/text2sql/policies/from-experiences", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ memory_ids: memoryIds, change_reason: $("#experience-policy-reason").value.trim() }),
+      });
+      selectedExperienceIds.clear();
+      $("#experience-policy-reason").value = "";
+      toast(`已生成 ${result.target_agent} Policy Candidate；等待定向回放`);
+      await Promise.all([loadMemory(), loadSkills(), loadStatus()]);
     } catch (error) {
       toast(error.message);
-      button.disabled = false;
+    } finally {
+      button.textContent = "生成 Policy 候选";
+      updateSelection();
     }
-  }));
+  };
 
-  const questionSqlItems = Array.isArray(questionSql.items) ? questionSql.items : [];
-  $("#question-sql-memory-list").innerHTML = questionSqlItems.length
-    ? questionSqlItems.map((item) => `<article class="memory-entry question-sql-entry">
-        <div class="memory-entry-head"><span class="memory-state state-promoted">VANNA · STABLE</span><time>${escapeHtml(formatTraceTime(item.reviewed_at || item.created_at))}</time></div>
-        <p>${escapeHtml(item.question || "未命名问题")}</p>
-        <code>${escapeHtml(item.sql || "--")}</code>
-        <div class="memory-entry-tags"><span>Question-SQL</span><span>${escapeHtml(short(item.knowledge_evidence_id, 28))}</span></div>
-        <small>${escapeHtml(item.reviewed_by ? "确认人 " + item.reviewed_by : "Human Confirmed")}</small>
-      </article>`).join("")
-    : memoryEmpty("还没有 Question-SQL 长期记忆", "在查询结果或经验审计中确认 SQL 正确后，会立即写入 Stable Vanna。");
+  renderSemanticRules(data.semantic_rules || {});
   clearTimeout(memoryPollTimer);
-  if (semanticItems.some((item) => item.state === "evaluating")) {
-    memoryPollTimer = setTimeout(loadMemory, 5000);
-  }
+}
+
+function renderSemanticRules(data) {
+  const list = $("#semantic-rule-list");
+  if (!list) return;
+  const items = Array.isArray(data.items) ? data.items : [];
+  const confirmed = new Set(items.filter((item) => item.state === "confirmed").map((item) => item.rule_id));
+  [...selectedSemanticRuleIds].forEach((id) => { if (!confirmed.has(id)) selectedSemanticRuleIds.delete(id); });
+  list.innerHTML = items.length ? items.map((item) => {
+    const field = (label, value) => `<div><b>${label}</b><p>${escapeHtml(value)}</p></div>`;
+    const targetAgent = item.target_agent || "unknown";
+    const select = item.state === "confirmed"
+      ? `<label class="experience-selector"><input type="checkbox" data-rule-select value="${escapeHtml(item.rule_id)}"${selectedSemanticRuleIds.has(item.rule_id) ? " checked" : ""}>用于编译策略</label>` : "";
+    const review = item.state === "candidate"
+      ? '<div class="experience-review"><textarea data-rule-note maxlength="2000" rows="2" placeholder="审核备注；拒绝时必填"></textarea><div class="memory-review-actions"><button class="copy-button rule-review-action" data-decision="reject" type="button">拒绝</button><button class="button rule-review-action" data-decision="confirm" type="button">确认规则</button></div></div>' : "";
+    const evidence = item.evidence || {};
+    const sqlRepairEvidence = Array.isArray(evidence.before_sql) || Array.isArray(evidence.after_sql);
+    const evidenceDetails = sqlRepairEvidence
+      ? `<details class="policy-prompt-diff"><summary>核对原问题、前后 SQL 与审批证据</summary><div><section><b>原问题</b><pre>${escapeHtml(evidence.question || "")}</pre><b>修复前 SQL</b><pre>${escapeHtml((evidence.before_sql || []).join("\n\n"))}</pre><b>首轮门禁</b><pre>${escapeHtml(JSON.stringify(evidence.before_gate || [], null, 2))}</pre></section><section><b>修复后 SQL</b><pre>${escapeHtml((evidence.after_sql || []).join("\n\n"))}</pre><b>修复后门禁</b><pre>${escapeHtml(JSON.stringify(evidence.after_gate || [], null, 2))}</pre><b>审批计划</b><pre>${escapeHtml(JSON.stringify(evidence.approved_query_plan || {}, null, 2))}</pre></section></div></details>`
+      : `<details class="policy-prompt-diff"><summary>核对 Experience 与角色证据</summary><div><section><b>原问题</b><pre>${escapeHtml(evidence.question || "")}</pre><b>Experience</b><pre>${escapeHtml(JSON.stringify(evidence.experience || {}, null, 2))}</pre><b>QueryRun</b><pre>${escapeHtml(JSON.stringify(evidence.query_run || {}, null, 2))}</pre></section><section><b>角色证据</b><pre>${escapeHtml(JSON.stringify(evidence.role_artifacts || {}, null, 2))}</pre><b>人工决策</b><pre>${escapeHtml(JSON.stringify(evidence.human_decisions || [], null, 2))}</pre></section></div></details>`;
+    return `<article class="memory-entry semantic-entry" data-rule-id="${escapeHtml(item.rule_id)}" data-target-agent="${escapeHtml(targetAgent)}"><div class="memory-entry-head"><span class="memory-state">${escapeHtml(memoryStateLabel(item.state))}</span><span class="memory-policy-chip">${escapeHtml(targetAgent)}</span>${select}</div><div class="semantic-rule-fields">`
+      + field("原因", item.root_cause) + field("可复用规则", item.rule)
+      + field("适用条件", (item.applicability || []).join("；")) + field("例外", (item.exceptions || []).join("；"))
+      + `</div>${evidenceDetails}`
+      + field("引用证据", (item.evidence_refs || []).join("、"))
+      + `<small>来源 ${escapeHtml((item.source_memory_ids || []).join(", "))} · ${escapeHtml(item.source_task_id)} · revision ${number(item.source_revision)}</small>`
+      + (item.reviewed_by ? field("审核", `${item.reviewed_by} · ${item.review_note || "已确认"}`) : "")
+      + review + '</article>';
+  }).join("") : memoryEmpty("尚无语义规则", "先确认任一 Agent 的纠错案例，再点击“归纳语义规则”；证据不足或没有可复用结论时会跳过。");
+  $$(".rule-review-action", list).forEach((button) => button.addEventListener("click", async () => {
+    const card = button.closest("[data-rule-id]");
+    const note = $("[data-rule-note]", card)?.value.trim() || "";
+    if (button.dataset.decision === "reject" && !note) { toast("请说明拒绝规则的原因"); return; }
+    $$(".rule-review-action", card).forEach((control) => control.disabled = true);
+    try {
+      await api(`/v1/text2sql/semantic-rules/${encodeURIComponent(card.dataset.ruleId)}/review`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ decision: button.dataset.decision, review_note: note }),
+      });
+      toast(button.dataset.decision === "confirm" ? "规则已确认；编译、评测并发布策略后才生效" : "规则已拒绝");
+      await loadMemory();
+    } catch (error) { toast(error.message); $$(".rule-review-action", card).forEach((control) => control.disabled = false); }
+  }));
+  const updateSelection = () => {
+    const selectedItems = items.filter((item) => selectedSemanticRuleIds.has(item.rule_id));
+    const agents = new Set(selectedItems.map((item) => item.target_agent));
+    const valid = selectedItems.length > 0 && selectedItems.length <= 20 && agents.size === 1;
+    $("#rule-selection-count").textContent = selectedItems.length
+      ? `已选择 ${selectedItems.length} 条 · ${agents.size === 1 ? selectedItems[0].target_agent : "跨 Agent 不可编译"}`
+      : "已选择 0 条已确认规则";
+    $("#generate-rule-policy").disabled = !valid;
+  };
+  $$("[data-rule-select]", list).forEach((input) => input.addEventListener("change", () => {
+    if (input.checked) selectedSemanticRuleIds.add(input.value); else selectedSemanticRuleIds.delete(input.value);
+    updateSelection();
+  }));
+  updateSelection();
+  $("#generate-rule-policy").onclick = async () => {
+    const button = $("#generate-rule-policy");
+    button.disabled = true; button.textContent = "正在编译策略…";
+    try {
+      const result = await api("/v1/text2sql/policies/from-rules", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rule_ids: [...selectedSemanticRuleIds], change_reason: $("#rule-policy-reason").value.trim() }),
+      });
+      selectedSemanticRuleIds.clear(); $("#rule-policy-reason").value = "";
+      toast(`已生成 ${result.target_agent || "目标 Agent"} 策略候选；下一步运行定向回放`);
+      await Promise.all([loadMemory(), loadSkills(), loadStatus()]);
+    } catch (error) { toast(error.message); }
+    finally { button.textContent = "编译 Agent 策略候选"; updateSelection(); }
+  };
 }
 
 async function loadMemory() {
@@ -1110,8 +1307,7 @@ async function loadMemory() {
     $("#memory-stats").innerHTML = statusCard("记忆服务", "加载失败", error.message, "is-warning");
     $("#working-memory-list").innerHTML = memoryEmpty("Working Memory 加载失败", error.message);
     $("#episodic-memory-list").innerHTML = memoryEmpty("Episodic Memory 加载失败", error.message);
-    $("#semantic-memory-list").innerHTML = memoryEmpty("Semantic Memory 加载失败", error.message);
-    $("#question-sql-memory-list").innerHTML = memoryEmpty("Question-SQL Memory 加载失败", error.message);
+    $("#semantic-memory-list").innerHTML = memoryEmpty("Semantic Experience 加载失败", error.message);
   }
 }
 
@@ -1120,7 +1316,7 @@ async function loadWorkspace() {
   refresh.disabled = true;
   refresh.textContent = "刷新中…";
   try {
-    await Promise.all([loadStatus(), loadSkills(), loadTraces(), loadExperiences(), loadMemory()]);
+    await Promise.all([loadStatus(), loadSkills(), loadTraces(), loadMemory()]);
   } finally {
     refresh.disabled = false;
     refresh.textContent = "刷新";
@@ -1315,18 +1511,32 @@ function renderResult(result) {
   const accepted = Boolean(gates.accepted) && result.status === "success";
   const answer = result.answer || {};
   const summary = answerSummary(answer);
+  const needsClarification = result.status === "needs_clarification";
+  setClarification(needsClarification ? {
+    taskId: result.task_id, question: result.question,
+    questions: result.clarification?.questions || [],
+  } : accepted ? null : activeClarification, needsClarification);
   activeTaskId = result.task_id || "";
   activeQueryType = result.query_type || "DATA_QUERY";
   activeSql = result.final_sql || "";
   $("#text2sql-result").classList.remove("hidden");
+  setQueryStatus(accepted ? "success" : needsClarification ? "clarification" : "error",
+    result.diagnostic?.message || "查询未完成，请检查问题或查看运行记录。",
+    !accepted && !needsClarification ? {
+      taskId: result.task_id,
+      code: result.diagnostic?.code || "query_rejected",
+      message: [result.diagnostic?.stage, ...(result.diagnostic?.related_codes || [])].filter(Boolean).join(" · "),
+    } : null);
   $("#text2sql-final-sql").textContent = activeSql || (activeQueryType === "RESULT_QA" ? "-- 使用历史 QueryRun 结果，本次没有生成或执行 SQL" : "-- 未生成可执行 SQL");
-  $("#text2sql-answer-summary").textContent = accepted ? summary.value : "查询未执行";
-  $("#text2sql-answer-meta").textContent = accepted ? summary.meta : (gates.errors || []).join("；");
+  $("#text2sql-answer-summary").textContent = accepted ? summary.value : needsClarification ? "需要补充信息" : "查询未执行";
+  $("#text2sql-answer-meta").textContent = accepted ? summary.meta : needsClarification
+    ? (result.clarification?.questions || []).join("；")
+    : result.diagnostic?.message || answer.summary_text || (gates.errors || []).join("；");
   const gate = $("#text2sql-gate-status");
   gate.className = `status ${accepted ? "status-online" : "status-neutral"}`;
   gate.innerHTML = accepted
     ? `<i></i>${activeQueryType === "RESULT_QA" ? "会话结果回答" : "安全门禁通过"}`
-    : `未执行${gates.errors?.length ? ` · ${gates.errors.length} 项拦截` : ""}`;
+    : needsClarification ? "等待补充" : `未执行${gates.errors?.length ? ` · ${gates.errors.length} 项拦截` : ""}`;
   $("#text2sql-answer").innerHTML = renderTable(answer);
   renderVisualization(answer, accepted);
   $("#text2sql-row-count").textContent = `${number(answer.row_count)} 行${answer.truncated ? " · 已截断" : ""}`;
@@ -1341,11 +1551,13 @@ function renderResult(result) {
   addSession(result.question || $("#text2sql-question").value.trim(), result, summary);
   loadTraces();
   loadMemory();
-  $("#text2sql-result").scrollIntoView({ behavior: reduceMotion.matches ? "auto" : "smooth", block: "start" });
+  (accepted ? $("#text2sql-result") : $("#text2sql-form")).scrollIntoView({ behavior: reduceMotion.matches ? "auto" : "smooth", block: "start" });
+  if (needsClarification) $("#text2sql-question").focus();
 }
 
 function resetFeedback(enabled) {
   const panel = $("#query-feedback-panel");
+  panel.classList.toggle("hidden", !enabled);
   panel.classList.toggle("feedback-disabled", !enabled);
   $("#feedback-correct").disabled = !enabled;
   $("#feedback-incorrect").disabled = !enabled;
@@ -1384,22 +1596,22 @@ async function submitQueryFeedback(decision) {
   $("#feedback-incorrect").disabled = true;
   $("#feedback-submit-incorrect").disabled = true;
   $("#feedback-correction").classList.add("hidden");
-  await Promise.all([loadExperiences(), loadStatus(), loadTraces(), loadMemory()]);
-  if (decision === "correct" && result.experience_id) {
-    toast("已写入 Stable Vanna 与 Question-SQL Memory");
+  await Promise.all([loadStatus(), loadTraces(), loadMemory()]);
+  if (decision === "correct" && (result.question_sql_id || result.vanna_item_id || result.experience_id)) {
+    toast("已写入 Vanna Question-SQL，可供后续检索");
   } else if (result.experience_id && result.memory_id) {
-    toast("修正 SQL 与归因记忆已分别进入审核队列");
+    toast("错误已记录；修正 SQL 和规则改进线索已保留");
   } else if (result.experience_id) {
-    toast("修正 SQL 已进入 Question-SQL 候选队列");
+    toast("错误已记录；修正 SQL 已作为纠错依据保留");
   } else if (result.memory_id) {
-    toast("错误已自动归因，并生成 Semantic Candidate");
+    toast("错误已记录，并形成一条规则改进线索");
   } else {
     toast("反馈已记录");
   }
 }
 
 function addSession(question, result, summary) {
-  sessionHistory.unshift({ question, sql: result.final_sql || "--", value: result.status === "success" ? summary.value : "未执行", status: result.status });
+  sessionHistory.unshift({ question, sql: result.final_sql || "--", value: result.status === "success" ? summary.value : result.status === "needs_clarification" ? "待补充" : "未执行", status: result.status });
   sessionHistory.splice(6);
   $("#session-section").classList.remove("hidden");
   $("#session-list").innerHTML = sessionHistory.map((item, index) => `<article class="session-item"><b>${String(sessionHistory.length - index).padStart(2, "0")}</b><div><strong>${escapeHtml(item.question)}</strong><code>${escapeHtml(item.sql)}</code></div><span class="${item.status === "success" ? "ok" : ""}">${escapeHtml(item.value)}</span></article>`).join("");
@@ -1419,20 +1631,31 @@ function setBusy(button, busy) {
 }
 
 async function submitQuestion() {
+  if (queryInFlight) return;
   const question = $("#text2sql-question").value.trim();
   if (!question) return;
-  if (!pendingText2SQLQuery || pendingText2SQLQuery.question !== question) {
+  const clarificationTaskId = activeClarification?.taskId || "";
+  if (!pendingText2SQLQuery || pendingText2SQLQuery.question !== question
+      || (pendingText2SQLQuery.clarificationTaskId || "") !== clarificationTaskId) {
     pendingText2SQLQuery = {
       question,
+      clarificationTaskId,
       taskId: "text2sql-web-" + (globalThis.crypto?.randomUUID?.() || Date.now() + "-" + Math.random().toString(16).slice(2)),
     };
     writePendingQuery(pendingText2SQLQuery);
   }
   const button = $(".text2sql-submit");
+  const request = { ...pendingText2SQLQuery };
+  queryInFlight = true;
   let failed = false;
   setBusy(button, true);
+  $("#text2sql-question").disabled = true;
+  $$("[data-sql-question], #clarification-cancel, #query-retry, #query-restart, #new-query").forEach(item => { item.disabled = true; });
+  setQueryStatus("running", "正在理解问题并查询数据…");
   $("#runtime-blueprint").innerHTML = renderRuntimeMap({}, { mode: "running" });
-  $("#text2sql-form-note").textContent = "Lead 正在路由问题并编排证据；需要查库时会并行调度 Schema Grounding 与 Query Planning，再进行计划绑定、审批和 SQL Generation…";
+  $("#text2sql-form-note").textContent = governanceMode
+    ? "Lead 正在路由问题并编排证据；需要查库时会并行调度 Schema Grounding 与 Query Planning，再进行计划绑定、审批和 SQL Generation…"
+    : "正在理解问题、核对数据并生成只读查询，请稍候…";
   try {
     const result = await api("/v1/text2sql/query", {
       method: "POST",
@@ -1440,33 +1663,40 @@ async function submitQuestion() {
       body: JSON.stringify({
         question,
         session_id: text2sqlSessionId,
-        task_id: pendingText2SQLQuery.taskId,
+        task_id: request.taskId,
+        clarification_task_id: request.clarificationTaskId || "",
       }),
     });
-    renderResult(result);
     pendingText2SQLQuery = null;
     writePendingQuery(null);
-    toast(result.status === "success" ? "Text2SQL 查询完成" : "查询被安全门禁拦截");
+    renderResult(result);
   } catch (error) {
     failed = true;
     $("#runtime-blueprint").innerHTML = renderRuntimeMap({}, { mode: "error" });
-    const identityRejected = String(error.message || "").includes("task_id was reused");
-    if (identityRejected) {
+    const failure = queryFailure(error);
+    if (failure.fresh) {
       pendingText2SQLQuery = null;
       writePendingQuery(null);
     }
-    $("#text2sql-form-note").textContent = identityRejected
-      ? error.message + "；旧恢复标识已清除，再次发送会创建新任务。"
-      : error.message + "；再次发送同一问题将从 checkpoint 续跑。";
-    toast(error.message);
+    setQueryStatus("error", failure.message, { taskId: request.taskId, code: error.code, message: error.message });
+    $("#text2sql-form-note").textContent = "输入内容已保留。";
   } finally {
+    queryInFlight = false;
+    $("#text2sql-question").disabled = false;
+    $$("[data-sql-question], #clarification-cancel, #query-retry, #query-restart, #new-query").forEach(item => { item.disabled = false; });
     setBusy(button, false);
-    if (runtimeStatus?.ready && !failed) $("#text2sql-form-note").textContent = "问题、必要的 Schema / 知识上下文，以及结果追问所需的有限 QueryRun 快照会发送给阿里云百炼；SQLite 文件不上传，SQL 仅在本机只读执行。";
+    if (runtimeStatus?.ready && !failed) $("#text2sql-form-note").textContent = "支持连续追问 · 数据库只读查询";
   }
 }
 
-$$('.nav-item').forEach((button) => button.addEventListener("click", () => show(button.dataset.view)));
+$$('.nav-item[data-view]').forEach((button) => button.addEventListener("click", () => show(button.dataset.view)));
+$("#governance-toggle").addEventListener("click", () => setGovernanceMode(!governanceMode));
 $$('[data-sql-question]').forEach((button) => button.addEventListener("click", () => {
+  if (queryInFlight) return;
+  pendingText2SQLQuery = null;
+  writePendingQuery(null);
+  setClarification(null);
+  setQueryStatus("idle");
   $("#text2sql-question").value = button.dataset.sqlQuestion;
   $("#text2sql-question").focus();
 }));
@@ -1545,12 +1775,65 @@ $("#skill-submit-form").addEventListener("submit", async (event) => {
   }
 });
 $("#refresh-skills").addEventListener("click", loadSkills);
-$("#refresh-experiences").addEventListener("click", loadExperiences);
 $("#refresh-memory").addEventListener("click", loadMemory);
 $("#refresh").addEventListener("click", loadWorkspace);
 window.addEventListener("hashchange", () => show(location.hash.slice(1), false));
 
 $("#runtime-blueprint").innerHTML = renderRuntimeMap({}, { mode: "blueprint" });
+setClarification(activeClarification);
+$("#query-retry").addEventListener("click", () => submitQuestion());
+$("#query-restart").addEventListener("click", () => {
+  pendingText2SQLQuery = null;
+  writePendingQuery(null);
+  submitQuestion();
+});
+$("#new-query").addEventListener("click", () => {
+  if (queryInFlight) return;
+  pendingText2SQLQuery = null;
+  writePendingQuery(null);
+  setClarification(null, true);
+  setQueryStatus("idle");
+  $("#text2sql-question").focus();
+});
+$("#clarification-cancel").addEventListener("click", () => {
+  if (queryInFlight) return;
+  setClarification(null, true);
+  setQueryStatus("idle");
+  pendingText2SQLQuery = null;
+  writePendingQuery(null);
+  $("#text2sql-question").focus();
+});
 $("#evolution-runtime-graph").innerHTML = renderRuntimeMap({}, { mode: "blueprint" });
 show(location.hash.slice(1), false);
 loadWorkspace();
+
+$("#login-dialog").addEventListener("cancel", (event) => event.preventDefault());
+$("#login-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const button = event.currentTarget.querySelector("button");
+  button.disabled = true;
+  $("#login-error").textContent = "";
+  try {
+    const result = await api("/v1/auth/login", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: $("#login-username").value, password: $("#login-password").value }),
+    });
+    sessionStorage.setItem("evosql_access_token", result.access_token);
+    $("#login-password").value = "";
+    $("#login-dialog").close();
+    $("#sign-out").classList.remove("hidden");
+    await loadWorkspace();
+  } catch (error) {
+    $("#login-error").textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+});
+$("#sign-out").classList.toggle("hidden", !sessionStorage.getItem("evosql_access_token"));
+$("#sign-out").addEventListener("click", () => {
+  setClarification(null);
+  pendingText2SQLQuery = null;
+  writePendingQuery(null);
+  sessionStorage.removeItem("evosql_access_token");
+  location.reload();
+});

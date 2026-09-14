@@ -510,6 +510,11 @@ def _merge_reviews(
                 "reviewer": previous.get("reviewer", ""),
                 "reviewed_at": previous.get("reviewed_at", ""),
                 "notes": previous.get("notes", ""),
+                **{
+                    key: previous[key]
+                    for key in ("review_category", "review_evidence")
+                    if key in previous
+                },
             }
         )
     return relationships
@@ -542,7 +547,7 @@ def write_snapshot_artifacts(artifacts: SnapshotArtifacts, output_dir: Path) -> 
     review_document = {
         "contract_version": 1,
         "database_snapshot_id": snapshot_id,
-        "status": "approved" if relationships and all(item["decision"] != "pending" for item in relationships) else "pending_review",
+        "status": "reviewed" if relationships and all(item["decision"] != "pending" for item in relationships) else "pending_review",
         "instructions": "Set decision to approved or rejected; fill cardinality, result_grain, fanout_risk, reviewer and notes.",
         "relationships": relationships,
     }

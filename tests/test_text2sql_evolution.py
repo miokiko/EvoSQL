@@ -1,19 +1,21 @@
 import copy
+import hashlib
 import json
 import tempfile
 import unittest
 from pathlib import Path
 
-from evoagent.text2sql.agentic import Text2SQLAgenticEngine
+from evoagent.text2sql.agentic import Text2SQLAgenticEngine, build_runtime_identity
 from evoagent.text2sql.database_tools import ROLE_TOOL_PERMISSIONS, Text2SQLToolSuite
+from evoagent.text2sql.evaluation import EVALUATION_ARTIFACT_CONTRACT_VERSION
 from evoagent.text2sql.evolution import (
     EPISODIC_MEMORY_RETENTION_PER_SESSION,
     Text2SQLEvolutionStore,
-    evaluate_knowledge_promotion_gate,
     evaluate_memory_promotion_gate,
     evaluate_promotion_gate,
 )
-from evoagent.text2sql.knowledge_store import KnowledgeStore
+from corpus_fixtures import build_test_corpus
+from evoagent.text2sql.vanna_corpus import VannaCorpus, collect_vanna_corpus, add_confirmed_question_sql, question_sql_registry_path
 from evoagent.text2sql.policy import (
     LEGACY_POLICY_CONTRACT_VERSION,
     POLICY_CONTRACT_VERSION,
@@ -23,6 +25,10 @@ from evoagent.text2sql.policy import (
 )
 from evoagent.text2sql.policy_generator import Text2SQLPolicyCandidateGenerator
 from evoagent.text2sql.sqlite_database import build_sqlite_database
+from evoagent.text2sql.target_replay import (
+    build_replay_identity,
+    evaluate_target_replay,
+)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -42,6 +48,7 @@ def _report(policy_version, validation_accuracy, holdout_accuracy, passed_valida
     pins = {
         "database_snapshot_id": SNAPSHOT["snapshot_id"],
         "wiki_index_version": "wiki-test",
+        "vanna_index_version": "wiki-test",
         "memory_snapshot_id": "memory-test",
         "policy_version": policy_version,
     }
@@ -79,6 +86,48 @@ def _report(policy_version, validation_accuracy, holdout_accuracy, passed_valida
             for index in range(10)
         )
     return {"version_pins": pins, "overall": {}, "splits": splits, "outcomes": outcomes}
+
+
+def _evaluation_artifact(
+    report,
+    manifest,
+    *,
+    policy_source_memory_ids=(),
+    memory_candidate_id="",
+    experience_candidate_id="",
+):
+    evaluated_splits = [
+        split
+        for split in ("train", "validation", "sealed_holdout")
+        if split in (manifest.get("files") or {})
+    ]
+    return {
+        "contract_version": EVALUATION_ARTIFACT_CONTRACT_VERSION,
+        "status": "complete",
+        "dataset_id": manifest["dataset_id"],
+        "dataset_sha256": manifest["dataset_sha256"],
+        "evaluated_splits": evaluated_splits,
+        "evaluated_case_count": sum(
+            int((manifest["files"][split] or {}).get("case_count") or 0)
+            for split in evaluated_splits
+        ),
+        "model": {
+            "provider": "scripted",
+            "model": "scripted",
+            "temperature": 0,
+        },
+        "runtime": dict(
+            build_runtime_identity(
+                token_budget=4096,
+                time_budget=60,
+                policy_source_memory_ids=policy_source_memory_ids,
+            )
+        ),
+        "principals": ["local-user"],
+        "memory_candidate_id": memory_candidate_id,
+        "experience_candidate_id": experience_candidate_id,
+        "report": report,
+    }
 
 
 def _promotion_fixture():
@@ -190,7 +239,6 @@ class EvolutionGateValidationTests(unittest.TestCase):
     def _fixtures():
         promotion = _promotion_fixture()
         memory = _full_release_fixture("memory")
-        knowledge = _full_release_fixture("knowledge")
         return (
             (
                 "promotion",
@@ -203,12 +251,6 @@ class EvolutionGateValidationTests(unittest.TestCase):
                 evaluate_memory_promotion_gate,
                 "eligible_for_activation",
                 memory,
-            ),
-            (
-                "knowledge",
-                evaluate_knowledge_promotion_gate,
-                "eligible_for_activation",
-                knowledge,
             ),
         )
 
@@ -325,6 +367,11 @@ class EvolutionGateValidationTests(unittest.TestCase):
             "TIMEOUT",
             "FRAMEWORK_ERROR",
             "EXECUTION_ERROR",
+            "PLANNING_FAILURE",
+            "VALUE_GROUNDING_MISMATCH",
+            "CANDIDATE_GENERATION_FAILURE",
+            "CRITIC_REJECTION",
+            "LEAD_SELECTION_FAILURE",
             "USER_CORRECTION",
         )
         for gate_name, gate, eligible_key, fixture in self._fixtures():
@@ -373,10 +420,9 @@ class EvolutionGateValidationTests(unittest.TestCase):
             decision["reasons"],
         )
 
-    def test_memory_and_knowledge_reject_zero_operational_rates(self):
+    def test_memory_rejects_zero_operational_rates(self):
         for kind, gate in (
             ("memory", evaluate_memory_promotion_gate),
-            ("knowledge", evaluate_knowledge_promotion_gate),
         ):
             with self.subTest(gate=kind):
                 manifest, baseline, candidate, evidence = copy.deepcopy(
@@ -448,7 +494,7 @@ class EvolutionGateValidationTests(unittest.TestCase):
 
     def test_six_decimal_execution_accuracy_rounding_is_accepted(self):
         manifest, baseline, candidate, evidence = copy.deepcopy(
-            _full_release_fixture("knowledge")
+            _full_release_fixture("memory")
         )
         for report in (baseline, candidate):
             validation = [
@@ -458,6 +504,7 @@ class EvolutionGateValidationTests(unittest.TestCase):
             ]
             validation[0]["execution_accuracy"] = False
             validation[0]["failure_kind"] = "RESULT_MISMATCH"
+            report["overall"]["execution_accuracy"] = round(239 / 240, 6)
             report["splits"]["validation"]["execution_accuracy"] = round(
                 47 / 48, 6
             )
@@ -465,7 +512,7 @@ class EvolutionGateValidationTests(unittest.TestCase):
                 "select-filter"
             ]["execution_accuracy"] = round(47 / 48, 6)
 
-        decision = evaluate_knowledge_promotion_gate(
+        decision = evaluate_memory_promotion_gate(
             manifest, baseline, candidate, evidence
         )
 
@@ -722,7 +769,191 @@ class EvolutionStoreTests(unittest.TestCase):
             "test-author",
         )
 
-    def test_episodic_retention_is_per_session_not_global(self):
+    def test_active_legacy_policy_contract_is_migrated_without_behavior_change(self):
+        baseline = PolicyArtifact.baseline(SNAPSHOT).as_dict()
+        legacy = {"contract_version": LEGACY_POLICY_CONTRACT_VERSION}
+        for field in (
+            "prompt_fragments",
+            "field_aliases",
+            "value_aliases",
+            "few_shot_examples",
+            "tool_selection_policy",
+            "budget_parameters",
+        ):
+            legacy[field] = {
+                "text2sql-lead": baseline[field]["text2sql-lead"],
+                "schema-grounding": baseline[field]["schema-grounding"],
+                "sql-strategy": baseline[field]["query-planning"],
+                "text2sql-critic": baseline[field]["text2sql-critic"],
+            }
+        legacy_policy = PolicyArtifact.from_dict(legacy, SNAPSHOT)
+        with self.store.connection:
+            self.store.connection.execute(
+                "INSERT INTO policy_versions(policy_version,parent_version,target_skill,"
+                "artifact_json,status,change_reason,created_by,created_at) "
+                "VALUES (?,?,?,?,?,?,?,?)",
+                (
+                    legacy_policy.version,
+                    "",
+                    "baseline",
+                    json.dumps(legacy, sort_keys=True),
+                    "approved",
+                    "legacy baseline",
+                    "test",
+                    "2026-09-07T00:00:00+00:00",
+                ),
+            )
+            self.store.connection.execute(
+                "UPDATE evolution_metadata SET value=? WHERE key='active_policy_version'",
+                (legacy_policy.version,),
+            )
+
+        result = self.store.ensure_current_policy_contract("migration-test")
+
+        self.assertTrue(result["migrated"])
+        self.assertEqual(
+            self.store.active_policy_version,
+            PolicyArtifact.baseline(SNAPSHOT).version,
+        )
+        self.assertFalse(self.store.get_policy().was_migrated_from_v1)
+        self.assertEqual(
+            self.store.get_policy().as_dict(),
+            legacy_policy.as_dict(),
+        )
+        old = self.store.policy_record(legacy_policy.version)
+        self.assertEqual(old["status"], "retired")
+
+    def _confirmed_experience(self, suffix="primary"):
+        corrected_sql_fingerprint = hashlib.sha256(
+            b"SELECT 1"
+        ).hexdigest()
+        memory_id = self.store.add_experience_memory(
+            {
+                "contract": "ExperienceMemory/v1",
+                "source_task_id": "source-task-%s" % suffix,
+                "source_revision": 1,
+                "target_agent": "query-planning",
+                "source_stage": "user-feedback",
+                "problem_code": "incorrect_count_semantics",
+                "scenario": "用户确认原查询的计数口径不正确。",
+                "problem": "计划没有表达用户确认的唯一实体计数口径。",
+                "correction": "先固定结果粒度，再选择与粒度一致的去重计数。",
+                "applicability": {"query_shape": "aggregate-count"},
+                "before": {
+                    "sql_fingerprint": hashlib.sha256(b"SELECT 2").hexdigest(),
+                },
+                "after": {
+                    "sql_fingerprint": corrected_sql_fingerprint,
+                },
+                "evidence": {
+                    "version_pins": {
+                        "database_snapshot_id": SNAPSHOT["snapshot_id"],
+                        "wiki_index_version": "wiki-test",
+                        "vanna_index_version": "wiki-test",
+                    }
+                },
+                "evidence_grade": "human_corrected_sql",
+                "state": "candidate",
+            }
+        )
+        self.store.review_experience_memory(
+            memory_id,
+            "confirm",
+            "reviewer",
+        )
+        return memory_id, self.store.get_memory(memory_id)
+
+    def _experience_policy_candidate(self, memory_id):
+        value = self.store.get_policy().as_dict()
+        value["prompt_fragments"]["query-planning"] = (
+            "State the result grain before choosing a count expression."
+        )
+        metadata = {
+            "contract": "ExperiencePolicyProposal/v1",
+            "source": "confirmed-experiences",
+            "memory_ids": [memory_id],
+            "memory_field_bindings": {memory_id: ["prompt_fragment"]},
+            "target_replay_required": True,
+            "generator": {"provider": "scripted", "model": "unit-test"},
+        }
+        candidate = self.store.propose_policy(
+            value,
+            "query-planning",
+            "Compile one confirmed Experience into the owning Agent Policy.",
+            "test-author",
+            proposal_metadata=metadata,
+        )
+        return candidate, metadata
+
+    @staticmethod
+    def _target_replay_artifact(
+        experience,
+        memory_id,
+        parent_policy_version,
+        candidate_policy_version,
+        *,
+        passed=True,
+    ):
+        parent_runtime = dict(
+            build_runtime_identity(
+                token_budget=4096,
+                time_budget=60,
+                policy_source_memory_ids=(),
+            )
+        )
+        candidate_runtime = dict(
+            build_runtime_identity(
+                token_budget=4096,
+                time_budget=60,
+                policy_source_memory_ids=(memory_id,),
+            )
+        )
+        replay_identity = build_replay_identity(
+            parent_version_pins={
+                "database_snapshot_id": SNAPSHOT["snapshot_id"],
+                "wiki_index_version": "wiki-test",
+                "vanna_index_version": "wiki-test",
+                "memory_snapshot_id": "memory-test",
+                "policy_version": parent_policy_version,
+            },
+            candidate_version_pins={
+                "database_snapshot_id": SNAPSHOT["snapshot_id"],
+                "wiki_index_version": "wiki-test",
+                "vanna_index_version": "wiki-test",
+                "memory_snapshot_id": "memory-test",
+                "policy_version": candidate_policy_version,
+            },
+            parent_runtime=parent_runtime,
+            candidate_runtime=candidate_runtime,
+            model={
+                "provider": "scripted",
+                "model": "scripted",
+                "temperature": 0,
+            },
+            principals=["local-user"],
+        )
+        baseline_result = {
+            "status": "success",
+            "final_sql": "SELECT 2",
+            "gates": {"accepted": True, "errors": []},
+            "collaboration": {},
+        }
+        candidate_result = {
+            "status": "success",
+            "final_sql": "SELECT 1" if passed else "SELECT 2",
+            "gates": {"accepted": True, "errors": []},
+            "collaboration": {},
+        }
+        return evaluate_target_replay(
+            [experience],
+            {memory_id: baseline_result},
+            {memory_id: candidate_result},
+            parent_policy_version=parent_policy_version,
+            candidate_policy_version=candidate_policy_version,
+            replay_identity=replay_identity,
+        )
+
+    def test_episodic_history_is_retained_while_display_stays_bounded(self):
         self.store.save_query_trace(
             {
                 "task_id": "other-session-run",
@@ -750,9 +981,89 @@ class EvolutionStoreTests(unittest.TestCase):
         }
         self.assertEqual(
             sessions["session-a"]["episodic_count"],
-            EPISODIC_MEMORY_RETENTION_PER_SESSION,
+            EPISODIC_MEMORY_RETENTION_PER_SESSION + 1,
         )
         self.assertEqual(sessions["session-b"]["episodic_count"], 1)
+        dashboard = self.store.memory_dashboard("reader", "session-a", limit=100)
+        self.assertEqual(
+            dashboard["episodic"]["count"],
+            EPISODIC_MEMORY_RETENTION_PER_SESSION + 1,
+        )
+        self.assertEqual(
+            len(dashboard["episodic"]["items"]),
+            EPISODIC_MEMORY_RETENTION_PER_SESSION,
+        )
+        self.assertEqual(
+            dashboard["episodic"]["display_limit"],
+            EPISODIC_MEMORY_RETENTION_PER_SESSION,
+        )
+        self.assertEqual(
+            dashboard["episodic"]["physical_retention"],
+            "unbounded_mvp",
+        )
+        self.assertNotIn(
+            "session-a-000",
+            {item["task_id"] for item in dashboard["episodic"]["items"]},
+        )
+
+    def test_query_trace_revisions_are_append_only_and_content_addressed(self):
+        first = {
+            "task_id": "revisioned-run",
+            "status": "success",
+            "question": "统计案例",
+            "final_sql": "SELECT 1",
+            "gates": {"accepted": True, "errors": []},
+            "origin": "web",
+            "source_lane": "stable",
+            "source_revision": 1,
+            "recorded_at": "2026-09-06T01:00:00+00:00",
+        }
+        self.assertEqual(self.store.next_query_trace_revision("revisioned-run"), 1)
+        self.store.save_query_trace(first)
+        self.assertEqual(self.store.next_query_trace_revision("revisioned-run"), 2)
+        same_evidence_new_timestamp = {
+            **first,
+            "recorded_at": "2026-09-06T01:01:00+00:00",
+        }
+        self.store.save_query_trace(same_evidence_new_timestamp)
+        self.assertEqual(
+            self.store.connection.execute(
+                "SELECT COUNT(*) FROM query_trace_revisions WHERE task_id=?",
+                ("revisioned-run",),
+            ).fetchone()[0],
+            1,
+        )
+
+        with self.assertRaisesRegex(ValueError, "immutable evidence"):
+            self.store.save_query_trace({**first, "final_sql": "SELECT 2"})
+
+        second = {
+            **first,
+            "final_sql": "SELECT 2",
+            "source_revision": 2,
+            "recorded_at": "2026-09-06T01:02:00+00:00",
+        }
+        self.store.save_query_trace(second)
+        self.assertEqual(self.store.next_query_trace_revision("revisioned-run"), 3)
+        self.assertEqual(
+            self.store.get_query_trace("revisioned-run", 1)["final_sql"],
+            "SELECT 1",
+        )
+        self.assertEqual(
+            self.store.get_query_trace("revisioned-run", 2)["final_sql"],
+            "SELECT 2",
+        )
+        self.assertEqual(
+            self.store.get_query_trace("revisioned-run")["source_revision"],
+            2,
+        )
+        self.assertEqual(
+            self.store.connection.execute(
+                "SELECT COUNT(*) FROM query_trace_revisions WHERE task_id=?",
+                ("revisioned-run",),
+            ).fetchone()[0],
+            2,
+        )
 
     def test_recent_query_context_includes_bounded_conversation_messages(self):
         self.store.append_message("user-1", "session-1", "user", "先按等级统计", "task-1")
@@ -762,6 +1073,271 @@ class EvolutionStoreTests(unittest.TestCase):
             [(item["role"], item["content"]) for item in context["recent_messages"]],
             [("user", "先按等级统计"), ("assistant", "已经完成统计")],
         )
+
+    def test_policy_records_decode_experience_proposal_metadata(self):
+        memory_id, _experience = self._confirmed_experience()
+        candidate, metadata = self._experience_policy_candidate(memory_id)
+
+        record = self.store.policy_record(candidate)
+        listed = {
+            item["policy_version"]: item for item in self.store.list_policies()
+        }[candidate]
+
+        for value in (record, listed):
+            self.assertNotIn("proposal_metadata_json", value)
+            self.assertEqual(
+                value["proposal_metadata"]["contract"],
+                metadata["contract"],
+            )
+            self.assertEqual(
+                value["proposal_metadata"]["memory_ids"],
+                [memory_id],
+            )
+            self.assertTrue(
+                value["proposal_metadata"]["target_replay_required"]
+            )
+            self.assertEqual(
+                value["proposal_metadata"]["compiled_memory_fields"],
+                {memory_id: ["query-planning.prompt_fragment"]},
+            )
+            self.assertIsInstance(value["proposal_metadata"], dict)
+
+    def test_target_replay_persistence_is_idempotent_and_rejects_tampering(self):
+        memory_id, experience = self._confirmed_experience()
+        candidate, _metadata = self._experience_policy_candidate(memory_id)
+        parent = self.store.policy_record(candidate)["parent_version"]
+        artifact = self._target_replay_artifact(
+            experience,
+            memory_id,
+            parent,
+            candidate,
+        )
+
+        first = self.store.record_target_replay(
+            candidate,
+            artifact,
+            created_by="reviewer",
+            artifact_path="artifacts/replay.json",
+        )
+        second = self.store.record_target_replay(
+            candidate,
+            artifact,
+            created_by="another-reviewer",
+            artifact_path="another/path.json",
+        )
+
+        self.assertEqual(first["replay_id"], second["replay_id"])
+        self.assertEqual(first["artifact_sha256"], artifact["artifact_sha256"])
+        self.assertEqual(first["status"], "passed")
+        self.assertEqual(first["memory_ids"], [memory_id])
+        self.assertEqual(first["artifact"], artifact)
+        self.assertEqual(
+            self.store.connection.execute(
+                "SELECT COUNT(*) FROM policy_target_replays"
+            ).fetchone()[0],
+            1,
+        )
+        self.assertEqual(
+            self.store.latest_target_replay(candidate)["replay_id"],
+            first["replay_id"],
+        )
+
+        tampered = copy.deepcopy(artifact)
+        tampered["summary"]["passed_count"] = 0
+        with self.assertRaisesRegex(ValueError, "hash mismatch"):
+            self.store.record_target_replay(candidate, tampered)
+
+    def test_target_replay_rejects_parent_and_experience_lineage_mismatch(self):
+        memory_id, experience = self._confirmed_experience("expected")
+        candidate, _metadata = self._experience_policy_candidate(memory_id)
+        parent = self.store.policy_record(candidate)["parent_version"]
+
+        wrong_parent_artifact = self._target_replay_artifact(
+            experience,
+            memory_id,
+            "policy-unrelated-parent",
+            candidate,
+        )
+        with self.assertRaisesRegex(ValueError, "parent Policy mismatch"):
+            self.store.record_target_replay(candidate, wrong_parent_artifact)
+
+        other_memory_id, other_experience = self._confirmed_experience("other")
+        wrong_experience_artifact = self._target_replay_artifact(
+            other_experience,
+            other_memory_id,
+            parent,
+            candidate,
+        )
+        with self.assertRaisesRegex(ValueError, "Experience lineage mismatch"):
+            self.store.record_target_replay(candidate, wrong_experience_artifact)
+
+        self.assertEqual(self.store.latest_target_replay(candidate), {})
+
+    def test_target_replay_rejects_source_not_compiled_into_candidate_prompt(self):
+        memory_id, experience = self._confirmed_experience("not-compiled")
+        value = self.store.get_policy().as_dict()
+        value["prompt_fragments"]["query-planning"] = (
+            "State the requested result grain explicitly."
+        )
+        candidate = self.store.propose_policy(
+            value,
+            "query-planning",
+            "Malformed Experience compile attestation",
+            "test-author",
+            proposal_metadata={
+                "contract": "ExperiencePolicyProposal/v1",
+                "source": "confirmed-experiences",
+                "memory_ids": [memory_id],
+                "memory_field_bindings": {memory_id: []},
+                "target_replay_required": True,
+            },
+        )
+        parent = self.store.policy_record(candidate)["parent_version"]
+        artifact = self._target_replay_artifact(
+            experience,
+            memory_id,
+            parent,
+            candidate,
+        )
+
+        with self.assertRaisesRegex(ValueError, "not compiled"):
+            self.store.record_target_replay(candidate, artifact)
+        self.assertEqual(self.store.latest_target_replay(candidate), {})
+
+    def test_target_replay_rejects_experience_bound_to_non_prompt_field(self):
+        memory_id, experience = self._confirmed_experience("wrong-field")
+        value = self.store.get_policy().as_dict()
+        value["field_aliases"]["schema-grounding"] = {
+            "案例": "t_caseinfo.c_caseCode"
+        }
+        schema_memory_id = self.store.add_experience_memory(
+            {
+                **dict(experience["rule"]),
+                "memory_id": "",
+                "source_task_id": "source-task-schema-binding",
+                "target_agent": "schema-grounding",
+                "source_stage": "user-feedback",
+                "problem_code": "missing_schema_binding",
+                "state": "candidate",
+            }
+        )
+        self.store.review_experience_memory(
+            schema_memory_id,
+            "confirm",
+            "reviewer",
+        )
+        candidate = self.store.propose_policy(
+            value,
+            "schema-grounding",
+            "Malformed non-prompt Experience proposal",
+            "test-author",
+            proposal_metadata={
+                "contract": "ExperiencePolicyProposal/v1",
+                "source": "confirmed-experiences",
+                "memory_ids": [schema_memory_id],
+                "memory_field_bindings": {schema_memory_id: ["field_aliases"]},
+                "target_replay_required": True,
+            },
+        )
+        parent = self.store.policy_record(candidate)["parent_version"]
+        schema_experience = self.store.get_memory(schema_memory_id)
+        artifact = self._target_replay_artifact(
+            schema_experience,
+            schema_memory_id,
+            parent,
+            candidate,
+        )
+
+        with self.assertRaisesRegex(ValueError, "prompt_fragment only"):
+            self.store.record_target_replay(candidate, artifact)
+        self.assertEqual(self.store.latest_target_replay(candidate), {})
+
+    def test_experience_policy_evaluation_requires_passed_target_replay(self):
+        memory_id, experience = self._confirmed_experience()
+        candidate, _metadata = self._experience_policy_candidate(memory_id)
+        parent = self.store.policy_record(candidate)["parent_version"]
+        manifest, _unused_baseline, _unused_candidate, evidence = (
+            _promotion_fixture()
+        )
+        baseline = _evaluation_artifact(
+            _report(parent, 0.4, 0.8, 4),
+            manifest,
+            policy_source_memory_ids=(),
+        )
+        candidate_artifact = _evaluation_artifact(
+            _report(candidate, 0.9, 0.8, 9),
+            manifest,
+            policy_source_memory_ids=(memory_id,),
+        )
+
+        with self.assertRaisesRegex(ValueError, "passed target replay"):
+            self.store.record_evaluation(
+                candidate,
+                manifest,
+                baseline,
+                candidate_artifact,
+                evidence,
+            )
+
+        failed_replay = self._target_replay_artifact(
+            experience,
+            memory_id,
+            parent,
+            candidate,
+            passed=False,
+        )
+        failed_record = self.store.record_target_replay(
+            candidate,
+            failed_replay,
+            created_by="reviewer",
+        )
+        self.assertEqual(failed_record["status"], "failed")
+        with self.assertRaisesRegex(ValueError, "passed target replay"):
+            self.store.record_evaluation(
+                candidate,
+                manifest,
+                baseline,
+                candidate_artifact,
+                evidence,
+            )
+
+        passed_replay = self._target_replay_artifact(
+            experience,
+            memory_id,
+            parent,
+            candidate,
+        )
+        passed_record = self.store.record_target_replay(
+            candidate,
+            passed_replay,
+            created_by="reviewer",
+        )
+        self.assertEqual(passed_record["status"], "passed")
+        decision = self.store.record_evaluation(
+            candidate,
+            manifest,
+            baseline,
+            candidate_artifact,
+            evidence,
+        )
+        self.assertTrue(decision["eligible_for_human_approval"], decision)
+
+    def test_legacy_policy_candidate_does_not_require_target_replay(self):
+        candidate = self._candidate()
+        parent = self.store.policy_record(candidate)["parent_version"]
+        manifest, _unused_baseline, _unused_candidate, evidence = (
+            _promotion_fixture()
+        )
+        decision = self.store.record_evaluation(
+            candidate,
+            manifest,
+            _evaluation_artifact(_report(parent, 0.4, 0.8, 4), manifest),
+            _evaluation_artifact(_report(candidate, 0.9, 0.8, 9), manifest),
+            evidence,
+        )
+
+        self.assertEqual(self.store.latest_target_replay(candidate), {})
+        self.assertTrue(decision["eligible_for_human_approval"], decision)
 
     def test_query_result_snapshot_returns_scope_and_version_pins(self):
         version_pins = {
@@ -806,12 +1382,26 @@ class EvolutionStoreTests(unittest.TestCase):
             "dataset_sha256": "artifact-sha",
         }
         artifact = {
+            "contract_version": EVALUATION_ARTIFACT_CONTRACT_VERSION,
+            "status": "complete",
             "dataset_id": manifest["dataset_id"],
             "dataset_sha256": manifest["dataset_sha256"],
             "evaluated_splits": ["validation", "sealed_holdout"],
             "evaluated_case_count": "20",
             "model": {},
-            "report": {},
+            "runtime": dict(
+                build_runtime_identity(token_budget=4096, time_budget=60)
+            ),
+            "principals": ["local-user"],
+            "report": {
+                "version_pins": {
+                    "database_snapshot_id": SNAPSHOT["snapshot_id"],
+                    "wiki_index_version": "wiki-test",
+                    "vanna_index_version": "wiki-test",
+                    "memory_snapshot_id": "memory-test",
+                    "policy_version": self.store.active_policy_version,
+                }
+            },
         }
 
         with self.assertRaisesRegex(ValueError, "evaluated_case_count"):
@@ -857,26 +1447,6 @@ class EvolutionStoreTests(unittest.TestCase):
             "Leader 不应选择空候选。",
         )
 
-    def test_question_sql_rejection_requires_and_persists_review_note(self):
-        experience_id = self.store.add_experience_candidate(
-            "task-1",
-            "统计案例数量",
-            "SELECT COUNT(*) FROM t_caseinfo",
-            source_kind="human_confirmed_query",
-            eligible=True,
-        )
-        with self.assertRaisesRegex(ValueError, "rejection reason"):
-            self.store.review_experience(
-                experience_id, "reject", "reviewer"
-            )
-        rejected = self.store.review_experience(
-            experience_id,
-            "reject",
-            "reviewer",
-            review_note="案例口径不正确。",
-        )
-        self.assertEqual(rejected["state"], "rejected")
-        self.assertEqual(rejected["review_note"], "案例口径不正确。")
 
     def test_candidate_must_change_exactly_its_declared_skill(self):
         unchanged = self.store.get_policy().as_dict()
@@ -1003,6 +1573,8 @@ class EvolutionStoreTests(unittest.TestCase):
                     for index in range(count)
                 )
             return {
+                "contract_version": EVALUATION_ARTIFACT_CONTRACT_VERSION,
+                "status": "complete",
                 "dataset_id": manifest["dataset_id"],
                 "dataset_sha256": manifest["dataset_sha256"],
                 "evaluated_splits": ["train", "validation", "sealed_holdout"],
@@ -1013,6 +1585,10 @@ class EvolutionStoreTests(unittest.TestCase):
                     "model": "scripted",
                     "temperature": 0,
                 },
+                "runtime": dict(
+                    build_runtime_identity(token_budget=4096, time_budget=60)
+                ),
+                "principals": ["local-user"],
                 "report": {
                     "version_pins": {
                         "database_snapshot_id": SNAPSHOT["snapshot_id"],
@@ -1044,7 +1620,28 @@ class EvolutionStoreTests(unittest.TestCase):
         self.assertEqual(self.store.get_memory(memory_id)["state"], "evaluated")
         self.assertEqual(self.store.stable_memory("sql-generation"), ())
         activated = self.store.activate_memory(
-            memory_id, "publisher", "240 cases passed", True
+            memory_id,
+            "publisher",
+            "240 cases passed",
+            True,
+            current_version_pins={
+                "database_snapshot_id": SNAPSHOT["snapshot_id"],
+                "wiki_index_version": "wiki-test",
+                "vanna_index_version": "wiki-test",
+                "memory_snapshot_id": stable_before,
+                "policy_version": self.store.active_policy_version,
+            },
+            current_evaluation_identity={
+                "model": {
+                    "provider": "scripted",
+                    "model": "scripted",
+                    "temperature": 0,
+                },
+                "runtime": dict(
+                    build_runtime_identity(token_budget=4096, time_budget=60)
+                ),
+                "principals": ["local-user"],
+            },
         )
         self.assertEqual(activated["state"], "stable")
         self.assertNotEqual(stable_before, self.store.memory_snapshot_id)
@@ -1065,23 +1662,31 @@ class EvolutionStoreTests(unittest.TestCase):
             "release_eligible": False,
             "review_status": "machine_validated_pending_human_review",
             "human_reviewed_cases": 0,
+            "files": {
+                "validation": {"case_count": 10},
+                "sealed_holdout": {"case_count": 10},
+            },
         }
         blocked = self.store.record_evaluation(
-            candidate, manifest, base_report, candidate_report
+            candidate,
+            manifest,
+            _evaluation_artifact(base_report, manifest),
+            _evaluation_artifact(candidate_report, manifest),
         )
         self.assertFalse(blocked["eligible_for_human_approval"])
         self.assertIn("dataset_not_human_reviewed", blocked["reasons"])
         manifest["release_eligible"] = True
         manifest["review_status"] = "human_reviewed"
+        manifest["human_reviewed_cases"] = 20
         ready = self.store.record_evaluation(
             candidate,
             manifest,
-            base_report,
-            candidate_report,
+            _evaluation_artifact(base_report, manifest),
+            _evaluation_artifact(candidate_report, manifest),
             {
                 "verified": True,
                 "dataset_sha256": "abc",
-                "reviewed_case_count": 0,
+                "reviewed_case_count": 20,
                 "certificate_sha256": "certificate-hash",
             },
         )
@@ -1121,12 +1726,11 @@ class RuntimeRestrictionTests(unittest.TestCase):
         root = Path(cls.temporary.name)
         cls.root = root
         cls.database = root / "eval.sqlite3"
-        cls.knowledge = root / "knowledge.sqlite3"
+        cls.vanna = root / "vanna"
         build_sqlite_database(
             PROJECT_ROOT / "database" / "test1_full_20241118.sql", cls.database
         )
-        with KnowledgeStore(cls.knowledge) as store:
-            store.ingest_database(SNAPSHOT, JOIN_CATALOG)
+        cls.vanna_version = build_test_corpus(cls.vanna, SNAPSHOT, JOIN_CATALOG)
 
     @classmethod
     def tearDownClass(cls):
@@ -1136,7 +1740,8 @@ class RuntimeRestrictionTests(unittest.TestCase):
         suite = Text2SQLToolSuite(
             database_path=self.database,
             snapshot=SNAPSHOT,
-            knowledge_store_path=self.knowledge,
+            vanna_index_root=self.vanna,
+            vanna_index_version=self.vanna_version,
             principals=["local-user"],
             memory_snapshot_id="memory-test",
             policy_version="policy-test",
@@ -1158,32 +1763,74 @@ class RuntimeRestrictionTests(unittest.TestCase):
             store.review_memory(memory_id, "approve", "reviewer", True)
             with store.connection:
                 store.connection.execute(
-                    "UPDATE memory_items SET state='evaluated' WHERE memory_id=?",
+                    "UPDATE memory_items SET state='stable' WHERE memory_id=?",
                     (memory_id,),
                 )
-            store.activate_memory(memory_id, "reviewer", "test release", True)
             policy = store.get_policy()
             engine = Text2SQLAgenticEngine(
                 client=object(),
                 database_path=self.database,
                 snapshot=SNAPSHOT,
-                knowledge_store_path=self.knowledge,
+                vanna_index_root=self.vanna,
+            vanna_index_version=self.vanna_version,
                 principals=["local-user"],
                 memory_snapshot_id=store.memory_snapshot_id,
                 policy_version=policy.version,
                 policy_artifact=policy,
-                stable_memory_provider=store.stable_memory,
+                memory_snapshot_bundle=store.runtime_memory_snapshot(),
             )
         self.assertEqual(len(engine._stable_memory["query-planning"]), 1)
         self.assertEqual(engine._stable_memory["schema-grounding"], ())
-        self.assertEqual(
-            [item["memory_id"] for item in engine._relevant_memory(
-                "query-planning", "按岩爆等级统计案例数量"
-            )],
-            [memory_id],
+        relevant = engine._relevant_memory(
+            "query-planning", "按岩爆等级统计案例数量"
         )
+        self.assertEqual([item["memory_id"] for item in relevant], [memory_id])
+        self.assertNotIn("source_case_ids", relevant[0]["rule"])
+        self.assertNotIn("observations", relevant[0]["rule"])
         self.assertEqual(
             engine._relevant_memory("query-planning", "列出施工单位名称"), []
+        )
+
+    def test_engine_does_not_reinject_memory_already_compiled_into_policy(self):
+        with Text2SQLEvolutionStore(
+            self.root / "runtime-policy-memory-filter.sqlite3", SNAPSHOT
+        ) as store:
+            memory_id = store.add_memory_candidate(
+                "query-planning",
+                "AGGREGATION_MISMATCH",
+                "State the result grain before choosing the count expression.",
+                {"source": "production-correction"},
+                "production_feedback",
+            )
+            store.review_memory(memory_id, "approve", "reviewer", True)
+            with store.connection:
+                store.connection.execute(
+                    "UPDATE memory_items SET state='stable' WHERE memory_id=?",
+                    (memory_id,),
+                )
+            policy = store.get_policy()
+            engine = Text2SQLAgenticEngine(
+                client=object(),
+                database_path=self.database,
+                snapshot=SNAPSHOT,
+                vanna_index_root=self.vanna,
+            vanna_index_version=self.vanna_version,
+                principals=["local-user"],
+                memory_snapshot_id=store.memory_snapshot_id,
+                policy_version=policy.version,
+                policy_artifact=policy,
+                policy_source_memory_ids=(memory_id,),
+                memory_snapshot_bundle=store.runtime_memory_snapshot(),
+            )
+
+        self.assertEqual(
+            engine._relevant_memory(
+                "query-planning", "按岩爆等级统计案例数量"
+            ),
+            [],
+        )
+        self.assertEqual(
+            engine.runtime_identity["policy_source_memory_ids"], [memory_id]
         )
 
 

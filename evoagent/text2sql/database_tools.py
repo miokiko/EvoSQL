@@ -11,10 +11,10 @@ from typing import Any, Mapping, Optional, Sequence
 
 from ..runtime import AgentTool, ToolRegistry
 from ..telemetry import ExecutionLedger
-from .knowledge_store import KnowledgeStore, ROLE_VIEWS
 from .sql_safety import ReadOnlySQLiteExecutor, validate_sql
 from .sqlite_database import open_readonly
-from .vanna_retriever import VannaRetrieverOnly
+from .vanna_corpus import ROLE_VIEWS, VannaCorpus
+from .vanna_retriever import VannaRetrieval
 
 
 # Persistent Chroma clients can race while opening the same local index. The
@@ -75,7 +75,6 @@ class Text2SQLToolSuite:
         *,
         database_path: Path,
         snapshot: Mapping[str, Any],
-        knowledge_store_path: Path,
         vanna_index_root: Optional[Path] = None,
         vanna_index_version: str = "",
         principals: Sequence[str],
@@ -87,7 +86,6 @@ class Text2SQLToolSuite:
     ) -> None:
         self.database_path = database_path.resolve()
         self.snapshot = snapshot
-        self.knowledge_store_path = knowledge_store_path.resolve()
         self.vanna_index_root = vanna_index_root.resolve() if vanna_index_root else None
         self.vanna_index_version = str(vanna_index_version or "")
         self.principals = tuple(principals)
@@ -98,9 +96,13 @@ class Text2SQLToolSuite:
             self.database_path, snapshot, max_rows=max_rows, timeout_ms=timeout_ms
         )
         self.tables = {table["name"]: table for table in snapshot["tables"]}
-        with KnowledgeStore(self.knowledge_store_path) as store:
-            if store.database_snapshot_id() != snapshot["snapshot_id"]:
-                raise ValueError("knowledge store and database snapshot do not match")
+        if not self.vanna_index_root or not self.vanna_index_version:
+            raise ValueError("Vanna corpus is not built; run scripts/build_text2sql_vanna.py")
+        self.vanna_corpus = VannaCorpus(self.vanna_index_root, self.vanna_index_version)
+        if self.vanna_corpus.database_snapshot_id != snapshot["snapshot_id"]:
+            raise ValueError("Vanna corpus and database snapshot do not match")
+        if not self.vanna_corpus.retriever.corpus_items():
+            raise ValueError("Vanna corpus is empty; rebuild the pinned index")
 
     def _result(self, tool: str, arguments: Mapping[str, Any], output: Any) -> Mapping[str, Any]:
         safe_output = _json_value(output)
@@ -151,80 +153,113 @@ class Text2SQLToolSuite:
         return call
 
     def _retrieve(self, role_view: str, query: str, limit: int = 0) -> Mapping[str, Any]:
-        with KnowledgeStore(self.knowledge_store_path) as store:
-            pack = store.retrieve(
-                query,
-                role_view,
-                self.principals,
-                self.memory_snapshot_id,
-                self.policy_version,
+        with _VANNA_RETRIEVAL_LOCK:
+            pack, diagnostics = self.vanna_corpus.retrieve(
+                query, role_view, self.memory_snapshot_id, self.policy_version,
                 limit=limit or None,
             )
-            target_limit = limit or int(ROLE_VIEWS[role_view]["limit"])
-            vanna = None
-            semantic = ()
-            if self.vanna_index_root and self.vanna_index_version:
-                with _VANNA_RETRIEVAL_LOCK:
-                    retriever = VannaRetrieverOnly(
-                        self.vanna_index_root,
-                        self.vanna_index_version,
-                    )
-                    vanna = retriever.retrieve(query)
-                # Vanna is a semantic recall signal, not the authority scorer.
-                # Keep its reciprocal-rank bonus deliberately below a strong
-                # lexical/value match so a loose vector hit cannot displace an
-                # exact database fact.
-                semantic_scores = {
-                    evidence_id: round(5.0 / (index + 1), 6)
-                    for index, evidence_id in enumerate(vanna.evidence_ids)
-                }
-                semantic = store.resolve_stable_evidence(
-                    vanna.evidence_ids,
-                    self.principals,
-                    semantic_scores,
-                )
+        return {**dict(pack.as_dict()), "retrieval": dict(diagnostics)}
 
-        # Merge vector hits with deterministic lexical/graph retrieval.  The
-        # relational store has already re-authorized every semantic hit.
-        weighted: dict[str, Mapping[str, Any]] = {
-            item.evidence_id: item.as_dict() for item in pack.evidence
-        }
-        type_weights = ROLE_VIEWS[role_view]["weights"]
-        for item in semantic:
-            if float(type_weights.get(item.knowledge_type, 0.0)) <= 0:
-                continue
-            value = item.as_dict()
-            value["score"] = round(
-                float(value["score"]) * float(type_weights[item.knowledge_type]), 6
-            )
-            current = weighted.get(item.evidence_id)
-            if current is None:
-                weighted[item.evidence_id] = value
-            else:
-                combined = dict(current)
-                combined["score"] = round(
-                    float(current.get("score") or 0) + float(value["score"]), 6
-                )
-                weighted[item.evidence_id] = combined
-        selected = sorted(
-            weighted.values(),
-            key=lambda item: (-float(item.get("score") or 0), str(item["evidence_id"])),
-        )[:target_limit]
-        result = dict(pack.as_dict())
-        result["evidence"] = selected
-        result["retrieval"] = (
-            vanna.diagnostics()
-            if vanna is not None
-            else {
-                "backend": "knowledge-store-only",
-                "index_version": self.vanna_index_version,
-                "ddl_count": 0,
-                "documentation_count": 0,
-                "question_sql_count": 0,
-                "evidence_ids": [],
-            }
+    def retrieve_for_orchestration(
+        self, role_view: str, query: str, limit: int = 0
+    ) -> Mapping[str, Any]:
+        """Run one Harness-owned, role-specific evidence retrieval."""
+
+        if role_view not in {"schema-grounding", "query-planning"}:
+            raise ValueError("unsupported orchestration role view: %s" % role_view)
+        call = self._recorded(
+            "text2sql-evidence-orchestrator",
+            "retrieve_knowledge",
+            lambda role_view, query, limit=0: self._retrieve(
+                role_view, query, limit
+            ),
         )
-        return result
+        return call(role_view=role_view, query=query, limit=limit)
+
+    def retrieve_vanna_draft_context(
+        self, query: str
+    ) -> tuple[VannaRetrieval, Mapping[str, Any]]:
+        """Freeze one Vanna DDL/document/example context for Node 2.
+
+        This is a Harness-owned operation rather than an Agent tool.  The raw
+        bodies are returned only to the request-scoped draft generator; the
+        persisted tool record contains bounded diagnostics and evidence ids,
+        never the retrieved Question-SQL bodies.
+        """
+
+        arguments = {
+            "query": str(query),
+            "include_ddl": True,
+            "include_documentation": True,
+            "include_question_sql": True,
+        }
+        started = time.monotonic()
+        try:
+            with _VANNA_RETRIEVAL_LOCK:
+                retrieval = self.vanna_corpus.retriever.retrieve(
+                    str(query),
+                    include_ddl=True,
+                    include_documentation=True,
+                    include_question_sql=True,
+                )
+            output = {
+                "contract": "VannaDraftContext/v1",
+                **dict(retrieval.diagnostics()),
+            }
+            result = self._result("retrieve_vanna_draft_context", arguments, output)
+            if self.ledger:
+                self.ledger.record_tool(
+                    "text2sql-evidence-orchestrator",
+                    "retrieve_vanna_draft_context",
+                    arguments,
+                    True,
+                    int((time.monotonic() - started) * 1000),
+                    result,
+                )
+            return retrieval, result
+        except Exception as exc:
+            if self.ledger:
+                self.ledger.record_tool(
+                    "text2sql-evidence-orchestrator",
+                    "retrieve_vanna_draft_context",
+                    arguments,
+                    False,
+                    int((time.monotonic() - started) * 1000),
+                    error=str(exc),
+                )
+            raise
+
+    def retrieve_verified_examples(
+        self, query: str, limit: int = 8
+    ) -> Mapping[str, Any]:
+        """Retrieve user-confirmed Question-SQL after semantic plan approval.
+
+        This is a Harness capability, not a registered Agent tool.  In the
+        single-user path the Question-SQL body and its trace metadata are both
+        read from the pinned Vanna corpus.
+        """
+
+        bounded = max(1, min(int(limit), 20))
+        with _VANNA_RETRIEVAL_LOCK:
+            examples, diagnostics = self.vanna_corpus.retrieve_verified_examples(
+                query, bounded
+            )
+        if self.ledger:
+            self.ledger.trace(
+                "text2sql-sql-generation",
+                "verified_examples_retrieved",
+                candidate_count=len(examples),
+                evidence_ids=[item["evidence_id"] for item in examples],
+                vanna_ready=True,
+            )
+        return {
+            "contract": "VerifiedExampleCandidates/v1",
+            "database_snapshot_id": self.snapshot["snapshot_id"],
+            "knowledge_index_version": self.vanna_index_version,
+            "vanna_index_version": self.vanna_index_version,
+            "examples": [dict(item) for item in examples],
+            "retrieval": dict(diagnostics),
+        }
 
     def _inspect_schema(self, table: str) -> Mapping[str, Any]:
         if table not in self.tables:
@@ -285,8 +320,8 @@ class Text2SQLToolSuite:
         role_view = {
             "text2sql-lead": "lead",
             "schema-grounding": "schema-grounding",
-            "query-planning": "sql-strategy",
-            "sql-generation": "sql-strategy",
+            "query-planning": "query-planning",
+            "sql-generation": "query-planning",
             "text2sql-critic": "critic",
             "text2sql-harness": "lead",
         }[canonical_role]

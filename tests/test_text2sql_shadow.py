@@ -3,6 +3,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from evoagent.text2sql.agentic import build_runtime_identity
+from evoagent.text2sql.evaluation import EVALUATION_ARTIFACT_CONTRACT_VERSION
 from evoagent.text2sql.evolution import Text2SQLEvolutionStore
 from evoagent.text2sql.shadow import (
     Text2SQLShadowReleaseManager,
@@ -22,6 +24,7 @@ def _evaluation_report(policy_version, validation_passed):
     pins = {
         "database_snapshot_id": SNAPSHOT["snapshot_id"],
         "wiki_index_version": "stable-wiki-shadow-test",
+        "vanna_index_version": "stable-wiki-shadow-test",
         "memory_snapshot_id": "memory-shadow-test",
         "policy_version": policy_version,
     }
@@ -56,6 +59,29 @@ def _evaluation_report(policy_version, validation_passed):
             for index in range(10)
         )
     return {"version_pins": pins, "overall": {}, "splits": splits, "outcomes": outcomes}
+
+
+def _evaluation_artifact(report, manifest):
+    return {
+        "contract_version": EVALUATION_ARTIFACT_CONTRACT_VERSION,
+        "status": "complete",
+        "dataset_id": manifest["dataset_id"],
+        "dataset_sha256": manifest["dataset_sha256"],
+        "evaluated_splits": ["validation", "sealed_holdout"],
+        "evaluated_case_count": 20,
+        "model": {
+            "provider": "scripted",
+            "model": "scripted",
+            "temperature": 0,
+        },
+        "runtime": dict(
+            build_runtime_identity(token_budget=4096, time_budget=60)
+        ),
+        "principals": ["local-user"],
+        "memory_candidate_id": "",
+        "experience_candidate_id": "",
+        "report": report,
+    }
 
 
 def _online_result(sql="SELECT 1", value=1, wiki="wiki:private-page"):
@@ -120,8 +146,12 @@ class ShadowReleaseTests(unittest.TestCase):
         self.store.record_evaluation(
             self.candidate,
             manifest,
-            _evaluation_report(self.baseline, 4),
-            _evaluation_report(self.candidate, 9),
+            _evaluation_artifact(
+                _evaluation_report(self.baseline, 4), manifest
+            ),
+            _evaluation_artifact(
+                _evaluation_report(self.candidate, 9), manifest
+            ),
             {
                 "verified": True,
                 "dataset_sha256": "shadow-sha",
@@ -132,8 +162,20 @@ class ShadowReleaseTests(unittest.TestCase):
         self.pins = {
             "database_snapshot_id": SNAPSHOT["snapshot_id"],
             "wiki_index_version": "stable-wiki-shadow-test",
+            "vanna_index_version": "stable-wiki-shadow-test",
             "memory_snapshot_id": "memory-shadow-test",
             "policy_version": self.baseline,
+        }
+        self.identity = {
+            "model": {
+                "provider": "scripted",
+                "model": "scripted",
+                "temperature": 0,
+            },
+            "runtime": dict(
+                build_runtime_identity(token_budget=4096, time_budget=60)
+            ),
+            "principals": ["local-user"],
         }
 
     def tearDown(self):
@@ -150,6 +192,7 @@ class ShadowReleaseTests(unittest.TestCase):
             max_candidate_failure_rate=0.0,
             max_result_disagreement_rate=0.2,
             max_p95_latency_multiplier=5.0,
+            current_evaluation_identity=self.identity,
         )
 
     def test_shadow_review_canary_and_manual_activation_lifecycle(self):
@@ -161,6 +204,8 @@ class ShadowReleaseTests(unittest.TestCase):
             "task-shadow-1",
             lambda _question: stable,
             lambda _version: lambda _question: candidate,
+            self.pins,
+            self.identity,
         )
         self.assertEqual(result["final_sql"], "SELECT 1")
         self.assertFalse(result["release"]["candidate_output_used"])
@@ -194,11 +239,18 @@ class ShadowReleaseTests(unittest.TestCase):
             "task-canary-1",
             lambda _question: stable,
             lambda _version: lambda _question: candidate,
+            self.pins,
+            self.identity,
         )
         self.assertTrue(canary_result["release"]["candidate_output_used"])
         self.assertEqual(canary_result["release"]["deployment_status"], "canary_passed")
         self.store.activate_policy(
-            self.candidate, "human-reviewer", "Canary completed without failures.", True
+            self.candidate,
+            "human-reviewer",
+            "Canary completed without failures.",
+            True,
+            current_version_pins=self.pins,
+            current_evaluation_identity=self.identity,
         )
         self.assertEqual(self.store.active_policy_version, self.candidate)
         self.assertEqual(
@@ -235,6 +287,8 @@ class ShadowReleaseTests(unittest.TestCase):
             "task-failure",
             lambda _question: _online_result(),
             lambda _version: failed_candidate,
+            self.pins,
+            self.identity,
         )
         self.assertEqual(result["status"], "success")
         self.assertEqual(result["release"]["deployment_status"], "rolled_back")
@@ -251,12 +305,14 @@ class ShadowReleaseTests(unittest.TestCase):
 
     def test_assignment_is_deterministic_and_defaults_to_five_percent_shadow(self):
         self._configure(min_samples=1000, shadow_percent=5)
-        first = self.release.assignment("same-task")
-        second = self.release.assignment("same-task")
+        first = self.release.assignment("same-task", self.pins, self.identity)
+        second = self.release.assignment("same-task", self.pins, self.identity)
         self.assertEqual(first["bucket"], second["bucket"])
         self.assertEqual(first["shadow"], second["shadow"])
         sampled = sum(
-            self.release.assignment("task-%d" % index)["shadow"]
+            self.release.assignment(
+                "task-%d" % index, self.pins, self.identity
+            )["shadow"]
             for index in range(1000)
         )
         self.assertGreater(sampled, 20)
@@ -274,7 +330,9 @@ class ShadowReleaseTests(unittest.TestCase):
         deployment = self._configure(min_samples=10)
         drifted = dict(self.pins)
         drifted["wiki_index_version"] = "stable-wiki-changed"
-        assignment = self.release.assignment("task-after-wiki-change", drifted)
+        assignment = self.release.assignment(
+            "task-after-wiki-change", drifted, self.identity
+        )
         self.assertFalse(assignment["shadow"])
         self.assertEqual(
             self.release.get_deployment(deployment["deployment_id"])["status"],

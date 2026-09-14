@@ -7,6 +7,7 @@ import json
 import os
 import subprocess
 import sys
+import threading
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -20,24 +21,41 @@ from .agentic import (
     TEXT2SQL_PROTOCOL,
     TEXT2SQL_RUNTIME_NODES,
     Text2SQLAgenticEngine,
+    build_runtime_identity,
 )
 from .checkpoint_store import Text2SQLRuntimeCheckpointStore
 from .database_tools import ROLE_TOOL_PERMISSIONS
 from .evaluation import load_dataset
 from .evolution import Text2SQLEvolutionStore
-from .knowledge_store import KnowledgeStore
 from .memory_attribution import attribute_query_failure
+from .memory_service import (
+    MemoryWriteStatus,
+    extract_user_correction_experiences,
+    finalize_run,
+    production_experience_source,
+)
 from .memory_release import (
     REQUIRED_MEMORY_EVALUATION_SPLITS,
     find_matching_baseline,
 )
 from .policy import TEXT2SQL_SKILLS
+from .policy_generator import Text2SQLPolicyCandidateGenerator
+from .semantic_rules import generate_semantic_rule, propose_policy_from_rules
+from .query_outcome import clarification_continuation, diagnose_result
 from .shadow import Text2SQLShadowReleaseManager
 from .sql_safety import validate_sql
+from .vanna_corpus import (
+    DEFAULT_EXCLUDED_TABLES,
+    add_confirmed_question_sql,
+    build_vanna_corpus,
+    question_sql_registry_path,
+    remove_confirmed_question_sql,
+)
 from .vanna_retriever import VannaRetrieverOnly
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+_VANNA_PUBLISH_LOCK = threading.RLock()
 
 SKILL_DESCRIPTIONS = {
     "text2sql-lead": "负责查询路由、任务委派、语义计划审批与最终候选选择。",
@@ -46,6 +64,151 @@ SKILL_DESCRIPTIONS = {
     "sql-generation": "仅将已批准的查询计划翻译为只读 SQL 候选。",
     "text2sql-critic": "独立盲审 SQL 候选，对语义错误和安全风险执行否决。",
 }
+
+
+_EXPERIENCE_MEMORY_CONTRACT = "ExperienceMemory/v1"
+_EXPERIENCE_POLICY_CONTRACT = "ExperiencePolicyProposal/v1"
+_EXPERIENCE_STATES = ("candidate", "confirmed", "needs_evidence", "rejected")
+
+
+def _experience_memory_counts(
+    memories: Sequence[Mapping[str, Any]],
+) -> Mapping[str, int]:
+    """Count only the new Experience contract, excluding legacy runtime hints."""
+
+    counts = {state: 0 for state in _EXPERIENCE_STATES}
+    for item in memories:
+        rule = item.get("rule")
+        if not isinstance(rule, Mapping) or rule.get("contract") != _EXPERIENCE_MEMORY_CONTRACT:
+            continue
+        state = str(item.get("state") or "")
+        if state in counts:
+            counts[state] += 1
+    return counts
+
+
+def _policy_records_for_ui(
+    evolution: Text2SQLEvolutionStore,
+) -> Sequence[Mapping[str, Any]]:
+    """Return policy lineage with proposal metadata and optional target replay.
+
+    Newer stores may expose both fields directly.  The metadata fallback keeps
+    the Web facade compatible with the current SQLite store during migration.
+    """
+
+    records = [dict(item) for item in evolution.list_policies()]
+    metadata_by_version: dict[str, Mapping[str, Any]] = {}
+    try:
+        rows = evolution.connection.execute(
+            "SELECT policy_version,proposal_metadata_json FROM policy_versions"
+        ).fetchall()
+        for row in rows:
+            try:
+                decoded = json.loads(str(row["proposal_metadata_json"] or "{}"))
+            except (TypeError, ValueError, json.JSONDecodeError):
+                decoded = {}
+            if isinstance(decoded, Mapping):
+                metadata_by_version[str(row["policy_version"])] = dict(decoded)
+    except Exception:
+        # An older store without proposal metadata remains readable.
+        metadata_by_version = {}
+
+    replay_reader = getattr(evolution, "latest_target_replay", None)
+    if not callable(replay_reader):
+        replay_reader = getattr(evolution, "get_latest_target_replay", None)
+
+    public_records = []
+    for raw in records:
+        item = dict(raw)
+        version = str(item.get("policy_version") or "")
+        metadata = item.get("proposal_metadata")
+        if not isinstance(metadata, Mapping):
+            metadata = metadata_by_version.get(version, {})
+        item["proposal_metadata"] = dict(metadata)
+        replay = item.get("target_replay")
+        if not isinstance(replay, Mapping) and callable(replay_reader):
+            try:
+                replay = replay_reader(version)
+            except (TypeError, ValueError):
+                replay = None
+        item["target_replay"] = dict(replay) if isinstance(replay, Mapping) else {}
+        public_records.append(item)
+    return tuple(public_records)
+
+
+def _trace_with_compiled_policy_sources(
+    evolution: Text2SQLEvolutionStore,
+    trace: Mapping[str, Any],
+) -> Mapping[str, Any]:
+    """Rehydrate non-persisted Policy provenance before feedback extraction."""
+
+    pins = trace.get("version_pins")
+    policy_version = str(
+        (pins.get("policy_version") if isinstance(pins, Mapping) else "") or ""
+    )
+    try:
+        memory_ids = list(evolution.policy_source_memory_ids(policy_version or None))
+    except (TypeError, ValueError):
+        memory_ids = []
+    return {**dict(trace), "policy_source_memory_ids": memory_ids}
+
+
+def _production_feedback_eligible(trace: Mapping[str, Any]) -> bool:
+    """Only a successful, gate-approved stable user query may teach the system."""
+
+    return bool(
+        production_experience_source(
+            str(trace.get("origin") or ""),
+            str(trace.get("source_lane") or ""),
+        )
+        and str(trace.get("status") or "") == "success"
+        and str(trace.get("query_type") or "DATA_QUERY") == "DATA_QUERY"
+        and str(trace.get("final_sql") or "").strip()
+        and bool((trace.get("gates") or {}).get("accepted"))
+    )
+
+
+def _feedback_skip_reason(trace: Mapping[str, Any]) -> str:
+    if not production_experience_source(
+        str(trace.get("origin") or ""),
+        str(trace.get("source_lane") or ""),
+    ):
+        return "non_production_source"
+    return "source_run_not_experience_eligible"
+
+
+def _prompt_fragment_change(
+    evolution: Text2SQLEvolutionStore,
+    policy: Mapping[str, Any],
+) -> Mapping[str, Any]:
+    """Project the bounded same-Agent Prompt change without exposing artifacts."""
+
+    target_agent = str(policy.get("target_skill") or "")
+    version = str(policy.get("policy_version") or "")
+    parent_version = str(policy.get("parent_version") or "")
+    if target_agent not in TEXT2SQL_SKILLS or not version or not parent_version:
+        return {}
+    try:
+        before = str(
+            evolution.get_policy(parent_version)
+            .role_policy(target_agent)
+            .get("prompt_fragment")
+            or ""
+        )[:4000]
+        after = str(
+            evolution.get_policy(version)
+            .role_policy(target_agent)
+            .get("prompt_fragment")
+            or ""
+        )[:4000]
+    except (TypeError, ValueError):
+        return {}
+    return {
+        "target_agent": target_agent,
+        "before": before,
+        "after": after,
+        "changed": before != after,
+    }
 
 
 def _project_path(environment_name: str, default: str) -> Path:
@@ -183,8 +346,9 @@ class Text2SQLWebService:
         llm_config: Optional[Mapping[str, Any]] = None,
         database_path: Optional[Path] = None,
         snapshot_path: Optional[Path] = None,
-        knowledge_store_path: Optional[Path] = None,
         vanna_index_root: Optional[Path] = None,
+        business_knowledge_root: Optional[Path] = None,
+        join_catalog_path: Optional[Path] = None,
         evolution_store_path: Optional[Path] = None,
         checkpoint_store_path: Optional[Path] = None,
         dataset_path: Optional[Path] = None,
@@ -208,13 +372,17 @@ class Text2SQLWebService:
             "EVOAGENT_TEXT2SQL_SCHEMA_SNAPSHOT",
             "artifacts/text2sql/schema/database_snapshot.json",
         )
-        self.knowledge_store_path = knowledge_store_path or _project_path(
-            "EVOAGENT_TEXT2SQL_KNOWLEDGE_STORE",
-            "artifacts/text2sql/knowledge/knowledge.sqlite3",
-        )
         self.vanna_index_root = vanna_index_root or _project_path(
             "EVOAGENT_TEXT2SQL_VANNA_ROOT",
             "artifacts/text2sql/vanna",
+        )
+        self.business_knowledge_root = business_knowledge_root or _project_path(
+            "EVOAGENT_TEXT2SQL_BUSINESS_ROOT",
+            "knowledge/business",
+        )
+        self.join_catalog_path = join_catalog_path or _project_path(
+            "EVOAGENT_TEXT2SQL_JOIN_CATALOG",
+            "artifacts/text2sql/schema/join_catalog.review.json",
         )
         self.evolution_store_path = evolution_store_path or _project_path(
             "EVOAGENT_TEXT2SQL_EVOLUTION_STORE",
@@ -235,10 +403,72 @@ class Text2SQLWebService:
     def model_ready(self) -> bool:
         return self.client is not None and bool(self.llm_config)
 
+    def _join_catalog(self) -> Optional[Mapping[str, Any]]:
+        if not self.join_catalog_path.exists():
+            return None
+        value = json.loads(self.join_catalog_path.read_text(encoding="utf-8"))
+        if not isinstance(value, Mapping):
+            raise ValueError("Join Catalog must be a JSON object")
+        return value
+
+    def _vanna_version(self) -> str:
+        return VannaRetrieverOnly.current_index_version(self.vanna_index_root)
+
+    def _vanna_status(self) -> Mapping[str, Any]:
+        version = self._vanna_version()
+        if not version:
+            return {
+                "enabled": True,
+                "ready": False,
+                "mode": "retriever_only",
+                "generation_enabled": False,
+                "sql_execution_enabled": False,
+                "node2_draft_mode": "frozen_retrieval_untrusted_no_execute",
+                "node2_draft_generation_enabled": True,
+                "node2_draft_sql_execution_enabled": False,
+                "index_version": "",
+                "counts": {},
+                "corpus_counts": {},
+                "database_snapshot_id": "",
+            }
+        return {
+            **dict(VannaRetrieverOnly(self.vanna_index_root, version).status()),
+            "node2_draft_mode": "frozen_retrieval_untrusted_no_execute",
+            "node2_draft_generation_enabled": True,
+            "node2_draft_sql_execution_enabled": False,
+        }
+
+    def _build_vanna(self, snapshot: Mapping[str, Any]) -> Mapping[str, Any]:
+        return build_vanna_corpus(
+            self.vanna_index_root,
+            snapshot,
+            business_root=self.business_knowledge_root,
+            join_catalog=self._join_catalog(),
+            question_sql_path=question_sql_registry_path(self.vanna_index_root),
+            enabled=True,
+        )
+
+    def _runtime_vanna_pin(
+        self, snapshot: Mapping[str, Any]
+    ) -> tuple[str, bool]:
+        status = dict(self._vanna_status())
+        version = str(status.get("index_version") or "")
+        if (
+            version
+            and status.get("ready")
+            and status.get("database_snapshot_id") == snapshot["snapshot_id"]
+        ):
+            return version, True
+        raise RuntimeError(
+            "Vanna 语料尚未构建或与当前 Schema Snapshot 不一致；"
+            "请先运行 scripts/build_text2sql_vanna.py"
+        )
+
     def _query_attempt_runtime_identity(
         self,
         version_pins: Mapping[str, str],
         conversation_context: Mapping[str, Any],
+        policy_source_memory_ids: Sequence[str] = (),
     ) -> Mapping[str, Any]:
         """Bind Web idempotency cache entries to the complete runtime release."""
 
@@ -248,6 +478,13 @@ class Text2SQLWebService:
             sort_keys=True,
             separators=(",", ":"),
             default=str,
+        )
+        runtime = build_runtime_identity(
+            token_budget=self.settings.agent_token_budget,
+            time_budget=self.settings.agent_time_budget_seconds,
+            max_rows=200,
+            timeout_ms=3000,
+            policy_source_memory_ids=policy_source_memory_ids,
         )
         return {
             "version_pins": dict(version_pins),
@@ -259,29 +496,32 @@ class Text2SQLWebService:
                 "model": str(getattr(self.client, "model", "unknown")),
                 "temperature": 0,
             },
-            "budgets": {
-                "token": self.settings.agent_token_budget,
-                "time": self.settings.agent_time_budget_seconds,
-                "max_rows": 200,
-                "timeout_ms": 3000,
-            },
-            "protocol": TEXT2SQL_PROTOCOL,
-            "nodes": list(TEXT2SQL_RUNTIME_NODES),
-            "build_version": BUILD_VERSION,
-            "gate_implementation_version": GATE_IMPLEMENTATION_VERSION,
+            **dict(runtime),
         }
 
     def status(self) -> Mapping[str, Any]:
         snapshot = self._snapshot()
         dataset_status: dict[str, Any]
         try:
-            dataset = load_dataset(self.dataset_path)
+            # The local console accepts the repository-owned reviewed dataset
+            # after validating every file hash, case attestation and checklist.
+            # Release/evaluation entry points keep load_dataset's strict default
+            # and still require the human-held HMAC key.
+            dataset = load_dataset(
+                self.dataset_path, require_review_signature=False
+            )
             dataset_status = {
                 "dataset_id": dataset.dataset_id,
                 "dataset_sha256": dataset.dataset_sha256,
                 "case_count": sum(dataset.split_counts.values()),
                 "split_counts": dict(dataset.split_counts),
                 "review_verified": bool(dataset.review_evidence.get("verified")),
+                "review_signature_verified": bool(
+                    dataset.review_evidence.get("signature_verified")
+                ),
+                "review_verification_mode": str(
+                    dataset.review_evidence.get("verification_mode") or ""
+                ),
                 "reviewed_case_count": int(
                     dataset.review_evidence.get("reviewed_case_count") or 0
                 ),
@@ -291,33 +531,68 @@ class Text2SQLWebService:
             }
         except Exception as exc:
             dataset_status = {"review_verified": False, "error": str(exc)[:500]}
-        with KnowledgeStore(self.knowledge_store_path) as knowledge:
-            knowledge_status = dict(knowledge.stats())
-            stable_index_version = knowledge.current_index_version("stable")
-        vanna_status = dict(
-            VannaRetrieverOnly(
-                self.vanna_index_root,
-                stable_index_version,
-            ).status()
-        )
+        vanna_status = dict(self._vanna_status())
+        corpus_counts = dict(vanna_status.get("corpus_counts") or {})
+        source_counts = dict(vanna_status.get("source_counts") or {})
+        knowledge_sources = {
+            "schema": {
+                "count": int(corpus_counts.get("schema") or 0),
+                "table_count": int((vanna_status.get("counts") or {}).get("ddl") or 0),
+                "value_count": int(corpus_counts.get("value") or 0),
+            },
+            "business_documents": {
+                "count": int(source_counts.get("business_document") or 0),
+                "root": "knowledge/business",
+            },
+            "question_sql": {
+                "count": int(source_counts.get("user_confirmed") or 0),
+            },
+            "approved_joins": {
+                "count": int(source_counts.get("join_catalog") or 0),
+            },
+            "excluded_tables": sorted(DEFAULT_EXCLUDED_TABLES),
+        }
         with Text2SQLEvolutionStore(self.evolution_store_path, snapshot) as evolution:
             release = Text2SQLShadowReleaseManager(evolution).status()
             experience_counts = {
                 state: len(evolution.list_experiences(state, 100))
                 for state in ("candidate", "ineligible", "promoted", "rejected")
             }
+            semantic_memories = list(evolution.list_memory())
+            semantic_experience_counts = dict(
+                _experience_memory_counts(semantic_memories)
+            )
+            policy_records = _policy_records_for_ui(evolution)
+            policy_candidates = [
+                {
+                    **dict(item),
+                    "prompt_fragment_change": dict(
+                        _prompt_fragment_change(evolution, item)
+                    ),
+                }
+                for item in policy_records
+                if (
+                    (item.get("proposal_metadata") or {}).get("contract")
+                    == _EXPERIENCE_POLICY_CONTRACT
+                    or (item.get("proposal_metadata") or {}).get("source")
+                    == "confirmed-experiences"
+                )
+            ][-12:]
             evolution_status = {
                 "active_policy_version": evolution.active_policy_version,
                 "memory_snapshot_id": evolution.memory_snapshot_id,
                 "stable_memory_count": len(evolution.list_memory("stable")),
                 "candidate_memory_count": len(evolution.list_memory("candidate")),
                 "experience_counts": experience_counts,
+                "semantic_experience_counts": semantic_experience_counts,
+                "policy_candidates": policy_candidates,
                 "release": release,
             }
         return {
             "ready": self.model_ready
             and self.database_path.exists()
-            and bool(dataset_status.get("review_verified")),
+            and bool(dataset_status.get("review_verified"))
+            and bool(vanna_status.get("ready")),
             "model": {
                 "configured": self.model_ready,
                 "requested_provider": self.settings.llm_provider,
@@ -332,7 +607,7 @@ class Text2SQLWebService:
                 "readonly": True,
             },
             "dataset": dataset_status,
-            "knowledge": knowledge_status,
+            "knowledge_sources": knowledge_sources,
             "vanna": vanna_status,
             "evolution": evolution_status,
             "roles": list(TEXT2SQL_SKILLS),
@@ -449,6 +724,95 @@ class Text2SQLWebService:
                 "next_step": "run_validation_and_sealed_holdout",
             }
 
+    def propose_policy_from_experiences(
+        self,
+        memory_ids: Sequence[str],
+        created_by: str,
+        change_reason: str = "",
+    ) -> Mapping[str, Any]:
+        """Compile explicitly selected Confirmed Experiences into one candidate."""
+
+        if not self.model_ready or self.client is None:
+            raise RuntimeError("configured LLM is required for Policy generation")
+        normalized_ids = tuple(
+            str(value).strip()[:200] for value in memory_ids if str(value).strip()
+        )
+        if not normalized_ids:
+            raise ValueError("at least one confirmed Experience is required")
+        if len(normalized_ids) > 50:
+            raise ValueError("at most 50 Experiences may generate one Policy")
+        if len(set(normalized_ids)) != len(normalized_ids):
+            raise ValueError("selected Experience ids must not contain duplicates")
+        snapshot = self._snapshot()
+        with Text2SQLEvolutionStore(self.evolution_store_path, snapshot) as evolution:
+            experiences = [evolution.get_memory(memory_id) for memory_id in normalized_ids]
+            parent = evolution.get_policy()
+            generated = Text2SQLPolicyCandidateGenerator(
+                self.client, self.settings.agent_token_budget
+            ).generate_from_confirmed_experiences(
+                experiences,
+                parent,
+                snapshot,
+            )
+            target_agent = str(generated["target_agent"])
+            reason = (
+                change_reason.strip()
+                or str(generated.get("rationale") or "").strip()
+                or "Confirmed Experience Policy proposal"
+            )
+            metadata = {
+                key: value
+                for key, value in generated.items()
+                if key not in {"artifact", "policy_version"}
+            }
+            metadata.update(
+                {
+                    "source": "confirmed-experiences",
+                    "contract": "ExperiencePolicyProposal/v1",
+                    "target_replay_required": True,
+                }
+            )
+            version = evolution.propose_policy(
+                generated["artifact"],
+                target_agent,
+                reason,
+                created_by,
+                parent.version,
+                metadata,
+            )
+            return {
+                "candidate_policy_version": version,
+                "parent_policy_version": parent.version,
+                "target_agent": target_agent,
+                "memory_ids": list(generated["memory_ids"]),
+                "clusters": list(generated["clusters"]),
+                "rationale": str(generated["rationale"]),
+                "generation": dict(generated["generation"]),
+                "status": "candidate",
+                "target_replay_status": "pending",
+                "next_step": "run_target_replay",
+            }
+
+    def generate_semantic_rule(self, memory_id: str, actor: str) -> Mapping[str, Any]:
+        if not self.model_ready or self.client is None:
+            raise RuntimeError("configured LLM is required for SemanticRule generation")
+        with Text2SQLEvolutionStore(self.evolution_store_path, self._snapshot()) as evolution:
+            return generate_semantic_rule(evolution, self.client, memory_id, actor,
+                                          self.settings.agent_token_budget)
+
+    def review_semantic_rule(self, rule_id: str, decision: str, actor: str,
+                             note: str = "") -> Mapping[str, Any]:
+        with Text2SQLEvolutionStore(self.evolution_store_path, self._snapshot()) as evolution:
+            return evolution.review_semantic_rule(rule_id, decision, actor, note)
+
+    def propose_policy_from_rules(self, rule_ids: Sequence[str], actor: str,
+                                  reason: str = "") -> Mapping[str, Any]:
+        if not self.model_ready or self.client is None:
+            raise RuntimeError("configured LLM is required for Policy generation")
+        with Text2SQLEvolutionStore(self.evolution_store_path, self._snapshot()) as evolution:
+            return propose_policy_from_rules(evolution, self.client, rule_ids, actor,
+                                              reason, self.settings.agent_token_budget)
+
     def traces(self, limit: int = 20) -> Mapping[str, Any]:
         """Return bounded, public Text2SQL traces from the local control database."""
         bounded = max(1, min(int(limit), 50))
@@ -459,6 +823,8 @@ class Text2SQLWebService:
                 item = dict(stored)
                 collaboration = dict(item.get("collaboration") or {})
                 item.update(_public_plan_payload(collaboration))
+                item["clarification"] = dict(collaboration.get("clarification") or {})
+                item["diagnostic"] = dict(collaboration.get("diagnostic") or diagnose_result(item))
                 item["deterministic_runtime"] = _public_runtime_payload(
                     collaboration, dict(item.get("gates") or {})
                 )
@@ -504,9 +870,50 @@ class Text2SQLWebService:
                             user_id, display_session_id, limit
                         )
                     )
+            all_semantic_memories = list(evolution.list_memory())
+            semantic_experience_counts = dict(
+                _experience_memory_counts(all_semantic_memories)
+            )
+            policy_usage: dict[str, list[str]] = {}
+            for policy in _policy_records_for_ui(evolution):
+                metadata = policy.get("proposal_metadata") or {}
+                if not isinstance(metadata, Mapping):
+                    continue
+                memory_ids = metadata.get("compiled_memory_ids") or metadata.get(
+                    "memory_ids"
+                )
+                if not isinstance(memory_ids, Sequence) or isinstance(
+                    memory_ids, (str, bytes)
+                ):
+                    continue
+                version = str(policy.get("policy_version") or "")
+                for memory_id in memory_ids:
+                    key = str(memory_id)
+                    if key and version:
+                        policy_usage.setdefault(key, []).append(version)
+            semantic_layer = dict(dashboard["semantic"])
+            semantic_layer["experience_counts"] = semantic_experience_counts
+            semantic_layer["items"] = [
+                {
+                    **dict(item),
+                    "used_in_policy_versions": list(
+                        dict.fromkeys(policy_usage.get(str(item.get("memory_id") or ""), ()))
+                    ),
+                }
+                for item in semantic_layer.get("items") or ()
+            ]
             snapshot_id = evolution.memory_snapshot_id
+            semantic_rules = list(evolution.list_semantic_rules(limit=50))
+            semantic_rule_counts = dict(evolution.semantic_rule_counts())
         return {
             "contract": "Text2SQLMemoryDashboard/v1",
+            "semantic_rules": {
+                "items": semantic_rules,
+                "counts": semantic_rule_counts,
+                "target_agents": list(TEXT2SQL_SKILLS),
+                "role_scoped": True,
+                "direct_runtime_injection": False,
+            },
             "memory_snapshot_id": snapshot_id,
             "storage": "local-sqlite",
             "session_id": requested_session_id,
@@ -524,7 +931,7 @@ class Text2SQLWebService:
             "layers": {
                 "working": dashboard["working"],
                 "episodic": dashboard["episodic"],
-                "semantic": dashboard["semantic"],
+                "semantic": semantic_layer,
             },
             "question_sql": dashboard["question_sql"],
             "decision_contract": {
@@ -557,6 +964,7 @@ class Text2SQLWebService:
                 "raw_model_reasoning_exposed": False,
                 "result_rows_exposed": False,
                 "stable_semantic_memory_only_injected": True,
+                "experience_direct_runtime_injection": False,
                 "vanna_is_separate_knowledge_domain": True,
             },
         }
@@ -565,7 +973,6 @@ class Text2SQLWebService:
         snapshot = self._snapshot()
         with Text2SQLEvolutionStore(self.evolution_store_path, snapshot) as evolution:
             values = list(evolution.list_experiences(state, limit))
-            jobs = list(evolution.list_experience_evaluation_jobs(limit=limit))
             confirmable_ids = set()
             for value in values:
                 if (
@@ -578,51 +985,29 @@ class Text2SQLWebService:
                     trace = evolution.get_query_trace(str(value.get("task_id") or ""))
                 except ValueError:
                     continue
-                if (
-                    str(trace.get("status") or "") == "success"
-                    and bool(str(trace.get("final_sql") or "").strip())
-                    and bool((trace.get("gates") or {}).get("accepted"))
-                ):
+                if _production_feedback_eligible(trace):
                     confirmable_ids.add(str(value.get("experience_id") or ""))
-        latest_job = {}
-        for job in jobs:
-            latest_job.setdefault(str(job["experience_id"]), job)
         public_values = []
         for value in values:
             item = dict(value)
             item["confirmable"] = str(item.get("experience_id") or "") in confirmable_ids
-            job = latest_job.get(str(item["experience_id"]))
-            if job:
-                item["evaluation"] = {
-                    key: job[key]
-                    for key in (
-                        "job_id",
-                        "status",
-                        "phase",
-                        "progress_current",
-                        "progress_total",
-                        "error",
-                        "created_at",
-                        "updated_at",
-                    )
-                }
             public_values.append(item)
         return {"experiences": public_values, "state": state or "all"}
 
     def confirm_experience(
         self, experience_id: str, actor: str, note: str = ""
     ) -> Mapping[str, Any]:
-        """Persist a human-confirmed QueryRun as stable Vanna retrieval memory."""
+        """Publish a human-confirmed QueryRun as a Vanna Question-SQL case.
+
+        Question-SQL cases are separate from role-scoped Agent Semantic Memory.
+        The local records provide provenance and revocation metadata; Vanna is
+        the retrieval backend that receives the reusable pair.
+        """
 
         snapshot = self._snapshot()
         with Text2SQLEvolutionStore(self.evolution_store_path, snapshot) as evolution:
             item = evolution.get_experience(experience_id)
-            if item["state"] == "promoted":
-                return {
-                    **dict(item),
-                    "confirmation": "already-confirmed",
-                    "next_step": "available_in_vanna_and_memory",
-                }
+            already_confirmed = item["state"] == "promoted"
             awaiting_feedback = (
                 item["state"] == "ineligible"
                 and "requires_human_feedback"
@@ -633,62 +1018,101 @@ class Text2SQLWebService:
                 and item["eligible"]
                 and item["user_feedback"] == "correct"
             )
-            if not awaiting_feedback and not confirmed_candidate:
+            if not already_confirmed and not awaiting_feedback and not confirmed_candidate:
                 raise ValueError("experience is not awaiting human confirmation")
-            trace = evolution.get_query_trace(str(item.get("task_id") or ""))
-            if (
-                str(trace.get("status") or "") != "success"
-                or not bool(str(trace.get("final_sql") or "").strip())
-                or not bool((trace.get("gates") or {}).get("accepted"))
-            ):
-                raise ValueError("experience QueryRun is not eligible for confirmation")
+            trace = _trace_with_compiled_policy_sources(
+                evolution,
+                evolution.get_query_trace(str(item.get("task_id") or "")),
+            )
+            if not _production_feedback_eligible(trace):
+                raise ValueError(
+                    "only successful gate-approved stable Web/CLI QueryRuns "
+                    "can become reusable experiences"
+                )
             gate = validate_sql(str(item["sql"]), snapshot)
             if not gate.accepted:
                 raise ValueError(
                     "experience SQL failed the deterministic gate: %s"
                     % ", ".join(gate.errors)
                 )
-            confirmed_id = evolution.add_experience_candidate(
-                str(item["task_id"]),
-                str(item["question"]),
-                str(item["sql"]),
-                source_kind="human_confirmed_query",
-                eligible=True,
-            )
-            if awaiting_feedback:
-                evolution.record_query_feedback(
-                    str(item["task_id"]), "correct", note, actor
+            if already_confirmed:
+                confirmed_id = experience_id
+                confirmed = item
+            else:
+                confirmed_id = evolution.add_experience_candidate(
+                    str(item["task_id"]),
+                    str(item["question"]),
+                    str(item["sql"]),
+                    source_kind="human_confirmed_query",
+                    eligible=True,
                 )
-            confirmed = evolution.get_experience(confirmed_id)
+                if awaiting_feedback:
+                    evolution.record_query_feedback(
+                        str(item["task_id"]), "correct", note, actor
+                    )
+                confirmed = evolution.get_experience(confirmed_id)
         gate = validate_sql(str(confirmed["sql"]), snapshot)
-        with KnowledgeStore(self.knowledge_store_path) as knowledge:
-            knowledge_memory = knowledge.promote_verified_example(
-                str(confirmed["question"]),
-                str(confirmed["sql"]),
-                actor,
+        with _VANNA_PUBLISH_LOCK:
+            question_sql = add_confirmed_question_sql(
+                question_sql_registry_path(self.vanna_index_root),
+                database_snapshot_id=str(snapshot["snapshot_id"]),
+                question=str(confirmed["question"]),
+                sql=str(confirmed["sql"]),
+                actor=actor,
                 source_id=confirmed_id,
                 dependencies=tuple([*gate.tables, *gate.columns]),
             )
-            stable_items = knowledge.stable_items_for_index()
-            database_snapshot_id = knowledge.database_snapshot_id()
-        stable_version = str(knowledge_memory["stable_index_version"])
-        vanna = VannaRetrieverOnly(
-            self.vanna_index_root, stable_version, enabled=True
-        ).build(stable_items, database_snapshot_id)
+            vanna = self._build_vanna(snapshot)
+
         with Text2SQLEvolutionStore(self.evolution_store_path, snapshot) as evolution:
             promoted = evolution.promote_confirmed_experience(
                 confirmed_id,
-                str(knowledge_memory["evidence_id"]),
+                str(question_sql["evidence_id"]),
                 actor,
                 note,
             )
         return {
             **dict(promoted),
-            "confirmation": "human-confirmed",
-            "knowledge": dict(knowledge_memory),
+            "confirmation": (
+                "already-confirmed" if already_confirmed else "human-confirmed"
+            ),
+            "question_sql": dict(question_sql),
             "vanna": dict(vanna),
-            "memory_kind": "question_sql_semantic",
-            "next_step": "available_in_vanna_and_memory",
+            "memory_kind": "vanna_question_sql",
+            "semantic_memory_written": False,
+            "next_step": "available_in_vanna",
+        }
+
+    def revoke_confirmed_experience(
+        self, experience_id: str, actor: str, reason: str
+    ) -> Mapping[str, Any]:
+        """Remove a mistaken Q-SQL from Vanna without deleting its audit trail."""
+
+        if not reason.strip():
+            raise ValueError("revoking Question-SQL requires a reason")
+        snapshot = self._snapshot()
+        with Text2SQLEvolutionStore(self.evolution_store_path, snapshot) as evolution:
+            item = evolution.get_experience(experience_id)
+            if item["state"] != "promoted":
+                raise ValueError("only a promoted Question-SQL can be revoked")
+        with _VANNA_PUBLISH_LOCK:
+            removal = remove_confirmed_question_sql(
+                question_sql_registry_path(self.vanna_index_root),
+                evidence_id=str(item.get("knowledge_evidence_id") or ""),
+                source_id=experience_id,
+            )
+            if not removal["removed"]:
+                raise ValueError("confirmed Question-SQL is missing from the registry")
+            vanna = self._build_vanna(snapshot)
+        with Text2SQLEvolutionStore(self.evolution_store_path, snapshot) as evolution:
+            revoked = evolution.revoke_confirmed_experience(
+                experience_id, actor, reason
+            )
+        return {
+            **dict(revoked),
+            "question_sql": dict(removal),
+            "vanna": dict(vanna),
+            "next_step": "removed_from_vanna",
         }
 
     def feedback_experience(
@@ -701,62 +1125,124 @@ class Text2SQLWebService:
     ) -> Mapping[str, Any]:
         """Record review-surface feedback without relying on browser session state."""
 
-        if decision == "correct":
-            return self.confirm_experience(experience_id, actor, note)
-        if decision != "incorrect":
+        if decision not in {"correct", "incorrect"}:
             raise ValueError("feedback decision must be correct or incorrect")
         note = note.strip()
         corrected_sql = corrected_sql.strip()
-        if not note:
+        if decision == "incorrect" and not note:
             raise ValueError("incorrect feedback requires a reason")
 
         snapshot = self._snapshot()
         with Text2SQLEvolutionStore(self.evolution_store_path, snapshot) as evolution:
             item = evolution.get_experience(experience_id)
-            if item["state"] != "ineligible" or "requires_human_feedback" not in set(
-                item.get("eligibility_reasons") or ()
-            ):
-                raise ValueError("experience is not awaiting human feedback")
-            trace = evolution.get_query_trace(str(item.get("task_id") or ""))
-            if not str(trace.get("final_sql") or "").strip():
-                raise ValueError("experience QueryRun has no SQL to review")
-
-            if corrected_sql:
-                if corrected_sql == str(item.get("sql") or "").strip():
-                    raise ValueError("corrected SQL must differ from the rejected SQL")
-                corrected_gate = validate_sql(corrected_sql, snapshot)
-                if not corrected_gate.accepted:
-                    raise ValueError(
-                        "corrected SQL failed the deterministic gate: %s"
-                        % ", ".join(corrected_gate.errors)
-                    )
-
-            attribution = attribute_query_failure(
-                trace,
-                snapshot,
-                corrected_sql=corrected_sql,
-                feedback_note=note,
+            trace = _trace_with_compiled_policy_sources(
+                evolution,
+                evolution.get_query_trace(str(item.get("task_id") or "")),
             )
-            memory_id = evolution.add_memory_candidate(
-                str(attribution["target_skill"]),
-                str(attribution["failure_kind"]),
-                str(attribution["content"]),
-                dict(attribution["evidence"]),
-                str(attribution["origin_split"]),
+            is_production_source = _production_feedback_eligible(trace)
+            awaiting_feedback = (
+                item["state"] == "ineligible"
+                and "requires_human_feedback"
+                in set(item.get("eligibility_reasons") or ())
             )
-            evolution.record_query_feedback(
-                str(item["task_id"]), "incorrect", note, actor
-            )
-            corrected_experience_id = ""
-            if corrected_sql:
-                corrected_experience_id = evolution.add_experience_candidate(
-                    str(item["task_id"]),
-                    str(item["question"]),
-                    corrected_sql,
-                    source_kind="human_corrected_sql",
-                    eligible=True,
+            if not is_production_source:
+                if not awaiting_feedback:
+                    raise ValueError("experience is not awaiting human feedback")
+                human_decision = evolution.record_query_feedback(
+                    str(item["task_id"]), decision, note, actor
                 )
-            rejected = evolution.get_experience(experience_id)
+                recorded = evolution.get_experience(experience_id)
+                return {
+                    **dict(recorded),
+                    "feedback": decision,
+                    "decision": dict(human_decision),
+                    "memory_id": "",
+                    "corrected_experience_id": "",
+                    "attribution": {},
+                    "experience_skipped_reason": _feedback_skip_reason(trace),
+                    "source_origin": str(trace.get("origin") or ""),
+                    "source_lane": str(trace.get("source_lane") or ""),
+                    "next_step": "feedback_recorded",
+                }
+
+            if decision == "incorrect":
+                if not awaiting_feedback:
+                    raise ValueError("experience is not awaiting human feedback")
+                if not str(trace.get("final_sql") or "").strip():
+                    raise ValueError("experience QueryRun has no SQL to review")
+
+                if corrected_sql:
+                    if corrected_sql == str(item.get("sql") or "").strip():
+                        raise ValueError(
+                            "corrected SQL must differ from the rejected SQL"
+                        )
+                    corrected_gate = validate_sql(corrected_sql, snapshot)
+                    if not corrected_gate.accepted:
+                        raise ValueError(
+                            "corrected SQL failed the deterministic gate: %s"
+                            % ", ".join(corrected_gate.errors)
+                        )
+
+                attribution = attribute_query_failure(
+                    trace,
+                    snapshot,
+                    corrected_sql=corrected_sql,
+                    feedback_note=note,
+                )
+                failure_kind = str(attribution.get("failure_kind") or "")
+                confident_owner = bool(
+                    corrected_sql
+                    or failure_kind != "critic_false_accept"
+                    or "critic" in note.casefold()
+                    or "评审" in note
+                )
+                feedback_evidence: dict[str, Any] = {
+                    "decision": "incorrect",
+                    "note": note,
+                    "corrected_sql": corrected_sql,
+                }
+                if confident_owner:
+                    feedback_evidence.update(
+                        {
+                            "target_agent": str(
+                                attribution.get("target_skill") or ""
+                            ),
+                            "problem_code": failure_kind,
+                            "correction": str(
+                                (attribution.get("rule") or {}).get("action")
+                                or attribution.get("content")
+                                or ""
+                            ),
+                        }
+                    )
+                extracted = extract_user_correction_experiences(
+                    trace,
+                    feedback_evidence,
+                    snapshot=snapshot,
+                )
+                if not extracted:
+                    raise ValueError(
+                        "feedback did not produce a reviewable Experience"
+                    )
+                memory_id = evolution.add_experience_memory(
+                    extracted[0], origin_split="production_feedback"
+                )
+                evolution.record_query_feedback(
+                    str(item["task_id"]), "incorrect", note, actor
+                )
+                corrected_experience_id = ""
+                if corrected_sql:
+                    corrected_experience_id = evolution.add_experience_candidate(
+                        str(item["task_id"]),
+                        str(item["question"]),
+                        corrected_sql,
+                        source_kind="human_corrected_sql",
+                        eligible=True,
+                    )
+                rejected = evolution.get_experience(experience_id)
+
+        if decision == "correct":
+            return self.confirm_experience(experience_id, actor, note)
 
         return {
             **dict(rejected),
@@ -787,12 +1273,31 @@ class Text2SQLWebService:
             raise ValueError("rejection reason is required")
         snapshot = self._snapshot()
         with Text2SQLEvolutionStore(self.evolution_store_path, snapshot) as evolution:
-            trace = evolution.get_query_trace(task_id)
+            trace = _trace_with_compiled_policy_sources(
+                evolution,
+                evolution.get_query_trace(task_id),
+            )
             if (
                 str(trace.get("user_id") or "") != user_id
                 or str(trace.get("session_id") or "") != session_id
             ):
                 raise PermissionError("query task does not belong to this session")
+            if not _production_feedback_eligible(trace):
+                human_decision = evolution.record_query_feedback(
+                    task_id, decision, note, user_id
+                )
+                return {
+                    "task_id": task_id,
+                    "feedback": decision,
+                    "decision": dict(human_decision),
+                    "experience_id": "",
+                    "memory_id": "",
+                    "attribution": {},
+                    "experience_skipped_reason": _feedback_skip_reason(trace),
+                    "source_origin": str(trace.get("origin") or ""),
+                    "source_lane": str(trace.get("source_lane") or ""),
+                    "next_step": "feedback_recorded",
+                }
             experience_id = ""
             memory_id = ""
             attribution: Mapping[str, Any] = {}
@@ -830,13 +1335,41 @@ class Text2SQLWebService:
                     corrected_sql=corrected_sql,
                     feedback_note=note,
                 )
-                memory_id = evolution.add_memory_candidate(
-                    str(attribution["target_skill"]),
-                    str(attribution["failure_kind"]),
-                    str(attribution["content"]),
-                    dict(attribution["evidence"]),
-                    str(attribution["origin_split"]),
+                failure_kind = str(attribution.get("failure_kind") or "")
+                confident_owner = bool(
+                    corrected_sql.strip()
+                    or failure_kind != "critic_false_accept"
+                    or "critic" in note.casefold()
+                    or "评审" in note
                 )
+                feedback_evidence: dict[str, Any] = {
+                    "decision": "incorrect",
+                    "note": note,
+                    "corrected_sql": corrected_sql,
+                }
+                if confident_owner:
+                    feedback_evidence.update(
+                        {
+                            "target_agent": str(
+                                attribution.get("target_skill") or ""
+                            ),
+                            "problem_code": failure_kind,
+                            "correction": str(
+                                (attribution.get("rule") or {}).get("action")
+                                or attribution.get("content")
+                                or ""
+                            ),
+                        }
+                    )
+                extracted = extract_user_correction_experiences(
+                    trace,
+                    feedback_evidence,
+                    snapshot=snapshot,
+                )
+                if extracted:
+                    memory_id = evolution.add_experience_memory(
+                        extracted[0], origin_split="production_feedback"
+                    )
             human_decision = evolution.record_query_feedback(
                 task_id, decision, note, user_id
             )
@@ -866,7 +1399,7 @@ class Text2SQLWebService:
             result.update(
                 {
                     "experience": dict(promotion),
-                    "next_step": "available_in_vanna_and_memory",
+                    "next_step": "available_in_vanna",
                 }
             )
         return result
@@ -880,29 +1413,59 @@ class Text2SQLWebService:
         target_skill: str = "",
         failure_kind: str = "",
         content: str = "",
+        rule: Optional[Mapping[str, Any]] = None,
         review_note: str = "",
     ) -> Mapping[str, Any]:
         snapshot = self._snapshot()
         with Text2SQLEvolutionStore(self.evolution_store_path, snapshot) as evolution:
-            if decision == "approve":
-                evolution.update_memory_candidate(
-                    memory_id,
-                    target_skill,
-                    failure_kind,
-                    content,
-                )
-            reviewed = evolution.review_memory(
-                memory_id,
-                decision,
-                actor,
-                human_reviewed=True,
-                review_note=review_note,
+            current = evolution.get_memory(memory_id)
+            is_experience = (
+                (current.get("rule") or {}).get("contract")
+                == "ExperienceMemory/v1"
             )
+            if is_experience:
+                experience_decision = {
+                    "approve": "confirm",
+                    "confirm": "confirm",
+                    "reject": "reject",
+                    "needs_evidence": "needs_evidence",
+                }.get(decision)
+                if not experience_decision:
+                    raise ValueError("invalid Experience review decision")
+                reviewed = evolution.review_experience_memory(
+                    memory_id,
+                    experience_decision,
+                    actor,
+                    review_note,
+                )
+            else:
+                if decision == "approve":
+                    evolution.update_memory_candidate(
+                        memory_id,
+                        target_skill,
+                        failure_kind,
+                        content,
+                        rule=rule,
+                    )
+                reviewed = evolution.review_memory(
+                    memory_id,
+                    decision,
+                    actor,
+                    human_reviewed=True,
+                    review_note=review_note,
+                )
             memory_snapshot_id = evolution.memory_snapshot_id
         return {
             **dict(reviewed),
             "memory_snapshot_id": memory_snapshot_id,
             "next_step": (
+                "select_for_policy_candidate"
+                if reviewed["state"] == "confirmed"
+                else "supply_additional_evidence"
+                if reviewed["state"] == "needs_evidence"
+                else "experience_rejected"
+                if is_experience
+                else
                 "run_240_case_memory_evaluation"
                 if reviewed["state"] == "approved"
                 else "memory_rejected"
@@ -910,7 +1473,10 @@ class Text2SQLWebService:
         }
 
     def start_memory_evaluation(
-        self, memory_id: str, actor: str
+        self,
+        memory_id: str,
+        actor: str,
+        principals: Sequence[str] = ("local-user",),
     ) -> Mapping[str, Any]:
         if not self.model_ready:
             raise RuntimeError("configured LLM is required for memory evaluation")
@@ -923,12 +1489,9 @@ class Text2SQLWebService:
             or not bundle.review_evidence.get("verified")
         ):
             raise ValueError("memory evaluation requires the reviewed 240-case dataset")
-        with KnowledgeStore(self.knowledge_store_path) as knowledge:
-            wiki_version = knowledge.current_index_version("stable")
-        vanna_ready = bool(
-            VannaRetrieverOnly(self.vanna_index_root, wiki_version)
-            .status()
-            .get("ready")
+        wiki_version, vanna_ready = self._runtime_vanna_pin(snapshot)
+        evaluation_principals = tuple(
+            sorted(set([*(str(value) for value in principals), "local-user"]))
         )
         evaluation_root = PROJECT_ROOT / "artifacts" / "text2sql" / "evaluation"
         with Text2SQLEvolutionStore(self.evolution_store_path, snapshot) as evolution:
@@ -948,12 +1511,21 @@ class Text2SQLWebService:
                 "model": str(self.llm_config["model"]),
                 "temperature": 0,
             }
+            expected_runtime = build_runtime_identity(
+                token_budget=self.settings.agent_token_budget,
+                time_budget=self.settings.agent_time_budget_seconds,
+                policy_source_memory_ids=evolution.policy_source_memory_ids(
+                    policy_version
+                ),
+            )
             baseline = find_matching_baseline(
                 evaluation_root,
                 dataset_id=bundle.dataset_id,
                 dataset_sha256=bundle.dataset_sha256,
                 model=model,
                 version_pins=expected_pins,
+                runtime=expected_runtime,
+                principals=evaluation_principals,
             )
             token = uuid.uuid4().hex[:12]
             job_root = evaluation_root / "memory-runs" / (
@@ -987,6 +1559,8 @@ class Text2SQLWebService:
             "--workers",
             str(max(1, min(int(self.settings.async_workers), 4))),
         ]
+        for principal in evaluation_principals:
+            command.extend(("--principal", principal))
         try:
             subprocess.Popen(
                 command,
@@ -1025,12 +1599,53 @@ class Text2SQLWebService:
         }
 
     def activate_memory_candidate(
-        self, memory_id: str, actor: str, reason: str
+        self,
+        memory_id: str,
+        actor: str,
+        reason: str,
+        principals: Sequence[str] = ("local-user",),
     ) -> Mapping[str, Any]:
+        if not self.model_ready:
+            raise RuntimeError("configured LLM is required for Memory activation")
         snapshot = self._snapshot()
+        evaluation_principals = tuple(
+            sorted(set([*(str(value) for value in principals), "local-user"]))
+        )
+        wiki_version, vanna_ready = self._runtime_vanna_pin(snapshot)
         with Text2SQLEvolutionStore(self.evolution_store_path, snapshot) as evolution:
+            policy_version = evolution.active_policy_version
+            current_pins = {
+                "database_snapshot_id": snapshot["snapshot_id"],
+                "wiki_index_version": wiki_version,
+                "vanna_index_version": (
+                    wiki_version if vanna_ready else "fallback:%s" % wiki_version
+                ),
+                "memory_snapshot_id": evolution.memory_snapshot_id,
+                "policy_version": policy_version,
+            }
             item = evolution.activate_memory(
-                memory_id, actor, reason, human_approved=True
+                memory_id,
+                actor,
+                reason,
+                human_approved=True,
+                current_version_pins=current_pins,
+                current_evaluation_identity={
+                    "model": {
+                        "provider": str(self.llm_config["provider"]),
+                        "model": str(self.llm_config["model"]),
+                        "temperature": 0,
+                    },
+                    "runtime": dict(
+                        build_runtime_identity(
+                            token_budget=self.settings.agent_token_budget,
+                            time_budget=self.settings.agent_time_budget_seconds,
+                            policy_source_memory_ids=evolution.policy_source_memory_ids(
+                                policy_version
+                            ),
+                        )
+                    ),
+                    "principals": list(evaluation_principals),
+                },
             )
             memory_snapshot_id = evolution.memory_snapshot_id
         return {**dict(item), "memory_snapshot_id": memory_snapshot_id}
@@ -1044,181 +1659,9 @@ class Text2SQLWebService:
             memory_snapshot_id = evolution.memory_snapshot_id
         return {**dict(item), "memory_snapshot_id": memory_snapshot_id}
 
-    def review_experience(
-        self,
-        experience_id: str,
-        decision: str,
-        actor: str,
-        review_note: str = "",
-    ) -> Mapping[str, Any]:
-        snapshot = self._snapshot()
-        with Text2SQLEvolutionStore(self.evolution_store_path, snapshot) as evolution:
-            item = evolution.get_experience(experience_id)
-            if decision == "reject":
-                return dict(
-                    evolution.review_experience(
-                        experience_id,
-                        decision,
-                        actor,
-                        review_note=review_note,
-                    )
-                )
-            gate = validate_sql(str(item["sql"]), snapshot)
-            if not gate.accepted:
-                raise ValueError(
-                    "experience SQL failed the deterministic gate: %s"
-                    % ", ".join(gate.errors)
-                )
-            with KnowledgeStore(self.knowledge_store_path) as knowledge:
-                staged = knowledge.stage_verified_example(
-                    str(item["question"]),
-                    str(item["sql"]),
-                    actor,
-                    source_id=experience_id,
-                    dependencies=tuple([*gate.tables, *gate.columns]),
-                )
-            reviewed = evolution.review_experience(
-                experience_id,
-                "approve",
-                actor,
-                str(staged["evidence_id"]),
-                review_note,
-            )
-        evaluation = self.start_experience_evaluation(experience_id, actor)
-        return {
-            **dict(reviewed),
-            "knowledge": dict(staged),
-            "evaluation": dict(evaluation),
-            "next_step": "candidate_vanna_build_and_240_case_regression_started",
-        }
 
-    def start_experience_evaluation(
-        self, experience_id: str, actor: str
-    ) -> Mapping[str, Any]:
-        if not self.model_ready:
-            raise RuntimeError("configured LLM is required for experience evaluation")
-        snapshot = self._snapshot()
-        bundle = load_dataset(
-            self.dataset_path, REQUIRED_MEMORY_EVALUATION_SPLITS
-        )
-        if (
-            sum(bundle.split_counts.values()) != 240
-            or not bundle.review_evidence.get("verified")
-        ):
-            raise ValueError("experience evaluation requires the reviewed 240-case dataset")
-        with KnowledgeStore(self.knowledge_store_path) as knowledge:
-            wiki_version = knowledge.current_index_version("stable")
-        vanna_ready = bool(
-            VannaRetrieverOnly(self.vanna_index_root, wiki_version)
-            .status()
-            .get("ready")
-        )
-        evaluation_root = PROJECT_ROOT / "artifacts" / "text2sql" / "evaluation"
-        with Text2SQLEvolutionStore(self.evolution_store_path, snapshot) as evolution:
-            item = evolution.get_experience(experience_id)
-            if not item.get("knowledge_evidence_id"):
-                raise ValueError("experience is missing staged knowledge evidence")
-            expected_pins = {
-                "database_snapshot_id": snapshot["snapshot_id"],
-                "wiki_index_version": wiki_version,
-                "vanna_index_version": (
-                    wiki_version if vanna_ready else "fallback:%s" % wiki_version
-                ),
-                "memory_snapshot_id": evolution.memory_snapshot_id,
-                "policy_version": evolution.active_policy_version,
-            }
-            model = {
-                "provider": str(self.llm_config["provider"]),
-                "model": str(self.llm_config["model"]),
-                "temperature": 0,
-            }
-            baseline = find_matching_baseline(
-                evaluation_root,
-                dataset_id=bundle.dataset_id,
-                dataset_sha256=bundle.dataset_sha256,
-                model=model,
-                version_pins=expected_pins,
-            )
-            token = uuid.uuid4().hex[:12]
-            job_root = evaluation_root / "experience-runs" / (
-                "%s-%s" % (experience_id, token)
-            )
-            baseline_path = baseline or (job_root / "baseline-240.json")
-            candidate_path = job_root / "candidate-240.json"
-            candidate_store = job_root / "candidate-knowledge.sqlite3"
-            log_path = job_root / "evaluation.log"
-            job = evolution.create_experience_evaluation_job(
-                experience_id,
-                actor,
-                str(baseline_path.resolve()),
-                str(candidate_path.resolve()),
-                str(candidate_store.resolve()),
-                str(log_path.resolve()),
-                240 if baseline else 480,
-            )
-        job_root.mkdir(parents=True, exist_ok=True)
-        command = [
-            sys.executable,
-            str(
-                PROJECT_ROOT
-                / "scripts"
-                / "run_text2sql_experience_evaluation.py"
-            ),
-            "--job-id",
-            str(job["job_id"]),
-            "--experience-id",
-            experience_id,
-            "--dataset",
-            str(self.dataset_path),
-            "--snapshot",
-            str(self.snapshot_path),
-            "--knowledge-store",
-            str(self.knowledge_store_path),
-            "--vanna-root",
-            str(self.vanna_index_root),
-            "--evolution-store",
-            str(self.evolution_store_path),
-            "--workers",
-            str(max(1, min(int(self.settings.async_workers), 4))),
-        ]
-        try:
-            subprocess.Popen(
-                command,
-                cwd=PROJECT_ROOT,
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                start_new_session=True,
-                close_fds=True,
-            )
-        except Exception as exc:
-            with Text2SQLEvolutionStore(
-                self.evolution_store_path, snapshot
-            ) as evolution:
-                evolution.update_experience_evaluation_job(
-                    str(job["job_id"]),
-                    status="failed",
-                    phase="failed",
-                    error=str(exc),
-                )
-            raise
-        return {
-            **{
-                key: job[key]
-                for key in (
-                    "job_id",
-                    "experience_id",
-                    "status",
-                    "phase",
-                    "progress_current",
-                    "progress_total",
-                )
-            },
-            "baseline_reused": bool(baseline),
-            "background": True,
-        }
 
-    def _remember_trace(
+    def _remember_trace_legacy(
         self,
         result: Mapping[str, Any],
         internal: Optional[Mapping[str, Any]] = None,
@@ -1267,7 +1710,20 @@ class Text2SQLWebService:
                 "tables",
                 "columns",
                 "projection_columns",
+                "filter_columns",
+                "group_columns",
+                "order_columns",
+                "join_columns",
+                "unresolved_columns",
+                "ambiguous_columns",
+                "column_owners",
+                "has_star",
                 "joins",
+                "links",
+                "logical_concepts",
+                "draft_output",
+                "forward_linking",
+                "semantic_completion",
                 "coverage",
             )
         } if draft else {}
@@ -1378,6 +1834,132 @@ class Text2SQLWebService:
                 response=result,
             )
 
+    def _remember_trace(
+        self,
+        result: Mapping[str, Any],
+        internal: Optional[Mapping[str, Any]] = None,
+        *,
+        user_id: str = "local-user",
+        session_id: str = "default",
+    ) -> Mapping[str, Any]:
+        """Finalize a Web QueryRun without letting Memory replace its answer."""
+
+        task_id = str(result.get("task_id") or "")[:200]
+        release = dict(result.get("release") or {})
+        release_lane = str(release.get("lane") or "").casefold()
+        if bool(release.get("candidate_output_used")) or release_lane in {
+            "candidate",
+            "canary",
+        }:
+            source_lane = "candidate"
+        elif bool(release.get("shadow_sampled")):
+            source_lane = "shadow"
+        else:
+            source_lane = "stable"
+        answer = dict(result.get("answer") or {})
+        side_effect_errors: list[str] = []
+        try:
+            snapshot = self._snapshot()
+            with Text2SQLEvolutionStore(
+                self.evolution_store_path, snapshot
+            ) as evolution:
+                write_status = finalize_run(
+                    result,
+                    internal,
+                    store=evolution,
+                    task_id=task_id,
+                    user_id=user_id,
+                    session_id=session_id,
+                    origin="web",
+                    source_lane=source_lane,
+                    source_revision=evolution.next_query_trace_revision(
+                        task_id
+                    ),
+                )
+                try:
+                    evolution.append_message(
+                        user_id,
+                        session_id,
+                        "assistant",
+                        str(
+                            answer.get("summary_text")
+                            or result.get("final_sql")
+                            or result.get("status")
+                            or "failed"
+                        ),
+                        task_id,
+                    )
+                except Exception as exc:
+                    side_effect_errors.append(
+                        "working_memory:%s" % str(exc)[:300]
+                    )
+                try:
+                    gate = dict(result.get("gates") or {})
+                    if (
+                        str(result.get("status") or "") == "success"
+                        and str(result.get("query_type") or "DATA_QUERY")
+                        == "DATA_QUERY"
+                        and str(result.get("final_sql") or "").strip()
+                    ):
+                        reasons = []
+                        if not gate.get("accepted"):
+                            reasons.append("deterministic_gate_not_accepted")
+                        if int(answer.get("row_count") or 0) <= 0:
+                            reasons.append(
+                                "empty_result_requires_manual_confirmation"
+                            )
+                        evolution.add_experience_candidate(
+                            task_id,
+                            str(
+                                result.get("standalone_question")
+                                or result.get("question")
+                                or ""
+                            ),
+                            str(result.get("final_sql") or ""),
+                            eligible=False,
+                            eligibility_reasons=[
+                                *reasons,
+                                "requires_human_feedback",
+                            ],
+                        )
+                except Exception as exc:
+                    side_effect_errors.append(
+                        "question_sql_review:%s" % str(exc)[:300]
+                    )
+                status_payload = dict(write_status.as_dict())
+                if side_effect_errors:
+                    status_payload["memory_status"] = "degraded"
+                    status_payload["error"] = "; ".join(
+                        [
+                            str(status_payload.get("error") or ""),
+                            *side_effect_errors,
+                        ]
+                    ).strip("; ")[:1000]
+                try:
+                    evolution.finish_query_attempt(
+                        task_id,
+                        "completed",
+                        response={**dict(result), **status_payload},
+                    )
+                except Exception as exc:
+                    status_payload["memory_status"] = "degraded"
+                    status_payload["error"] = "; ".join(
+                        [
+                            str(status_payload.get("error") or ""),
+                            "query_attempt:%s" % str(exc)[:300],
+                        ]
+                    ).strip("; ")[:1000]
+                return status_payload
+        except Exception as exc:
+            return MemoryWriteStatus(
+                status="degraded",
+                trace_recorded=False,
+                task_id=task_id,
+                origin="web",
+                source_lane=source_lane,
+                error="%s: %s" % (type(exc).__name__, str(exc)[:500]),
+            ).as_dict()
+
     @staticmethod
     def _agent_trace(result: Mapping[str, Any]) -> Sequence[Mapping[str, Any]]:
         collaboration = result.get("collaboration") or {}
@@ -1403,6 +1985,10 @@ class Text2SQLWebService:
                 },
             }
         ]
+        if route_type == "CLARIFICATION":
+            trace[0] = {**trace[0], "status": "needs_clarification",
+                        "summary": "；".join((collaboration.get("clarification") or {}).get("questions") or ())}
+            return tuple(trace)
         if route_type == "RESULT_QA":
             final = dict(collaboration.get("lead_final") or {})
             trace.append(
@@ -1479,7 +2065,7 @@ class Text2SQLWebService:
             {
                 "role": "text2sql-lead",
                 "stage": "semantic-plan-approval",
-                "status": "completed" if assessment else "not-run",
+                "status": "completed" if assessment and not assessment.get("skipped") else "not-run",
                 "summary": str(
                     assessment.get("reasoning_summary")
                     or (
@@ -1556,14 +2142,16 @@ class Text2SQLWebService:
         final = collaboration.get("lead_final") or {}
         trace.append(
             {
-                "role": "text2sql-lead",
+                "role": ("text2sql-harness" if final.get("selection_method") == "deterministic_single_candidate"
+                         else "text2sql-lead"),
                 "stage": "final-selection",
-                "status": "completed" if final else "not-run",
+                "status": "completed" if final and final.get("selection_method") != "skipped" else "not-run",
                 "summary": str(
                     final.get("resolution_summary") or "已选择候选并交给确定性执行门禁"
                 )[:500],
                 "detail": {
-                    "final_candidate_index": final.get("final_candidate_index")
+                    "final_candidate_index": final.get("final_candidate_index"),
+                    "selection_method": final.get("selection_method", "lead_multiple_candidates"),
                 },
             }
         )
@@ -1596,6 +2184,8 @@ class Text2SQLWebService:
             "gates": dict(result.get("gates") or {}),
             "version_pins": dict(result.get("version_pins") or {}),
             "release": dict(result.get("release") or {}),
+            "clarification": dict(result.get("clarification") or collaboration.get("clarification") or {}),
+            "diagnostic": dict(result.get("diagnostic") or diagnose_result(result)),
             **plan_payload,
             "deterministic_runtime": _public_runtime_payload(
                 collaboration, dict(result.get("gates") or {})
@@ -1611,7 +2201,20 @@ class Text2SQLWebService:
                     "tables",
                     "columns",
                     "projection_columns",
+                    "filter_columns",
+                    "group_columns",
+                    "order_columns",
+                    "join_columns",
+                    "unresolved_columns",
+                    "ambiguous_columns",
+                    "column_owners",
+                    "has_star",
                     "joins",
+                    "links",
+                    "logical_concepts",
+                    "draft_output",
+                    "forward_linking",
+                    "semantic_completion",
                     "coverage",
                 )
             } if draft else {},
@@ -1633,6 +2236,7 @@ class Text2SQLWebService:
         principals: Sequence[str] = ("local-user",),
         task_id: str = "",
         session_id: str = "default",
+        clarification_task_id: str = "",
     ) -> Mapping[str, Any]:
         question = question.strip()
         if not question:
@@ -1652,15 +2256,22 @@ class Text2SQLWebService:
             self.checkpoint_store_path
         )
         with Text2SQLEvolutionStore(self.evolution_store_path, snapshot) as evolution:
+            continuation = {}
+            clarification_task_id = clarification_task_id.strip()
+            if clarification_task_id:
+                if len(clarification_task_id) > 200 or clarification_task_id == query_task_id:
+                    raise ValueError("澄清回复必须使用新任务，并引用原澄清请求")
+                try:
+                    parent_trace = evolution.get_query_trace(clarification_task_id)
+                except ValueError:
+                    raise ValueError("澄清请求不存在或不属于当前用户和会话") from None
+                question, continuation = clarification_continuation(
+                    parent_trace, clarification_task_id, user_id, session_id, question
+                )
             active_policy_version = evolution.active_policy_version
-            memory_snapshot_id = evolution.memory_snapshot_id
-            with KnowledgeStore(self.knowledge_store_path) as knowledge:
-                wiki_index_version = knowledge.current_index_version("stable")
-            vanna_ready = bool(
-                VannaRetrieverOnly(
-                    self.vanna_index_root, wiki_index_version
-                ).status().get("ready")
-            )
+            memory_bundle = evolution.runtime_memory_snapshot()
+            memory_snapshot_id = str(memory_bundle["memory_snapshot_id"])
+            wiki_index_version, vanna_ready = self._runtime_vanna_pin(snapshot)
             version_pins = {
                 "database_snapshot_id": snapshot["snapshot_id"],
                 "wiki_index_version": wiki_index_version,
@@ -1688,10 +2299,17 @@ class Text2SQLWebService:
                     if str(item.get("task_id") or "") != query_task_id
                 ][:3],
             }
+            if continuation:
+                conversation_context["clarification_continuation"] = continuation
             request_runtime_identity = self._query_attempt_runtime_identity(
                 version_pins,
                 conversation_context,
+                evolution.policy_source_memory_ids(active_policy_version),
             )
+            if continuation:
+                request_runtime_identity = {
+                    **request_runtime_identity, "clarification_task_id": clarification_task_id,
+                }
             attempt = evolution.prepare_query_attempt(
                 query_task_id,
                 user_id,
@@ -1725,13 +2343,17 @@ class Text2SQLWebService:
                     client=self.client,
                     database_path=self.database_path,
                     snapshot=snapshot,
-                    knowledge_store_path=self.knowledge_store_path,
+
                     vanna_index_root=self.vanna_index_root,
+                    vanna_index_version=wiki_index_version,
                     principals=effective_principals,
                     memory_snapshot_id=memory_snapshot_id,
                     policy_version=policy.version,
                     policy_artifact=policy,
-                    stable_memory_provider=evolution.stable_memory,
+                    policy_source_memory_ids=evolution.policy_source_memory_ids(
+                        policy.version
+                    ),
+                    memory_snapshot_bundle=memory_bundle,
                     result_snapshot_provider=result_snapshot,
                     checkpoint_store=checkpoint_store,
                     token_budget=self.settings.agent_token_budget,
@@ -1739,21 +2361,32 @@ class Text2SQLWebService:
                     max_rows=200,
                 )
 
-            stable_engine = engine_for(active_policy_version)
-            release = Text2SQLShadowReleaseManager(evolution)
-
-            def candidate_runner(version: str):
-                candidate = engine_for(version)
-                return lambda value: candidate.run(
-                    value,
-                    task_id="%s:candidate:%s" % (
-                        query_task_id,
-                        candidate.policy_version,
-                    ),
-                    conversation_context=conversation_context,
-                )
-
             try:
+                stable_engine = engine_for(active_policy_version)
+                stable_evaluation_identity = {
+                    "model": {
+                        "provider": str(
+                            getattr(self.client, "provider", "unknown")
+                        ),
+                        "model": str(getattr(self.client, "model", "unknown")),
+                        "temperature": 0,
+                    },
+                    "runtime": dict(stable_engine.runtime_identity),
+                    "principals": sorted(set(effective_principals)),
+                }
+                release = Text2SQLShadowReleaseManager(evolution)
+
+                def candidate_runner(version: str):
+                    candidate = engine_for(version)
+                    return lambda value: candidate.run(
+                        value,
+                        task_id="%s:candidate:%s" % (
+                            query_task_id,
+                            candidate.policy_version,
+                        ),
+                        conversation_context=conversation_context,
+                    )
+
                 result = release.execute(
                     question,
                     query_task_id,
@@ -1767,15 +2400,70 @@ class Text2SQLWebService:
                     ),
                     candidate_runner,
                     stable_engine.version_pins,
+                    stable_evaluation_identity,
                 )
             except Exception as exc:
-                evolution.finish_query_attempt(query_task_id, "error", str(exc))
+                safe_error_code = "text2sql_runtime_error"
+                failure_result = {
+                    "task_id": query_task_id,
+                    "status": "error",
+                    "question": question,
+                    "original_question": question,
+                    "standalone_question": question,
+                    "query_type": "DATA_QUERY",
+                    "final_sql": "",
+                    "gates": {
+                        "accepted": False,
+                        "errors": [safe_error_code],
+                    },
+                    "answer": {
+                        "columns": [],
+                        "rows": [],
+                        "row_count": 0,
+                        "truncated": False,
+                        "summary_text": "",
+                    },
+                    "version_pins": version_pins,
+                }
+                failure_internal = {
+                    "collaboration": {
+                        "diagnostic": {
+                            "exception_type": type(exc).__name__[:200],
+                        }
+                    }
+                }
+                try:
+                    finalize_run(
+                        failure_result,
+                        failure_internal,
+                        store=evolution,
+                        task_id=query_task_id,
+                        user_id=user_id,
+                        session_id=session_id,
+                        origin="web",
+                        source_lane="stable",
+                        source_revision=evolution.next_query_trace_revision(
+                            query_task_id
+                        ),
+                    )
+                except Exception:
+                    # Trace finalization is best effort and must not replace the
+                    # runtime exception observed by the caller.
+                    pass
+                try:
+                    evolution.finish_query_attempt(
+                        query_task_id,
+                        "error",
+                        safe_error_code,
+                    )
+                except Exception:
+                    pass
                 raise
         public = self._public_result(result, query_task_id)
-        self._remember_trace(
+        memory_status = self._remember_trace(
             public,
             result,
             user_id=user_id,
             session_id=session_id,
         )
-        return public
+        return {**dict(public), **dict(memory_status)}

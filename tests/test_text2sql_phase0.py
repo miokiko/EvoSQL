@@ -6,7 +6,6 @@ from pathlib import Path
 
 import yaml
 
-from evoagent.text2sql.knowledge_policy import KnowledgeAssertion, QueryVersionPin, resolve_authority
 from evoagent.text2sql.schema_catalog import build_snapshot_from_dump, write_snapshot_artifacts
 from evoagent.text2sql.sqlite_database import build_sqlite_database, open_readonly
 
@@ -61,38 +60,37 @@ class SchemaSnapshotTests(unittest.TestCase):
         self.assertEqual(review["status"], "pending_review")
         self.assertEqual(reviewed_relationship["decision"], "pending")
 
+    def test_review_evidence_survives_rebuild_and_expires_on_snapshot_change(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            paths = write_snapshot_artifacts(self.artifacts, root)
+            review = json.loads(paths["join_review"].read_text())
+            for item in review["relationships"]:
+                item.update(decision="rejected", reviewer="test-reviewer",
+                            notes="Not a default relationship.",
+                            review_category="independent_row_identifiers",
+                            review_evidence={"snapshot_id": review["database_snapshot_id"],
+                                             "inner_join_rows": 44})
+            paths["join_review"].write_text(json.dumps(review))
+            write_snapshot_artifacts(self.artifacts, root)
+            rebuilt = json.loads(paths["join_review"].read_text())
+            self.assertEqual(rebuilt["status"], "reviewed")
+            for before, after in zip(review["relationships"], rebuilt["relationships"]):
+                for key in ("decision", "reviewer", "notes",
+                            "review_category", "review_evidence"):
+                    self.assertEqual(after[key], before[key])
+            changed = type(self.artifacts)(
+                snapshot={**self.artifacts.snapshot, "snapshot_id": "different-snapshot"},
+                join_candidates=self.artifacts.join_candidates,
+            )
+            write_snapshot_artifacts(changed, root)
+            invalidated = json.loads(paths["join_review"].read_text())
+            self.assertEqual(invalidated["status"], "pending_review")
+            for item in invalidated["relationships"]:
+                self.assertEqual(item["decision"], "pending")
+                self.assertNotIn("review_evidence", item)
 
-class KnowledgeAuthorityTests(unittest.TestCase):
-    def test_database_wins_physical_fact(self):
-        assertions = [
-            KnowledgeAssertion(
-                "db:1", "database", "physical", "table.column.type", "varchar(20)", "dbs_1"
-            ),
-            KnowledgeAssertion(
-                "wiki:1", "wiki", "physical", "table.column.type", "integer", "wiki_1"
-            ),
-            KnowledgeAssertion(
-                "memory:1", "memory", "physical", "table.column.type", "date", "mem_1"
-            ),
-        ]
-        decision = resolve_authority("physical", assertions)
-        self.assertEqual(decision.status, "resolved")
-        self.assertEqual(decision.assertion.evidence_id, "db:1")
 
-    def test_conflicting_stable_wiki_definitions_fail_closed(self):
-        assertions = [
-            KnowledgeAssertion("wiki:1", "wiki", "business", "严重", "强烈", "wiki_1"),
-            KnowledgeAssertion("wiki:2", "wiki", "business", "严重", "极强", "wiki_2"),
-        ]
-        decision = resolve_authority("business", assertions)
-        self.assertEqual(decision.status, "knowledge_conflict")
-        self.assertIsNone(decision.assertion)
-
-    def test_all_four_versions_are_required(self):
-        pin = QueryVersionPin("dbs_1", "wiki_1", "memory_1", "policy_1")
-        self.assertEqual(pin.policy_version, "policy_1")
-        with self.assertRaises(ValueError):
-            QueryVersionPin("dbs_1", "", "memory_1", "policy_1")
 
 
 class IsolationConfigurationTests(unittest.TestCase):

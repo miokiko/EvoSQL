@@ -1,0 +1,96 @@
+{
+  "contract": "evoagent-schema-annotations-v1",
+  "database_snapshot_id": "dbs_57a4a4c99520477b1c8e",
+  "columns": {
+    "t_activeinfoevent.c_rockEnergy": {
+      "status": "corrected",
+      "comment": "岩体能量（单位未注明；当前表为空）",
+      "reason": "删除误粘贴的支护材料枚举，保留 DDL 原有指标名。",
+      "evidence": "原始 DDL：岩体能量；该枚举与能量量纲不符。"
+    },
+    "t_stress.d_size1": {
+      "status": "corrected",
+      "comment": "第一主应力的大小（单位：MPa）",
+      "reason": "删除误粘贴的支护材料列表，保留原注释明确的名称和单位。",
+      "evidence": "原始 DDL 明确写有主应力大小及单位 MPa。"
+    },
+    "t_stress.d_size2": {
+      "status": "corrected",
+      "comment": "第二主应力的大小（单位：MPa）",
+      "reason": "删除误粘贴的支护材料列表，保留原注释明确的名称和单位。",
+      "evidence": "原始 DDL 明确写有主应力大小及单位 MPa。"
+    },
+    "t_stress.d_size3": {
+      "status": "corrected",
+      "comment": "第三主应力的大小（单位：MPa）",
+      "reason": "删除误粘贴的支护材料列表，保留原注释明确的名称和单位。",
+      "evidence": "原始 DDL 明确写有主应力大小及单位 MPa。"
+    },
+    "t_stress.d_strain": {
+      "status": "corrected",
+      "comment": "变形量（沿用 DDL 名称，单位和具体定义未提供）",
+      "reason": "移除支护枚举；不扩展为变形模量或赋予 GPa 单位。",
+      "evidence": "原始 DDL 称变形量；39 行中 38 行 NULL、1 行为 0，无法进一步确定物理量。"
+    },
+    "t_casedesc.c_rockLevel": {
+      "status": "corrected",
+      "comment": "岩爆等级（烈度）：轻微、中等、强烈、极强",
+      "reason": "原注释岩石等级与该分类表及实值不符；纠正为岩爆分类。",
+      "evidence": "36 条分类记录使用四类岩爆烈度词；与岩爆领域分级用语一致。参见 docs/DDL_BUSINESS_INTERPRETATION.md。"
+    },
+    "t_casedesc.c_craterRemark": {
+      "status": "inferred",
+      "comment": "爆坑备注（当前没有非空备注）",
+      "reason": "火山口为 crater 的语境误译；依据岩爆业务及爆坑记录字段解释。",
+      "evidence": "t_rockdesc 中 c_craterNo 等字段的 DDL 明确为爆坑；本字段 35 行 NULL、1 行空字符串。"
+    },
+    "t_support.c_supportNum": {
+      "status": "corrected",
+      "comment": "支护数量/工程量描述（含单位的文本）",
+      "reason": "原注释编号不符合实际值；不能当作行标识或无单位数值。",
+      "evidence": "实际值包含 8方、4榀、12根等数量单位描述；记录标识另有 i_serialid。"
+    },
+    "t_supportnew.c_supportNum": {
+      "status": "corrected",
+      "comment": "支护数量/工程量描述（含单位的文本）",
+      "reason": "原注释编号不符合实际值；不能当作行标识或无单位数值。",
+      "evidence": "实际值包含 8方、4榀、12根等数量单位描述；记录标识另有 i_serialid。"
+    },
+    "t_casedesc.c_stive": {
+      "status": "inferred",
+      "comment": "粉尘现象描述（混有声音文本）",
+      "reason": "大部分实际内容描述粉尘，保留混用事实，不将声音行自动归为粉尘。",
+      "evidence": "依据本字段非空自由文本与声音特征字段的对照；不建立自动类别合并。"
+    },
+    "t_waveproperty.c_waveName": {
+      "status": "corrected",
+      "comment": "波形名称（当前表为空）",
+      "reason": "波姓名称是明显错字，按波形属性表语境纠正。",
+      "evidence": "表名 waveproperty、字段 waveName 及波形业务语境；空表不影响拼写纠正，但不能证明数据覆盖。"
+    },
+    "t_stress.d_terrain": {
+      "status": "inferred",
+      "comment": "埋深/岩石覆盖厚度（推断单位：m；0 值可能为占位）",
+      "reason": "数值不支持地层类别；工程对应关系支持埋深解释。",
+      "evidence": "4 条值为 2400 的记录均属于锦屏地下实验室，清华官方资料说明该实验室地下深度 2400 米；另有巴玉隧道 1700、1 条零值及 33 条 NULL。来源：https://www.tsinghua.edu.cn/info/1175/18982.htm 。外部工程深度佐证本字段映射，不能替代测点测量。"
+    },
+    "t_activeinfo.d_fate": {
+      "status": "inferred",
+      "comment": "累计统计时长（事件率分母，时间单位未提供）",
+      "reason": "根据累计量与增速的数值关系推断，不再使用事件命运值。",
+      "evidence": "10 条非空记录的 8 条满足累计事件数/事件增速≈本字段；去除完全重复后为 4/5 组。对数累计量减对数增速也近似 log10(本字段)。另 2 条事件数 19、增速 19、本字段 9 不一致；不可全表自动换算或指定天/小时。"
+    },
+    "t_caseinfo.c_level": {
+      "status": "inferred",
+      "comment": "围岩级别（当前非空值为Ⅱ、Ⅳ）",
+      "reason": "罗马数字等级结合围岩、岩性和隧洞语境，更符合围岩级别；与岩爆烈度分开。",
+      "evidence": "DDL 原注释为等级，非空值Ⅱ、Ⅳ，另有 5 行 NULL。采用围岩级别作为推断检索名，不套用未提供的分级标准阈值。"
+    },
+    "t_project.c_totalEvp": {
+      "status": "unreliable",
+      "comment": "项目 EVP 扩展字段（当前全空，不作为业务指标）",
+      "reason": "总估值缺乏依据，不能推断为造价、能量或特定缩写。",
+      "evidence": "三个项目均为 NULL，DDL 没有单位或计算定义。保留技术字段，当前指标不使用。"
+    }
+  }
+}

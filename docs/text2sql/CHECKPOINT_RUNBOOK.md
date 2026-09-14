@@ -5,18 +5,18 @@
 `Text2SQLAgenticEngine` 的 `plan-first-text2sql-v3` 协议包含 11 个固定运行节点，每个节点成功后立即提交到独立 SQLite Store：
 
 1. Lead 路由与委派；
-2. Evidence Orchestration：stable 检索并构建 `SchemaLinkPack/v2`；
+2. Evidence Orchestration：先做 LLM/关键词正向链接，再用冻结的 Vanna DDL、文档和确认 SQL 生成不执行的草稿，反向解析并按需补充检索；最终构建供 Schema Grounding 使用的 `GroundingPack/v1`、`SchemaLinkPack/v3` 候选，以及供 Query Planning 使用的 `PlanningBusinessPack/v1`；
 3. Plan Workers：Schema Grounding 与 schema-blind Query Planning 并发执行；
 4. Harness 对 QuerySpec 与 SchemaPlan 做 deterministic bind；
 5. Lead 对 BoundQueryPlan 做语义审核；
 6. 必要时每个 Plan Worker 最多返工一次，重新 bind，由 Lead 做最终审批并由 Harness 铸造 ApprovedQueryPlan；
-7. SQL Generation 从不可变 ApprovedQueryPlan 生成候选；
+7. Harness 在 ApprovedQueryPlan 形成后从 Vanna 召回已确认 Question-SQL，经当前 Snapshot、SQL 安全与计划表列范围复验，构建最多 3 条的 `VerifiedExamplePack/v1`；SQL Generation 以 ApprovedQueryPlan 为唯一语义约束生成候选；
 8. Harness 依次执行 `validate_sql`、plan conformance、`explain_sql`；如果零候选通过，允许一次 Generation 修复并重新执行这些门禁；
 9. Blind Critic 审核通过门禁的匿名候选；
 10. Lead 只能从 Critic 接受的已有候选中做最终选择；
 11. Harness 重跑最终 validation、版本与计划一致性检查，然后只读执行。
 
-模型角色只有 `text2sql-lead`、`schema-grounding`、`query-planning`、`sql-generation`、`text2sql-critic` 五个。Harness 是非 Agent、非 Skill 的应用执行主体。Query Planning 看不到物理 Schema；Schema Grounding 的 value binding 会先到固定的只读实库验证 physical value，再进入 deterministic bind。
+模型角色只有 `text2sql-lead`、`schema-grounding`、`query-planning`、`sql-generation`、`text2sql-critic` 五个。Harness 是非 Agent、非 Skill 的应用执行主体。Query Planning 看不到物理 Schema；Schema Grounding 的 value binding 会先到固定的只读实库验证 physical value，再进入 deterministic bind。Question-SQL 召回与组包发生在现有第 7 节点内部，不改变 11 节点拓扑。Vanna 只提供召回，Schema Snapshot、Join Catalog 和确定性 Gate 仍决定物理边界。
 
 并发只发生在第 3 个 `plan-workers` 节点内部；其余节点保持固定顺序。当前没有 Critic reject 后的 Generation 修复：第 8 节点的一次修复仅在进入 Critic 前、零候选通过确定性门禁时发生。
 
@@ -28,7 +28,7 @@ Web 与 CLI 默认使用同一个可配置的存储位置：
 EVOAGENT_TEXT2SQL_CHECKPOINT_STORE=artifacts/text2sql/checkpoints/runtime.sqlite3
 ```
 
-CLI 已向 stable/candidate Engine 注入该 Runtime Checkpoint Store。恢复时必须复用同一个外部任务 ID；也可以用 `--checkpoint-store` 覆盖存储文件：
+CLI 已向 stable/candidate Policy Engine 注入该 Runtime Checkpoint Store。恢复时必须复用同一个外部任务 ID；也可以用 `--checkpoint-store` 覆盖存储文件：
 
 ```bash
 python scripts/run_text2sql.py "强烈岩爆案例有多少个" \
@@ -36,7 +36,7 @@ python scripts/run_text2sql.py "强烈岩爆案例有多少个" \
   --checkpoint-store artifacts/text2sql/checkpoints/runtime.sqlite3
 ```
 
-`--checkpoint-store` 默认读取 `EVOAGENT_TEXT2SQL_CHECKPOINT_STORE`，未设置时落到 `artifacts/text2sql/checkpoints/runtime.sqlite3`。不传 `--task-id` 会生成新 ID，并在输出顶层 `task_id` 返回；要跨进程恢复，调用方应记录并在重试时显式传回该 ID。相同 task ID 还必须保持问题、principals、模型、预算和所有版本 pins 不变，否则身份校验会 fail closed。
+`--checkpoint-store` 默认读取 `EVOAGENT_TEXT2SQL_CHECKPOINT_STORE`，未设置时落到 `artifacts/text2sql/checkpoints/runtime.sqlite3`。不传 `--task-id` 会生成新 ID，并在输出顶层 `task_id` 返回；要跨进程恢复，调用方应记录并在重试时显式传回该 ID。相同 task ID 还必须保持问题、session、模型、预算和所有版本 pins 不变，否则身份校验会 fail closed。
 
 CLI 与 Web 使用相同的 lane 隔离规则：
 
@@ -45,7 +45,7 @@ CLI 与 Web 使用相同的 lane 隔离规则：
 <外部 task_id>:candidate:<candidate policy version>
 ```
 
-外部 task ID 仍作为 release assignment 的 task key；上面两个内部 ID 只用于 Runtime Checkpoint。这样，同一次 shadow/canary 双跑的 stable 与 candidate 不会读取彼此节点，同一外部 ID 在 Policy 升级后也不会误读旧 Policy 的运行。若某次请求未命中 shadow/canary，只有 stable lane 会被创建。
+外部 task ID 仍作为 release assignment 的 task key；上面两个内部 ID 只用于 Runtime Checkpoint。这里的 stable / candidate 专指 Policy lane。这样，同一次 shadow/canary 双跑的两条 Policy lane 不会读取彼此节点，同一外部 ID 在 Policy 升级后也不会误读旧 Policy 的运行。若某次请求未命中 shadow/canary，只有 stable Policy lane 会被创建。
 
 Web 页面会在浏览器本地暂存未完成请求的 `task_id`；网络或服务中断后再次发送同一问题会复用该 ID，成功返回后清除。API 调用方也应在首次请求前生成并重试复用自己的 `task_id`。
 
@@ -56,23 +56,24 @@ Web 服务还在 Evolution Store 中保存一层请求记录：首次请求会�
 Checkpoint 身份绑定以下输入：
 
 - 问题与会话 QueryRun 上下文的 SHA-256；
-- principals（角色级 Tool ACL 的调用身份）；
-- database snapshot、Wiki、Vanna、Memory、Policy 五项版本固定值；
+- session 与冻结会话上下文摘要；
+- 四个逻辑版本固定值：Database Snapshot、Vanna corpus、Memory、Policy；业务文档摘要已包含在 Vanna corpus fingerprint 中，不是独立 Pin；兼容字段 `wiki_index_version` 保存同一个 Vanna corpus version；
 - 模型 provider/model 与 temperature；
-- `plan-first-text2sql-v3` 协议、`BUILD_VERSION=text2sql-agentic-build-v3`、`GATE_IMPLEMENTATION_VERSION=text2sql-harness-gates-v2` 和完整节点顺序；
+- `plan-first-text2sql-v3` 协议、`BUILD_VERSION=text2sql-agentic-build-v18`、`GATE_IMPLEMENTATION_VERSION=text2sql-harness-gates-v10` 和完整节点顺序；
 - QuerySpec、SchemaPlan、BoundQueryPlan、ApprovedQueryPlan contract 列表；
 - 最大候选数、每 Worker 最大计划返工次数和最大 SQL 修复次数；
+- 当前 Policy 已吸收的来源 Memory ID 集合，避免恢复后重复注入同一规则；
 - Token/时间预算、结果行数和 SQL 超时。
 
-`plan-first-text2sql-v3` checkpoint 不会复用旧 8 节点协议或 `plan-first-text2sql-v2` 的状态。协议、Build、Gate 实现、图、计划 contract 或任一版本 pin 变化时，同一内部任务 ID 都会 fail closed，不会把旧 Agent 状态拼接进新运行。这里的 v3 指运行协议；`SchemaLinkPack/v2`、`text2sql-policy-v2` 与 SQLite checkpoint envelope 各有独立 contract version，不应随运行协议名称一起改写。Web 与 CLI 的 stable/candidate 都使用 `外部任务 ID + lane + Policy 版本` 生成独立键，避免 shadow/canary 双跑或 Policy 切换互相读取状态。
+`plan-first-text2sql-v3` checkpoint 不会复用旧 8 节点协议或 `plan-first-text2sql-v2` 的状态。协议、Build、Gate 实现、图、计划 contract 或任一版本 pin 变化时，同一内部任务 ID 都会 fail closed，不会把旧 Agent 状态拼接进新运行。这里的 v3 指运行协议；`GroundingPack/v1`、`PlanningBusinessPack/v1`、`VerifiedExamplePack/v1`、`SchemaLinkPack/v3`、`text2sql-policy-v2` 与 SQLite checkpoint envelope 各有独立 contract version，不应随运行协议名称一起改写。Web 与 CLI 的 stable/candidate Policy lane 都使用 `外部任务 ID + lane + Policy 版本` 生成独立键，避免 shadow/canary 双跑或 Policy 切换互相读取状态。
 
 Store 使用 WAL、短连接和 `BEGIN IMMEDIATE`；同一任务只允许一个有效租约持有者执行。另一个线程或进程同时请求相同任务会得到 busy 错误，失败或租约过期后才可接管。
 
 ## 评测恢复
 
-`run_text2sql_evaluation.py` 当前使用独立的 Case 级 append-only JSONL checkpoint。`evaluation_run_id` 写入 JSONL Header：只有 `--resume` 会复用它，新建评测即使数据集与 Policy 相同也会获得独立命名空间，不会把旧模型输出当作新 Benchmark；已完成 Case 由日志直接跳过。
+`run_text2sql_evaluation.py` 同时使用 Case 级 append-only JSONL checkpoint 与单题 SQLite Runtime Checkpoint Store。`evaluation_run_id` 写入 JSONL Header：只有 `--resume` 会复用它，新建评测即使数据集与 Policy 相同也会获得独立命名空间，不会把旧模型输出当作新 Benchmark；已完成 Case 由日志直接跳过。
 
-当前评测脚本没有向 Engine 注入 SQLite Runtime Checkpoint Store，也没有为单题传入 Runtime `task_id`，因此只能恢复到 Case 边界，不能恢复某道题内部的 11 个节点。若后续接通单题节点恢复，任务键还必须包含 `evaluation_run_id + case_id`，并继续接受上述协议、图、contract 与 pins 的完整身份校验。
+每道题的 Runtime `task_id` 固定为 `evaluation_run_id + case_id`，因此进程中断后既能跳过已落入 JSONL 的 Case，也能从尚未完成题目的首个未完成节点继续。SQLite 文件默认是 `<output>.runtime.sqlite3`，可用 `--runtime-checkpoint-store` 覆盖；任务仍接受上述协议、图、contract 与 pins 的完整身份校验。
 
 ## 数据与运维边界
 

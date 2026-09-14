@@ -1,94 +1,14 @@
 import json
-import os
-import tempfile
 import unittest
 
-from evoagent.agentic_core import ModeRouterReviewer
 from evoagent.context_manager import ContextManager, estimate_tokens
-from evoagent.diff_parser import parse_unified_diff
-from evoagent.memory import MemoryManager
-from evoagent.store import TaskStore
 
 
-def large_diff():
-    values = []
-    for index in range(12):
-        path = "src/module_%02d.py" % index
-        content = "value_%d = transform(input_%d)" % (index, index)
-        if index == 9:
-            path = "src/auth.py"
-            content = "result = eval(user_token)"
-        values.extend([
-            "--- a/%s" % path,
-            "+++ b/%s" % path,
-            "@@ -1,2 +1,3 @@ function_%d" % index,
-            " context = True",
-            "+%s" % content,
-            "+audit(value_%d)" % index,
-            *["+trace_%d_%d = normalize(value_%d)" % (index, line, index) for line in range(18)],
-        ])
-    return "\n".join(values) + "\n"
 
 
-class CapturingClient:
-    provider = "fake"
-    model = "fake-model"
-
-    def __init__(self):
-        self.tasks = []
-
-    def complete_json(self, role, _system, user, ledger=None, max_tokens=None):
-        managed = json.loads(user)
-        task = json.loads(managed["task"])
-        self.tasks.append((role, task, managed))
-        if ledger:
-            ledger.record_model(
-                role, self.provider, self.model,
-                {"prompt_tokens": 20, "completion_tokens": 5}, 1,
-            )
-        if role == "lead" and task["phase"] == "delegate":
-            return {"action": "final", "delegations": [{
-                "assignment_id": "security-1", "worker": "security",
-                "objective": "Review authentication and dynamic execution.",
-                "files": ["src/auth.py"], "risk_domains": ["authorization"],
-            }]}
-        if role == "lead" and task["phase"] == "assess-workers":
-            return {
-                "action": "final", "revision_requests": [],
-                "critic_objective": "Verify candidates.",
-            }
-        if role == "lead" and task["phase"] == "finalize":
-            return {
-                "action": "final", "accepted_finding_indices": [],
-                "confidence_adjustments": [],
-            }
-        if role in {"security", "correctness-reliability"}:
-            return {"action": "final", "findings": []}
-        if role == "critic":
-            return {"action": "final", "decisions": []}
-        raise AssertionError((role, task))
 
 
 class ContextManagerTests(unittest.TestCase):
-    def test_large_diff_uses_risk_ranked_hunk_map_reduce(self):
-        manager = ContextManager(
-            context_window_tokens=4096, input_token_budget=2500,
-            diff_token_budget=900, map_chunk_tokens=160,
-        )
-
-        compressed = manager.compress_diff(
-            large_diff(), "task", "security", focus_files=["src/auth.py"],
-            risk_domains=["authorization", "token"],
-        )
-
-        self.assertEqual("semantic-diff-v1", compressed["format"])
-        self.assertTrue(compressed["compression"]["applied"])
-        self.assertGreater(compressed["compression"]["map_chunks"], 1)
-        self.assertIn(
-            "src/auth.py", {item["path"] for item in compressed["selected_hunks"]}
-        )
-        self.assertLess(compressed["compressed_estimated_tokens"], compressed["original_estimated_tokens"])
-        self.assertLessEqual(estimate_tokens(compressed), 1000)
 
     def test_old_observations_are_summarized_and_evidence_is_retained(self):
         manager = ContextManager(
@@ -119,71 +39,40 @@ class ContextManagerTests(unittest.TestCase):
             observation_token_budget=300, recent_observations=1,
         )
         task = json.dumps({
-            "phase": "review", "diff": "a" * 12000,
-            "candidate_findings": [
-                {"finding_index": index, "explanation": "b" * 1200}
+            "phase": "critic", "reasoning_summary": "a" * 12000,
+            "candidates": [
+                {"candidate_index": index, "explanation": "b" * 1200}
                 for index in range(8)
             ],
         })
 
         managed, stats = manager.build_managed_context(
-            task, [], [], 4000, 60, system_prompt="review", max_output_tokens=512,
+            task, [], [], 4000, 60, system_prompt="Review Text2SQL candidates", max_output_tokens=512,
         )
 
         self.assertLessEqual(stats["estimated_input_tokens_after"], stats["input_token_limit"])
         compact_task = json.loads(managed["task"])
-        self.assertEqual(8, len(compact_task["candidate_findings"]))
-        self.assertEqual(7, compact_task["candidate_findings"][7]["finding_index"])
+        self.assertEqual(8, len(compact_task["candidates"]))
+        self.assertEqual(7, compact_task["candidates"][7]["candidate_index"])
+
+    def test_context_compaction_preserves_plan_sql_and_candidate_indices(self):
+        sql = "SELECT c_caseCode FROM t_casedesc WHERE c_rockLevel='强烈'"
+        plan = {"fingerprint": "approved-plan", "filters": [{"value": "强烈"}]}
+        task = json.dumps({
+            "approved_query_plan": plan,
+            "reasoning_summary": "解释" * 4000,
+            "candidates": [{"candidate_index": 0, "sql": sql}],
+        }, ensure_ascii=False)
+        reduced = json.loads(ContextManager._compact_task(task, 512))
+        self.assertEqual(reduced["approved_query_plan"], plan)
+        self.assertEqual(reduced["candidates"], [{"candidate_index": 0, "sql": sql}])
+
+    def test_oversized_protected_plan_fails_before_model_call(self):
+        task = json.dumps({"approved_query_plan": {"values": list(range(1000))}})
+        with self.assertRaisesRegex(ValueError, "context budget"):
+            ContextManager._minimal_task(task, 192)
 
 
-class ContextMemoryIntegrationTests(unittest.TestCase):
-    def setUp(self):
-        handle, self.path = tempfile.mkstemp(suffix=".db")
-        os.close(handle)
-        self.store = TaskStore(self.path)
-
-    def tearDown(self):
-        os.unlink(self.path)
-
-    def test_review_recall_and_semantic_diff_reach_agent_context(self):
-        diff = large_diff()
-        self.store.create("task", "org/repo", 1, {
-            "mode": "agentic", "enabled_agents": ["lead", "security"],
-        }, "tenant-a")
-        memory = MemoryManager(self.store)
-        memory.remember(
-            "tenant-a", "org/repo", "semantic", "review_feedback",
-            "Dynamic execution in auth token handling was a confirmed missed issue.",
-            importance=0.95,
-        )
-        client = CapturingClient()
-        manager = ContextManager(
-            context_window_tokens=6000, input_token_budget=4000,
-            diff_token_budget=1200,
-        )
-        reviewer = ModeRouterReviewer(
-            self.store, client, memory_manager=memory, context_manager=manager,
-        )
-
-        reviewer.review_with_context(
-            "task", diff, parse_unified_diff(diff), "org/repo", "tenant-a",
-        )
-        summary = reviewer.collaboration_summary("task")
-
-        self.assertTrue(client.tasks)
-        for _role, task, managed in client.tasks:
-            self.assertIsInstance(task["diff"], str)
-            self.assertIn("semantic-diff-v1", task["diff"])
-            self.assertEqual("semantic-diff-v1", task["diff_context"]["format"])
-            self.assertTrue(task["recalled_memory"]["items"])
-            self.assertLessEqual(
-                estimate_tokens(managed), managed["context_policy"]["input_token_limit"],
-            )
-        context = summary["context_management"]
-        self.assertTrue(context["semantic_compression_enabled"])
-        self.assertGreater(context["compression_calls"], 0)
-        self.assertEqual(1, context["memory_recall"]["recalled"])
-        self.assertIn("context_management", summary["execution"])
 
 
 if __name__ == "__main__":

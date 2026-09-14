@@ -12,7 +12,7 @@
 
 逐题事件已经全部写入复核库并通过哈希链校验；证书已用默认私有密钥签发，manifest 为 `human_reviewed + release_eligible=true`。
 
-审查包可能含 sealed holdout 的 Gold 信息，只能供人工审查，不能进入 Agent Prompt、Wiki、Memory 或 Few-shot。
+审查包可能含 sealed holdout 的 Gold 信息，只能供人工审查，不能进入 Agent Prompt、业务 Markdown、Vanna、Memory 或 Few-shot。
 
 ## 逐题复核
 

@@ -11,8 +11,8 @@ from typing import Dict, Iterable, Optional
 
 
 ROLE_PERMISSIONS = {
-    "admin": {"read", "review", "fix", "manage", "audit"},
-    "maintainer": {"read", "review", "fix"},
+    "admin": {"read", "query", "manage", "audit"},
+    "maintainer": {"read", "query"},
     "auditor": {"read", "audit"},
 }
 

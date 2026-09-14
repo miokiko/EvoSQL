@@ -223,6 +223,34 @@ class QueryPlanContractTests(unittest.TestCase):
         )
         self.assertEqual((spec.limit, spec.version), (20, 1))
 
+        with self.assertRaisesRegex(ValueError, "distinct_rows must be boolean"):
+            QuerySpec.from_dict(
+                {
+                    "intent": "lookup",
+                    "subject": "案例",
+                    "dimensions": ["案例ID"],
+                    "distinct_rows": "true",
+                }
+            )
+        with self.assertRaisesRegex(ValueError, "only valid for rows"):
+            QuerySpec.from_dict(
+                {
+                    "intent": "count",
+                    "subject": "案例数",
+                    "measures": [
+                        {
+                            "slot_id": "measure-count",
+                            "name": "案例数",
+                            "aggregation": "count",
+                            "count_all": True,
+                            "distinct": False,
+                        }
+                    ],
+                    "expected_shape": "scalar",
+                    "distinct_rows": True,
+                }
+            )
+
     def test_query_spec_preserves_legacy_strings_and_typed_mapping_dimensions(self):
         legacy = QuerySpec.from_dict(
             {
@@ -959,6 +987,42 @@ class QueryPlanConformanceTests(unittest.TestCase):
         result = check_plan_conformance(row_distinct, self.bound, SNAPSHOT)
         self.assertFalse(result.accepted)
         self.assertIn("unexpected_row_distinct", result.errors)
+
+        distinct_spec = QuerySpec.from_dict(
+            {
+                "intent": "lookup",
+                "subject": "案例ID",
+                "dimensions": [
+                    {"slot_id": "dimension-id", "concept": "案例ID"}
+                ],
+                "limit": 20,
+                "expected_shape": "rows",
+                "distinct_rows": True,
+            }
+        )
+        distinct_plan = SchemaPlan.from_dict(
+            {
+                "tables": ["t_case"],
+                "columns": ["t_case.c_id"],
+                "result_grain": ["t_case.c_id"],
+                "bindings": [
+                    {"logical_name": "案例ID", "column": "t_case.c_id"}
+                ],
+            }
+        )
+        distinct_bound = bind_query_plan(distinct_spec, distinct_plan)
+        self.assertTrue(
+            check_plan_conformance(
+                "SELECT DISTINCT c_id FROM t_case LIMIT 20",
+                distinct_bound,
+                SNAPSHOT,
+            ).accepted
+        )
+        missing = check_plan_conformance(
+            "SELECT c_id FROM t_case LIMIT 20", distinct_bound, SNAPSHOT
+        )
+        self.assertFalse(missing.accepted)
+        self.assertIn("missing_row_distinct", missing.errors)
 
     def test_duplicate_output_aliases_fail_closed(self):
         duplicate = VALID_SQL.replace(

@@ -115,10 +115,15 @@ class QueryMeasure:
     field_concept: str = ""
     distinct: Optional[bool] = None
     count_all: bool = False
+    precision: Optional[int] = None
 
     def __post_init__(self) -> None:
         if not self.slot_id.strip() or not self.name.strip():
             raise ValueError("QueryMeasure slot_id and name are required")
+        if self.precision is not None and (type(self.precision) is not int or not 0 <= self.precision <= 12):
+            raise ValueError("QueryMeasure precision must be an integer between 0 and 12")
+        if self.precision is not None and self.aggregation == "none":
+            raise ValueError("QueryMeasure precision requires an aggregate measure")
         if type(self.count_all) is not bool:
             raise ValueError("QueryMeasure count_all must be boolean")
         if self.aggregation not in {"none", "count", "sum", "avg", "min", "max"}:
@@ -162,6 +167,7 @@ class QueryMeasure:
             field_concept=field_concept,
             distinct=distinct_value,
             count_all=count_all,
+            precision=value.get("precision"),
         )
 
 
@@ -262,6 +268,8 @@ class QueryOrder:
             value = {"target": value}
         if not isinstance(value, Mapping):
             raise ValueError("QuerySpec order_by entry must be a string or mapping")
+        if any(value.get(key) is not None for key in ("nulls", "nulls_first", "nulls_last")):
+            raise ValueError("QuerySpec/v1 supports only SQLite default NULL ordering; omit nulls/nulls_first/nulls_last options")
         target = (
             value.get("target")
             or value.get("slot")
@@ -288,6 +296,7 @@ class QuerySpec:
     order_by: Sequence[Mapping[str, Any]] = field(default_factory=tuple)
     limit: int = 20
     expected_shape: str = "rows"
+    distinct_rows: bool = False
     version: int = 1
 
     def __post_init__(self) -> None:
@@ -297,6 +306,10 @@ class QuerySpec:
             raise ValueError("QuerySpec subject is required")
         if self.expected_shape not in {"scalar", "rows", "grouped_rows"}:
             raise ValueError("unsupported QuerySpec expected_shape")
+        if type(self.distinct_rows) is not bool:
+            raise ValueError("QuerySpec distinct_rows must be boolean")
+        if self.distinct_rows and self.expected_shape != "rows":
+            raise ValueError("distinct_rows is only valid for rows result shape")
         if type(self.limit) is not int:
             raise ValueError("QuerySpec limit must be an integer")
         if not 1 <= self.limit <= 1000:
@@ -326,6 +339,7 @@ class QuerySpec:
             order_by=_mapping_values(value.get("order_by") or (), "order_by"),
             limit=value.get("limit", 20),
             expected_shape=str(value.get("expected_shape", "rows")),
+            distinct_rows=value.get("distinct_rows", False),
             version=value.get("version", 1),
         )
 
@@ -477,7 +491,7 @@ class SchemaPlan:
         if any(not _QUALIFIED.fullmatch(value) for value in self.columns):
             raise ValueError("SchemaPlan contains an invalid column identifier")
         if any(not _QUALIFIED.fullmatch(value) for value in self.result_grain):
-            raise ValueError("SchemaPlan contains an invalid result-grain identifier")
+            raise ValueError("SchemaPlan contains an invalid result-grain identifier: %s; use qualified table.column identifiers or [] for scalar results" % ", ".join(value for value in self.result_grain if not _QUALIFIED.fullmatch(value)))
         planned_tables = set(self.tables)
         referenced = {value.split(".", 1)[0] for value in self.columns}
         if any(not isinstance(join, JoinSpec) for join in self.joins):

@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from evoagent.runtime import ToolProtocolError
+from evoagent.telemetry import ExecutionLedger
 from evoagent.text2sql.contracts import QuerySpec, SQLCandidate, SchemaPlan
 from evoagent.text2sql.agentic import (
     BUILD_VERSION,
@@ -28,7 +29,18 @@ from evoagent.text2sql.checkpoint_store import (
     Text2SQLRuntimeCheckpointStore,
 )
 from evoagent.text2sql.database_tools import Text2SQLToolSuite
-from evoagent.text2sql.knowledge_store import KnowledgeStore
+from evoagent.text2sql.memory_service import (
+    build_query_trace,
+    extract_plan_revision_experiences,
+)
+from evoagent.text2sql.target_replay import (
+    build_replay_identity,
+    evaluate_target_replay,
+    experience_has_replay_proof,
+    result_issue_codes,
+)
+from corpus_fixtures import build_test_corpus
+from evoagent.text2sql.vanna_corpus import VannaCorpus, collect_vanna_corpus, add_confirmed_question_sql, question_sql_registry_path
 from evoagent.text2sql.query_plan import bind_query_plan
 from evoagent.text2sql.sql_safety import ReadOnlySQLiteExecutor, validate_sql
 from evoagent.text2sql.sqlite_database import build_sqlite_database
@@ -219,6 +231,52 @@ class DirectGenerationClient(ScriptedClient):
         self.responses["sql-generation"] = [self.responses["sql-generation"][0]]
 
 
+class Node2ComponentClient(ScriptedClient):
+    """Script the two non-Agent model components used inside Node 2."""
+
+    def complete_json(self, role, system, user, ledger=None, max_tokens=None):
+        if role not in {
+            "text2sql-forward-schema-linker",
+            "text2sql-vanna-draft",
+        }:
+            return super().complete_json(role, system, user, ledger, max_tokens)
+        context = json.loads(user)
+        with self.lock:
+            self.calls.append(
+                {
+                    "role": role,
+                    "system": system,
+                    "context": context,
+                    "envelope": context,
+                }
+            )
+        if ledger:
+            ledger.record_model(
+                role,
+                self.provider,
+                self.model,
+                {"prompt_tokens": 1, "completion_tokens": 1},
+                0,
+            )
+        if role == "text2sql-forward-schema-linker":
+            return {
+                "tables": [{"name": "t_harm", "confidence": 0.95}],
+                "columns": [
+                    {
+                        "identifier": "t_harm.c_caseCode",
+                        "logical_concept": "案例编码",
+                        "semantic_role": "entity_key",
+                        "confidence": 0.95,
+                    }
+                ],
+                "unresolved_concepts": [],
+            }
+        return {
+            "sql": "SELECT h.c_caseCode FROM t_harm AS h",
+            "notes": "Untrusted draft for reverse schema expansion.",
+        }
+
+
 class ResultQAClient:
     model = "scripted"
     provider = "test"
@@ -268,9 +326,9 @@ class Text2SQLContractTests(unittest.TestCase):
         self.assertIn("Never\nguess a table name", SCHEMA_PROMPT)
         self.assertEqual(TEXT2SQL_OBSERVATION_TOKEN_BUDGET, 1600)
         self.assertEqual(TEXT2SQL_PROTOCOL, "plan-first-text2sql-v3")
-        self.assertEqual(BUILD_VERSION, "text2sql-agentic-build-v3")
+        self.assertEqual(BUILD_VERSION, "text2sql-agentic-build-v18")
         self.assertEqual(
-            GATE_IMPLEMENTATION_VERSION, "text2sql-harness-gates-v2"
+            GATE_IMPLEMENTATION_VERSION, "text2sql-harness-gates-v10"
         )
         self.assertEqual(len(TEXT2SQL_RUNTIME_NODES), 11)
         self.assertTrue(_contains_sql_program("SELECT 1"))
@@ -315,12 +373,11 @@ class Text2SQLSafetyTests(unittest.TestCase):
         cls.temporary = tempfile.TemporaryDirectory()
         root = Path(cls.temporary.name)
         cls.database = root / "eval.sqlite3"
-        cls.knowledge = root / "knowledge.sqlite3"
+        cls.vanna = root / "vanna"
         build_sqlite_database(
             PROJECT_ROOT / "database" / "test1_full_20241118.sql", cls.database
         )
-        with KnowledgeStore(cls.knowledge) as store:
-            store.ingest_database(SNAPSHOT, JOIN_CATALOG)
+        cls.vanna_version = build_test_corpus(cls.vanna, SNAPSHOT, JOIN_CATALOG)
 
     @classmethod
     def tearDownClass(cls):
@@ -331,7 +388,8 @@ class Text2SQLSafetyTests(unittest.TestCase):
             client=ScriptedClient("SELECT 1"),
             database_path=self.database,
             snapshot=SNAPSHOT,
-            knowledge_store_path=self.knowledge,
+            vanna_index_root=self.vanna,
+            vanna_index_version=self.vanna_version,
             principals=["local-user"],
             memory_snapshot_id="memory-empty-v1",
             policy_version="policy-v1",
@@ -435,7 +493,8 @@ class Text2SQLSafetyTests(unittest.TestCase):
         suite = Text2SQLToolSuite(
             database_path=self.database,
             snapshot=SNAPSHOT,
-            knowledge_store_path=self.knowledge,
+            vanna_index_root=self.vanna,
+            vanna_index_version=self.vanna_version,
             principals=["local-user"],
             memory_snapshot_id="memory-empty-v1",
             policy_version="policy-v1",
@@ -466,81 +525,107 @@ class Text2SQLSafetyTests(unittest.TestCase):
         )
         self.assertEqual(executed["output"]["rows"], [[6]])
 
+    def test_node2_combines_forward_vanna_draft_and_reverse_completion(self):
+        client = Node2ComponentClient("SELECT 1")
+        engine = Text2SQLAgenticEngine(
+            client=client,
+            database_path=self.database,
+            snapshot=SNAPSHOT,
+            vanna_index_root=self.vanna,
+            vanna_index_version=self.vanna_version,
+            principals=["local-user"],
+            memory_snapshot_id="memory-empty-v1",
+            policy_version="policy-v1",
+        )
+        ledger = ExecutionLedger("node2-test")
+        result = engine._draft_link_pack(
+            "查询 t_harm 的案例编码 c_caseCode",
+            engine._suite(ledger),
+            ledger,
+        )
+        pack = result["draft_link_pack"]
+        self.assertEqual(pack["contract"], "SchemaLinkPack/v3")
+        self.assertTrue(pack["draft_valid"])
+        self.assertEqual(pack["draft_output"]["status"], "generated")
+        self.assertFalse(pack["draft_output"]["sql_execution_attempted"])
+        harm = next(
+            item
+            for item in pack["links"]
+            if item["identifier"] == "t_harm.c_caseCode"
+        )
+        self.assertIn("llm_forward", harm["sources"])
+        self.assertIn("draft_ast", harm["sources"])
+        self.assertIn("t_caseinfo.c_caseCode", pack["column_owners"]["c_caseCode"])
+        self.assertTrue(
+            set(pack["column_owners"]["c_caseCode"]).issubset(set(pack["columns"]))
+        )
+        self.assertTrue(pack["semantic_completion"]["requested"])
+        self.assertEqual(
+            result["vanna_context_call"]["tool"],
+            "retrieve_vanna_draft_context",
+        )
+        self.assertEqual(
+            result["supplemental_retrieval_call"]["tool"],
+            "retrieve_knowledge",
+        )
+        self.assertNotIn(
+            "verified_example",
+            {
+                item.get("knowledge_type")
+                for item in result["grounding_pack"]["evidence"]
+            },
+        )
+        rendered_planning = json.dumps(
+            result["planning_business_pack"], ensure_ascii=False
+        ).casefold()
+        self.assertNotIn("select ", rendered_planning)
+        summary = ledger.summary()
+        self.assertEqual(summary["llm_calls"], 2)
+        self.assertNotIn(
+            "execute_sql", {item["tool"] for item in summary["tool_call_log"]}
+        )
+
     def test_vanna_rank_is_a_bonus_and_cannot_displace_exact_value_evidence(self):
-        with KnowledgeStore(self.knowledge) as store:
-            irrelevant = store.connection.execute(
-                "SELECT evidence_id FROM knowledge_items "
-                "WHERE state='stable' AND item_key='table:t_activeinfoevent'"
-            ).fetchone()["evidence_id"]
-        with patch(
-            "evoagent.text2sql.database_tools.VannaRetrieverOnly"
-        ) as retriever_class:
-            retriever_class.return_value.retrieve.return_value = VannaRetrieval(
-                evidence_ids=(irrelevant,),
-                index_version="stable-test",
-            )
+        corpus = VannaCorpus(self.vanna, self.vanna_version)
+        irrelevant = next(item["evidence_id"] for item in corpus.retriever.corpus_items()
+                          if item["item_key"] == "table:t_activeinfoevent")
+        with patch("evoagent.text2sql.vanna_retriever.VannaRetrieverOnly.retrieve",
+                   return_value=VannaRetrieval(evidence_ids=(irrelevant,), index_version=self.vanna_version)):
             suite = Text2SQLToolSuite(
-                database_path=self.database,
-                snapshot=SNAPSHOT,
-                knowledge_store_path=self.knowledge,
-                vanna_index_root=Path(self.temporary.name) / "vanna",
-                vanna_index_version="stable-test",
-                principals=["local-user"],
-                memory_snapshot_id="memory-empty-v1",
-                policy_version="policy-v1",
+                database_path=self.database, snapshot=SNAPSHOT,
+                vanna_index_root=self.vanna, vanna_index_version=self.vanna_version,
+                principals=["local-user"], memory_snapshot_id="memory-empty-v1", policy_version="policy-v1",
             )
             output = suite.registry("schema-grounding").invoke(
-                "retrieve_knowledge",
-                {"query": "强烈岩爆案例有多少个", "limit": 5},
+                "retrieve_knowledge", {"query": "强烈岩爆案例有多少个", "limit": 5},
             )["output"]
-
         titles = [item["title"] for item in output["evidence"]]
         self.assertIn("字段值域 t_casedesc.c_rockLevel", titles)
         self.assertNotEqual(titles[0], "表 t_activeinfoevent")
 
     def test_vanna_local_index_access_is_serialized_across_evaluation_threads(self):
-        class RacingRetriever:
-            active = 0
-            maximum = 0
-            lock = threading.Lock()
-
-            def __init__(self, *_args, **_kwargs):
-                pass
-
-            def retrieve(self, _query):
-                with self.lock:
-                    type(self).active += 1
-                    type(self).maximum = max(type(self).maximum, type(self).active)
-                time.sleep(0.02)
-                with self.lock:
-                    type(self).active -= 1
-                return VannaRetrieval(index_version="stable-test")
-
+        counts = {"active": 0, "maximum": 0}
+        lock = threading.Lock()
+        def retrieve(*_args, **_kwargs):
+            with lock:
+                counts["active"] += 1
+                counts["maximum"] = max(counts["maximum"], counts["active"])
+            time.sleep(0.02)
+            with lock:
+                counts["active"] -= 1
+            return VannaRetrieval(index_version=self.vanna_version)
         suite = Text2SQLToolSuite(
-            database_path=self.database,
-            snapshot=SNAPSHOT,
-            knowledge_store_path=self.knowledge,
-            vanna_index_root=Path(self.temporary.name) / "vanna",
-            vanna_index_version="stable-test",
-            principals=["local-user"],
-            memory_snapshot_id="memory-empty-v1",
-            policy_version="policy-v1",
+            database_path=self.database, snapshot=SNAPSHOT,
+            vanna_index_root=self.vanna, vanna_index_version=self.vanna_version,
+            principals=["local-user"], memory_snapshot_id="memory-empty-v1", policy_version="policy-v1",
         )
-        with patch(
-            "evoagent.text2sql.database_tools.VannaRetrieverOnly", RacingRetriever
-        ):
+        with patch("evoagent.text2sql.vanna_retriever.VannaRetrieverOnly.retrieve", side_effect=retrieve):
             with ThreadPoolExecutor(max_workers=2) as pool:
-                calls = [
-                    pool.submit(
-                        suite.registry("schema-grounding").invoke,
-                        "retrieve_knowledge",
-                        {"query": "岩爆案例", "limit": 5},
-                    )
-                    for _ in range(2)
-                ]
+                calls = [pool.submit(suite.registry("schema-grounding").invoke,
+                         "retrieve_knowledge", {"query": "岩爆案例", "limit": 5}) for _ in range(2)]
                 for call in calls:
                     call.result()
-        self.assertEqual(RacingRetriever.maximum, 1)
+        self.assertEqual(counts["maximum"], 1)
 
     def test_plan_first_protocol_runs_all_eleven_nodes_before_harness_execution(self):
         sql = (
@@ -552,7 +637,8 @@ class Text2SQLSafetyTests(unittest.TestCase):
             client=client,
             database_path=self.database,
             snapshot=SNAPSHOT,
-            knowledge_store_path=self.knowledge,
+            vanna_index_root=self.vanna,
+            vanna_index_version=self.vanna_version,
             principals=["local-user"],
             memory_snapshot_id="memory-empty-v1",
             policy_version="policy-v1",
@@ -568,7 +654,7 @@ class Text2SQLSafetyTests(unittest.TestCase):
             {"schema-grounding", "query-planning"},
         )
         self.assertEqual(client.max_parallel_plan_workers, 2)
-        self.assertEqual(result["execution"]["llm_calls"], 7)
+        self.assertEqual(result["execution"]["llm_calls"], 6)
         self.assertEqual(
             result["collaboration"]["approved_query_plan"]["contract"],
             "ApprovedQueryPlan/v1",
@@ -582,6 +668,64 @@ class Text2SQLSafetyTests(unittest.TestCase):
         self.assertIn("explain_sql", tool_names)
         self.assertEqual(tool_names.count("execute_sql"), 1)
 
+    def test_exact_manifest_and_existence_normalization_recover_empty_grounding(self):
+        sql = (
+            "SELECT EXISTS(SELECT 1 FROM t_activeinfo "
+            "WHERE t_activeinfo.d_event IS NOT NULL)"
+        )
+        client = ScriptedClient(sql)
+        client.responses["schema-grounding"][0]["schema_plan"] = {}
+        client.responses["query-planning"][0]["query_spec"] = {
+            "intent": "count",
+            "subject": "当前事件数量非空记录",
+            "measures": [
+                {
+                    "slot_id": "measure:rows",
+                    "name": "记录数",
+                    "aggregation": "count",
+                    "count_all": True,
+                    "distinct": False,
+                }
+            ],
+            "filters": [
+                {
+                    "slot_id": "filter:event",
+                    "field_concept": "当前事件数量",
+                    "operator": "is_not_null",
+                }
+            ],
+            "expected_shape": "rows",
+        }
+        engine = Text2SQLAgenticEngine(
+            client=client,
+            database_path=self.database,
+            snapshot=SNAPSHOT,
+            vanna_index_root=self.vanna,
+            vanna_index_version=self.vanna_version,
+            principals=["local-user"],
+            memory_snapshot_id="memory-empty-v1",
+            policy_version="policy-v1",
+        )
+        result = engine.run(
+            "表 t_activeinfo 是否存在当前事件数量（d_event）非空的记录？"
+            "存在返回 1，否则返回 0。"
+        )
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["answer"]["rows"], [[0]])
+        planning_context = client.calls_for("query-planning")[0]["context"]
+        concepts = planning_context["draft_link_pack"]["concepts"]
+        self.assertEqual(concepts[0]["logical_name"], "当前事件数量")
+        self.assertTrue(all("column" not in item for item in concepts))
+        grounding = next(
+            item
+            for item in result["collaboration"]["worker_results"]
+            if item["worker"] == "schema-grounding"
+        )
+        self.assertEqual(
+            grounding["output"]["schema_plan"]["bindings"][0]["logical_name"],
+            "当前事件数量",
+        )
+
     def test_sql_generation_receives_an_approved_plan_and_never_runs_before_it(self):
         sql = (
             "SELECT COUNT(DISTINCT c_caseCode) AS n "
@@ -592,7 +736,8 @@ class Text2SQLSafetyTests(unittest.TestCase):
             client=client,
             database_path=self.database,
             snapshot=SNAPSHOT,
-            knowledge_store_path=self.knowledge,
+            vanna_index_root=self.vanna,
+            vanna_index_version=self.vanna_version,
             principals=["local-user"],
             memory_snapshot_id="memory-empty-v1",
             policy_version="policy-v1",
@@ -604,9 +749,49 @@ class Text2SQLSafetyTests(unittest.TestCase):
         self.assertGreater(generation_index, roles.index("text2sql-lead", 1))
         generation_context = client.calls[generation_index]["context"]
         approved = generation_context["approved_query_plan"]
-        self.assertEqual(approved["contract"], "ApprovedQueryPlan/v1")
+        self.assertEqual(approved["contract"], "ApprovedQueryPlanGenerationView/v1")
         self.assertEqual(approved["bound_plan"]["contract"], "BoundQueryPlan/v1")
         self.assertTrue(approved["bound_plan"]["fingerprint"])
+
+    def test_post_approval_verified_examples_are_reauthorized_and_plan_scoped(self):
+        sql = "SELECT COUNT(DISTINCT c_caseCode) AS n FROM t_casedesc WHERE c_rockLevel='强烈'"
+        question = "强烈岩爆案例有多少个"
+        with tempfile.TemporaryDirectory() as directory:
+            vanna = Path(directory) / "vanna"
+            registry = question_sql_registry_path(vanna)
+            safe_ids = set()
+            for index in range(4):
+                item = add_confirmed_question_sql(
+                    registry, database_snapshot_id=SNAPSHOT["snapshot_id"],
+                    question=question, sql=sql.replace("AS n", "AS n%d" % index),
+                    actor="reviewer", source_id="confirmed-%d" % index,
+                )
+                safe_ids.add(item["evidence_id"])
+            for index, other in enumerate(("SELECT COUNT(*) FROM t_caseinfo", "SELECT * FROM t_casedesc")):
+                add_confirmed_question_sql(
+                    registry, database_snapshot_id=SNAPSHOT["snapshot_id"],
+                    question=question, sql=other, actor="reviewer", source_id="outside-%d" % index,
+                )
+            version = build_test_corpus(vanna, SNAPSHOT, JOIN_CATALOG, registry)
+            client = ScriptedClient(sql)
+            engine = Text2SQLAgenticEngine(
+                client=client, database_path=self.database, snapshot=SNAPSHOT,
+                vanna_index_root=vanna, vanna_index_version=version,
+                principals=["local-user"], memory_snapshot_id="memory-empty-v1", policy_version="policy-v1",
+            )
+            result = engine.run(question)
+        self.assertEqual(result["status"], "success")
+        pack = client.calls_for("sql-generation")[0]["context"]["verified_example_pack"]
+        self.assertEqual(pack["contract"], "VerifiedExamplePack/v1")
+        self.assertEqual(pack["authority"], "vanna_confirmed_question_sql")
+        self.assertEqual(len(pack["examples"]), 3)
+        ids = {item["evidence_id"] for item in pack["examples"]}
+        self.assertTrue(ids.issubset(safe_ids))
+        self.assertTrue(ids.issubset(set(result["selected_candidate"].get("evidence_ids") or ())))
+        for role in ("schema-grounding", "query-planning"):
+            context = client.calls_for(role)[0]["context"]
+            self.assertNotIn("verified_example_pack", context)
+            self.assertNotIn("select count", json.dumps(context, ensure_ascii=False).casefold())
 
     def test_query_planning_receives_no_ddl_draft_link_pack_or_sql(self):
         sql = (
@@ -625,39 +810,50 @@ class Text2SQLSafetyTests(unittest.TestCase):
             client=client,
             database_path=self.database,
             snapshot=SNAPSHOT,
-            knowledge_store_path=self.knowledge,
+            vanna_index_root=self.vanna,
+            vanna_index_version=self.vanna_version,
             principals=["local-user"],
             memory_snapshot_id="memory-empty-v1",
             policy_version="policy-v1",
-            stable_memory_provider=lambda skill, _limit: (
-                [
-                    {
-                        "memory_id": "memory-t_casedesc-planning-leak",
-                        "failure_kind": (
-                            "aggregation_grain_mismatch: SELECT 1 FROM "
-                            "t_casedesc.c_rockLevel"
-                        ),
-                        "content": (
-                            "统计时执行 SELECT c_caseCode FROM t_casedesc，"
-                            "并使用 t_casedesc.c_rockLevel。"
-                        ),
-                    }
-                ]
-                if skill == "query-planning"
-                else []
-            ),
+            memory_snapshot_bundle={
+                "memory_snapshot_id": "memory-empty-v1",
+                "items": {
+                    "query-planning": [
+                        {
+                            "memory_id": "memory-t_casedesc-planning-leak",
+                            "failure_kind": (
+                                "aggregation_grain_mismatch: SELECT 1 FROM "
+                                "t_casedesc.c_rockLevel"
+                            ),
+                            "content": (
+                                "统计时执行 SELECT c_caseCode FROM t_casedesc，"
+                                "并使用 t_casedesc.c_rockLevel。"
+                            ),
+                        }
+                    ]
+                },
+            },
         )
         self.assertEqual(engine.run("强烈岩爆案例有多少个")["status"], "success")
         planning_call = client.calls_for("query-planning")[0]
         context = planning_call["context"]
-        self.assertEqual(context["draft_link_pack"], {})
+        self.assertEqual(
+            context["draft_link_pack"]["contract"],
+            "LogicalConceptManifest/v1",
+        )
+        self.assertEqual(context["draft_link_pack"]["concepts"], [])
         self.assertEqual(planning_call["envelope"]["available_tools"], [])
         self.assertTrue(
             all(
                 item.get("knowledge_type") == "business_glossary"
-                for item in context["stable_retrieval_pack"].get("evidence", [])
+                for item in context["planning_business_pack"].get("evidence", [])
             )
         )
+        self.assertEqual(
+            context["planning_business_pack"]["contract"],
+            "PlanningBusinessPack/v1",
+        )
+        self.assertNotIn("grounding_pack", context)
         rendered = json.dumps(context, ensure_ascii=False).casefold()
         self.assertNotIn("full_ddl", rendered)
         self.assertNotIn("draft_sql", rendered)
@@ -730,7 +926,8 @@ class Text2SQLSafetyTests(unittest.TestCase):
                     client=client,
                     database_path=self.database,
                     snapshot=SNAPSHOT,
-                    knowledge_store_path=self.knowledge,
+                    vanna_index_root=self.vanna,
+            vanna_index_version=self.vanna_version,
                     principals=["local-user"],
                     memory_snapshot_id="memory-empty-v1",
                     policy_version="policy-v1",
@@ -764,7 +961,8 @@ class Text2SQLSafetyTests(unittest.TestCase):
             client=DirectGenerationClient(sql),
             database_path=self.database,
             snapshot=SNAPSHOT,
-            knowledge_store_path=self.knowledge,
+            vanna_index_root=self.vanna,
+            vanna_index_version=self.vanna_version,
             principals=["local-user"],
             memory_snapshot_id="memory-empty-v1",
             policy_version="policy-v1",
@@ -784,6 +982,13 @@ class Text2SQLSafetyTests(unittest.TestCase):
         for invalid_index in (False, "0", 9):
             with self.subTest(invalid_index=invalid_index):
                 client = ScriptedClient(sql)
+                client.responses["sql-generation"][0]["sql_candidates"] = [
+                    {"sql": sql}, {"sql": sql.replace(" AS n ", " AS total ")},
+                ]
+                client.responses["text2sql-critic"][0]["decisions"] = [
+                    {"candidate_index": 0, "accepted": True, "objections": []},
+                    {"candidate_index": 1, "accepted": True, "objections": []},
+                ]
                 client.responses["text2sql-lead"][-1][
                     "final_candidate_index"
                 ] = invalid_index
@@ -791,7 +996,8 @@ class Text2SQLSafetyTests(unittest.TestCase):
                     client=client,
                     database_path=self.database,
                     snapshot=SNAPSHOT,
-                    knowledge_store_path=self.knowledge,
+                    vanna_index_root=self.vanna,
+            vanna_index_version=self.vanna_version,
                     principals=["local-user"],
                     memory_snapshot_id="memory-empty-v1",
                     policy_version="policy-v1",
@@ -818,7 +1024,8 @@ class Text2SQLSafetyTests(unittest.TestCase):
             client=ScriptedClient(sql),
             database_path=self.database,
             snapshot=SNAPSHOT,
-            knowledge_store_path=self.knowledge,
+            vanna_index_root=self.vanna,
+            vanna_index_version=self.vanna_version,
             principals=["local-user"],
             memory_snapshot_id="memory-empty-v1",
             policy_version="policy-v1",
@@ -853,7 +1060,8 @@ class Text2SQLSafetyTests(unittest.TestCase):
             client=ScriptedClient("SELECT 1"),
             database_path=self.database,
             snapshot=SNAPSHOT,
-            knowledge_store_path=self.knowledge,
+            vanna_index_root=self.vanna,
+            vanna_index_version=self.vanna_version,
             principals=["local-user"],
             memory_snapshot_id="memory-empty-v1",
             policy_version="policy-v1",
@@ -930,7 +1138,7 @@ class Text2SQLSafetyTests(unittest.TestCase):
                 attack_provenance["user_explicit_joins"],
             )
 
-    def test_invalid_grounding_output_falls_back_to_snapshot_checked_direct_links(self):
+    def test_invalid_grounding_output_stays_rejected_after_bounded_repair(self):
         sql = (
             "SELECT COUNT(DISTINCT c_caseCode) AS n "
             "FROM t_casedesc WHERE c_rockLevel='强烈'"
@@ -951,7 +1159,8 @@ class Text2SQLSafetyTests(unittest.TestCase):
             client=client,
             database_path=self.database,
             snapshot=SNAPSHOT,
-            knowledge_store_path=self.knowledge,
+            vanna_index_root=self.vanna,
+            vanna_index_version=self.vanna_version,
             principals=["local-user"],
             memory_snapshot_id="memory-empty-v1",
             policy_version="policy-v1",
@@ -965,12 +1174,10 @@ class Text2SQLSafetyTests(unittest.TestCase):
             for item in result["collaboration"]["worker_results"]
             if item["worker"] == "schema-grounding"
         )
-        self.assertEqual(grounding["status"], "completed")
+        self.assertEqual(grounding["status"], "failed")
+        self.assertEqual(grounding["output"], {})
         self.assertIn(
-            "t_casedesc.c_caseCode", grounding["output"]["schema_plan"]["columns"]
-        )
-        self.assertIn(
-            "missing_schema_binding",
+            "worker_failed",
             {item["code"] for item in result["collaboration"]["binding_conflicts"]},
         )
         self.assertNotIn("sql-generation", [item["role"] for item in client.calls])
@@ -995,7 +1202,8 @@ class Text2SQLSafetyTests(unittest.TestCase):
             client=client,
             database_path=self.database,
             snapshot=SNAPSHOT,
-            knowledge_store_path=self.knowledge,
+            vanna_index_root=self.vanna,
+            vanna_index_version=self.vanna_version,
             principals=["local-user"],
             memory_snapshot_id="memory-empty-v1",
             policy_version="policy-v1",
@@ -1007,6 +1215,113 @@ class Text2SQLSafetyTests(unittest.TestCase):
         self.assertNotIn("sql-generation", [item["role"] for item in client.calls])
         tool_names = [item["tool"] for item in result["execution"]["tool_call_log"]]
         self.assertNotIn("execute_sql", tool_names)
+
+    def test_successful_plan_revision_survives_real_result_and_memory_projection(self):
+        sql = (
+            "SELECT COUNT(DISTINCT c_caseCode) AS n "
+            "FROM t_casedesc WHERE c_rockLevel='强烈'"
+        )
+        client = ScriptedClient(sql)
+        corrected = json.loads(
+            json.dumps(client.responses["schema-grounding"][0], ensure_ascii=False)
+        )
+        initial = json.loads(json.dumps(corrected, ensure_ascii=False))
+        initial["schema_plan"]["bindings"][1]["value_bindings"][0][
+            "physical_value"
+        ] = "数据库中不存在的等级"
+        client.responses["schema-grounding"] = [initial, corrected]
+        client.responses["text2sql-lead"].insert(
+            2,
+            {
+                "action": "final",
+                "approve_plan": True,
+                "revision_requests": [],
+                "reasoning_summary": "The deterministic binding issue is resolved.",
+            },
+        )
+        engine = Text2SQLAgenticEngine(
+            client=client,
+            database_path=self.database,
+            snapshot=SNAPSHOT,
+            vanna_index_root=self.vanna,
+            vanna_index_version=self.vanna_version,
+            principals=["local-user"],
+            memory_snapshot_id="memory-empty-v1",
+            policy_version="policy-v1",
+        )
+
+        result = engine.run("强烈岩爆案例有多少个")
+
+        self.assertEqual(result["status"], "success")
+        collaboration = result["collaboration"]
+        self.assertEqual(collaboration["revisions_applied"], 1)
+        self.assertEqual(len(collaboration["initial_worker_results"]), 2)
+        self.assertEqual(len(collaboration["worker_results"]), 2)
+        self.assertTrue(collaboration["initial_binding_conflicts"])
+        self.assertFalse(collaboration["binding_conflicts"])
+        self.assertTrue(collaboration["revision_requests"])
+        issue_codes = collaboration["revision_requests"][0]["issue_codes"]
+        self.assertTrue(issue_codes)
+        self.assertTrue(set(issue_codes).issubset(set(result_issue_codes(result))))
+
+        trace = build_query_trace(
+            result,
+            task_id="real-plan-revision",
+            origin="web",
+            source_lane="stable",
+        )
+        experiences = extract_plan_revision_experiences(trace)
+        self.assertTrue(experiences)
+        self.assertTrue(all(item["state"] == "candidate" for item in experiences))
+        self.assertTrue(all(experience_has_replay_proof(item) for item in experiences))
+        for item in experiences:
+            self.assertNotEqual(
+                item["before"]["worker_plan_fingerprint"],
+                item["after"]["worker_plan_fingerprint"],
+            )
+
+        memory_id = "memory-real-plan-revision"
+        confirmed = {
+            "memory_id": memory_id,
+            "state": "confirmed",
+            "rule": {
+                **dict(experiences[0]),
+                "memory_id": memory_id,
+                "state": "confirmed",
+            },
+        }
+        candidate_result = json.loads(json.dumps(result, ensure_ascii=False))
+        candidate_result["collaboration"]["revision_requests"] = []
+        candidate_result["collaboration"]["initial_binding_conflicts"] = []
+        candidate_result["collaboration"]["binding_conflicts"] = []
+        candidate_result["collaboration"]["lead_assessment"][
+            "revision_requests"
+        ] = []
+        identity = build_replay_identity(
+            parent_version_pins={
+                **dict(engine.version_pins),
+                "policy_version": "policy-parent",
+            },
+            candidate_version_pins={
+                **dict(engine.version_pins),
+                "policy_version": "policy-candidate",
+            },
+            parent_runtime=engine.runtime_identity,
+            candidate_runtime=engine.runtime_identity,
+            model={"provider": "test", "model": "scripted", "temperature": 0},
+            principals=("local-user",),
+        )
+        replay = evaluate_target_replay(
+            (confirmed,),
+            {memory_id: result},
+            {memory_id: candidate_result},
+            parent_policy_version="policy-parent",
+            candidate_policy_version="policy-candidate",
+            replay_identity=identity,
+        )
+        self.assertEqual(replay["status"], "passed")
+        self.assertTrue(replay["results"][0]["baseline_problem_present"])
+        self.assertFalse(replay["results"][0]["candidate_problem_present"])
 
     def test_range_boundaries_are_type_checked_without_requiring_existing_rows(self):
         result = self._bind_plans(
@@ -1160,6 +1475,58 @@ class Text2SQLSafetyTests(unittest.TestCase):
             {"unverified_value_binding"},
         )
 
+    def test_value_provenance_accepts_lossless_decimal_surface_conversion(self):
+        result = self._bind_plans(
+            "在表 t_activeinfo 中，列出累计事件增速等于“19.00”的 d_sumEvent。",
+            {
+                "tables": ["t_activeinfo"],
+                "columns": [
+                    "t_activeinfo.d_sumEventRate",
+                    "t_activeinfo.d_sumEvent",
+                ],
+                "joins": [],
+                "result_grain": ["t_activeinfo.d_sumEvent"],
+                "bindings": [
+                    {
+                        "logical_name": "累计事件增速",
+                        "column": "t_activeinfo.d_sumEventRate",
+                        "value_bindings": [
+                            {"logical_value": "19.00", "physical_value": 19.0}
+                        ],
+                    },
+                    {
+                        "logical_name": "d_sumEvent",
+                        "column": "t_activeinfo.d_sumEvent",
+                    },
+                ],
+            },
+            {
+                "intent": "lookup",
+                "subject": "累计事件",
+                "dimensions": [
+                    {"slot_id": "dimension:event", "concept": "d_sumEvent"}
+                ],
+                "filters": [
+                    {
+                        "slot_id": "filter:rate",
+                        "field_concept": "累计事件增速",
+                        "operator": "eq",
+                        "value": "19.00",
+                    }
+                ],
+                "expected_shape": "rows",
+            },
+        )
+        self.assertTrue(result["bound_query_plan"])
+        binding = next(
+            item
+            for item in result["bound_query_plan"]["bindings"]
+            if item["slot_id"] == "filter:rate"
+        )
+        self.assertEqual(binding["logical_value"], "19.00")
+        self.assertEqual(binding["value"], 19.0)
+        self.assertEqual(result["binding_conflicts"], [])
+
     def test_cjk_value_provenance_rejects_embedded_or_derived_substrings(self):
         client = ScriptedClient("SELECT 1")
         schema_plan = client.responses["schema-grounding"][0]["schema_plan"]
@@ -1173,87 +1540,28 @@ class Text2SQLSafetyTests(unittest.TestCase):
                     {item["code"] for item in result["binding_conflicts"]},
                 )
 
-    def test_grounding_reauthorizes_binding_and_join_evidence_through_acl(self):
+    def test_grounding_reauthorizes_bindings_and_unapproved_join_evidence(self):
         engine = Text2SQLAgenticEngine(
-            client=ScriptedClient("SELECT 1"),
-            database_path=self.database,
-            snapshot=SNAPSHOT,
-            knowledge_store_path=self.knowledge,
-            principals=["local-user"],
-            memory_snapshot_id="memory-empty-v1",
-            policy_version="policy-v1",
+            client=ScriptedClient("SELECT COUNT(*) FROM t_casedesc"),
+            database_path=self.database, snapshot=SNAPSHOT,
+            vanna_index_root=self.vanna, vanna_index_version=self.vanna_version,
+            principals=["local-user"], memory_snapshot_id="memory-empty-v1", policy_version="policy-v1",
         )
-        with self.assertRaisesRegex(ValueError, "ACL-authorized observed evidence"):
-            engine._validated_schema_plan(
-                {
-                    "tables": ["t_casedesc"],
-                    "columns": ["t_casedesc.c_rockLevel"],
-                    "bindings": [
-                        {
-                            "logical_name": "案例编号",
-                            "column": "t_casedesc.c_rockLevel",
-                            "evidence_ids": ["totally-fabricated"],
-                        }
-                    ],
-                },
-                "统计不同案例编号",
-                ["totally-fabricated"],
-            )
-
-        with KnowledgeStore(self.knowledge) as store:
-            row = store.connection.execute(
-                "SELECT evidence_id,structured_json,acl_json FROM knowledge_items "
-                "WHERE knowledge_type='relationship' LIMIT 1"
-            ).fetchone()
-            self.assertIsNotNone(row)
-            relation = json.loads(row["structured_json"])
-            evidence_id = str(row["evidence_id"])
-            original_acl = str(row["acl_json"])
-            original_state = str(
-                store.connection.execute(
-                    "SELECT state FROM knowledge_items WHERE evidence_id=?",
-                    (evidence_id,),
-                ).fetchone()["state"]
-            )
-            with store.connection:
-                store.connection.execute(
-                    "UPDATE knowledge_items SET state='stable',acl_json=? WHERE evidence_id=?",
-                    (json.dumps(["secret-only"]), evidence_id),
-                )
-            self.assertEqual(
-                store.resolve_stable_evidence([evidence_id], ["local-user"]), ()
-            )
-        try:
-            with self.assertRaisesRegex(ValueError, "current ACL"):
-                engine._validated_schema_plan(
-                    {
-                        "tables": sorted(
-                            {
-                                relation["left"].split(".", 1)[0],
-                                relation["right"].split(".", 1)[0],
-                            }
-                        ),
-                        "columns": [relation["left"], relation["right"]],
-                        "joins": [
-                            {
-                                "left": relation["left"],
-                                "right": relation["right"],
-                                "type": "inner",
-                                "source": "stable",
-                                "evidence_id": evidence_id,
-                            }
-                        ],
-                    },
-                    "查询关联记录",
-                    [evidence_id],
-                )
-        finally:
-            with KnowledgeStore(self.knowledge) as store:
-                with store.connection:
-                    store.connection.execute(
-                        "UPDATE knowledge_items SET state=?,acl_json=? WHERE evidence_id=?",
-                        (original_state, original_acl, evidence_id),
-                    )
+        with self.assertRaisesRegex(ValueError, "observed evidence"):
+            engine._validated_schema_plan({
+                "tables": ["t_casedesc"], "columns": ["t_casedesc.c_caseCode"],
+                "bindings": [{"logical_name": "自造概念", "column": "t_casedesc.c_caseCode", "evidence_ids": ["fabricated"]}],
+            }, "统计自造概念", ["fabricated"])
+        relation = JOIN_CATALOG["relationships"][0]
+        evidence_id = "join:" + relation["candidate_id"]
+        self.assertEqual(engine.vanna_corpus.resolve_evidence([evidence_id]), ())
+        with self.assertRaisesRegex(ValueError, "pinned corpus"):
+            engine._validated_schema_plan({
+                "tables": sorted({relation["left"].split(".")[0], relation["right"].split(".")[0]}),
+                "columns": [relation["left"], relation["right"]],
+                "joins": [{"left": relation["left"], "right": relation["right"],
+                           "type": "inner", "source": "stable", "evidence_id": evidence_id}],
+            }, "查询关联记录", [evidence_id])
 
     def test_follow_up_requires_an_authenticated_parent_before_using_lead_rewrite(self):
         sql = (
@@ -1274,7 +1582,8 @@ class Text2SQLSafetyTests(unittest.TestCase):
                     client=client,
                     database_path=self.database,
                     snapshot=SNAPSHOT,
-                    knowledge_store_path=self.knowledge,
+                    vanna_index_root=self.vanna,
+            vanna_index_version=self.vanna_version,
                     principals=["local-user"],
                     memory_snapshot_id="memory-empty-v1",
                     policy_version="policy-v1",
@@ -1329,7 +1638,8 @@ class Text2SQLSafetyTests(unittest.TestCase):
             client=client,
             database_path=self.database,
             snapshot=SNAPSHOT,
-            knowledge_store_path=self.knowledge,
+            vanna_index_root=self.vanna,
+            vanna_index_version=self.vanna_version,
             principals=["local-user"],
             memory_snapshot_id="memory-empty-v1",
             policy_version="policy-v1",
@@ -1365,7 +1675,8 @@ class Text2SQLSafetyTests(unittest.TestCase):
             client=client,
             database_path=self.database,
             snapshot=SNAPSHOT,
-            knowledge_store_path=self.knowledge,
+            vanna_index_root=self.vanna,
+            vanna_index_version=self.vanna_version,
             principals=["local-user"],
             memory_snapshot_id="memory-empty-v1",
             policy_version="policy-v1",
@@ -1395,7 +1706,8 @@ class Text2SQLSafetyTests(unittest.TestCase):
             client=client,
             database_path=self.database,
             snapshot=SNAPSHOT,
-            knowledge_store_path=self.knowledge,
+            vanna_index_root=self.vanna,
+            vanna_index_version=self.vanna_version,
             principals=["local-user"],
             memory_snapshot_id="memory-empty-v1",
             policy_version="policy-v1",
@@ -1424,6 +1736,267 @@ class Text2SQLSafetyTests(unittest.TestCase):
         self.assertEqual(normalized["intent"], "count")
         self.assertEqual(normalized["expected_shape"], "rows")
         self.assertEqual(normalized["limit"], 7)
+
+    def test_grouped_extreme_is_preserved_as_top_one_ranking(self):
+        normalized = Text2SQLAgenticEngine._normalized_query_spec(
+            {
+                "intent": "aggregate",
+                "subject": "岩爆案例",
+                "dimensions": [
+                    {"slot_id": "dimension:project", "concept": "项目"}
+                ],
+                "measures": [
+                    {
+                        "slot_id": "measure:case_count",
+                        "name": "案例数",
+                        "aggregation": "count",
+                        "field_concept": "案例编码",
+                        "distinct": True,
+                    },
+                    {
+                        "slot_id": "measure:max_case_count",
+                        "name": "最大案例数",
+                        "aggregation": "max",
+                        "field_concept": "案例数",
+                        "distinct": False,
+                    },
+                ],
+                "order_by": [],
+                "limit": 20,
+                "expected_shape": "scalar",
+            },
+            "“事件”指岩爆案例，按项目累计案例数，然后取所有项目中的最大值。",
+        )
+
+        self.assertEqual(normalized["intent"], "ranking")
+        self.assertEqual(normalized["expected_shape"], "grouped_rows")
+        self.assertEqual(normalized["limit"], 1)
+        self.assertEqual(
+            [item["slot_id"] for item in normalized["measures"]],
+            ["measure:case_count"],
+        )
+        self.assertEqual(
+            normalized["order_by"],
+            [
+                {
+                    "slot_id": "order:group_extreme",
+                    "target": "measure:case_count",
+                    "direction": "desc",
+                }
+            ],
+        )
+
+    def test_explicit_existence_is_normalized_to_the_single_v1_contract(self):
+        normalized = Text2SQLAgenticEngine._normalized_query_spec(
+            {
+                "intent": "count",
+                "subject": "非空记录",
+                "expected_shape": "rows",
+                "dimensions": [{"slot_id": "dimension:flag", "concept": "状态"}],
+                "measures": [
+                    {
+                        "slot_id": "measure:rows",
+                        "name": "记录数",
+                        "aggregation": "count",
+                        "count_all": True,
+                        "distinct": False,
+                    }
+                ],
+                "order_by": [{"slot_id": "order:rows", "target": "记录数"}],
+            },
+            "是否存在状态非空的记录？存在返回 1，否则返回 0。",
+        )
+        self.assertEqual(normalized["intent"], "existence")
+        self.assertEqual(normalized["expected_shape"], "scalar")
+        self.assertEqual(normalized["dimensions"], [])
+        self.assertEqual(normalized["measures"], [])
+        self.assertEqual(normalized["order_by"], [])
+
+    def test_explicit_identifier_null_predicate_is_recovered_when_worker_omits_it(self):
+        normalized = Text2SQLAgenticEngine._normalized_query_spec(
+            {
+                "intent": "existence",
+                "subject": "活跃信息记录",
+                "expected_shape": "scalar",
+                "filters": [],
+            },
+            "表 t_activeinfo 是否存在能量值（c_energy）非空的记录？存在返回 1，否则返回 0。",
+        )
+        self.assertEqual(
+            normalized["filters"],
+            [
+                {
+                    "slot_id": "filter:c_energy:null",
+                    "field_concept": "c_energy",
+                    "operator": "is_not_null",
+                    "value": None,
+                }
+            ],
+        )
+
+    def test_row_count_measure_is_canonicalized_to_count_all(self):
+        normalized = Text2SQLAgenticEngine._normalized_query_spec(
+            {
+                "intent": "count",
+                "subject": "连接行",
+                "expected_shape": "scalar",
+                "measures": [
+                    {
+                        "slot_id": "measure:rows",
+                        "name": "行数",
+                        "aggregation": "count",
+                        "field_concept": "行数",
+                    }
+                ],
+            },
+            "两个表内连接后共有多少行？",
+        )
+        self.assertTrue(normalized["measures"][0]["count_all"])
+        self.assertEqual(normalized["measures"][0]["distinct"], False)
+        self.assertNotIn("field_concept", normalized["measures"][0])
+
+        star = Text2SQLAgenticEngine._normalized_query_spec(
+            {
+                "intent": "count",
+                "subject": "连接行",
+                "expected_shape": "scalar",
+                "measures": [
+                    {
+                        "slot_id": "measure:row_count",
+                        "name": "行数",
+                        "aggregation": "count",
+                        "field_concept": "*",
+                    }
+                ],
+            },
+            "两个表内连接后共有多少行？",
+        )
+        self.assertTrue(star["measures"][0]["count_all"])
+        self.assertNotIn("field_concept", star["measures"][0])
+
+        null_count = Text2SQLAgenticEngine._normalized_query_spec(
+            {
+                "intent": "count",
+                "subject": "空值记录",
+                "expected_shape": "scalar",
+                "measures": [
+                    {
+                        "slot_id": "measure:record_count",
+                        "name": "记录数",
+                        "aggregation": "count",
+                        "field_concept": "*",
+                    }
+                ],
+                "filters": [
+                    {
+                        "slot_id": "filter:event_null",
+                        "field_concept": "d_event",
+                        "operator": "is_null",
+                    }
+                ],
+            },
+            "表 t_activeinfo 中当前事件数量（d_event）为 NULL 的记录有多少条？",
+        )
+        self.assertTrue(null_count["measures"][0]["count_all"])
+        self.assertNotIn("field_concept", null_count["measures"][0])
+
+    def test_projection_distinct_and_relative_order_are_normalized(self):
+        normalized = Text2SQLAgenticEngine._normalized_query_spec(
+            {
+                "intent": "lookup",
+                "subject": "d_sumEvent",
+                "dimensions": [
+                    {"slot_id": "dimension:event", "concept": "d_sumEvent"}
+                ],
+                "filters": [],
+                "order_by": [
+                    {"slot_id": "dimension:event", "direction": "ascending"}
+                ],
+                "expected_shape": "rows",
+            },
+            "列出 d_sumEvent，去重后按字段升序排列。",
+        )
+        self.assertTrue(normalized["distinct_rows"])
+        self.assertEqual(normalized["order_by"][0]["target"], "d_sumEvent")
+        self.assertEqual(normalized["order_by"][0]["direction"], "asc")
+        self.assertEqual(normalized["order_by"][0]["slot_id"], "order:auto:1")
+
+    def test_numeric_schema_values_are_affinity_canonicalized_before_dedup(self):
+        engine = Text2SQLAgenticEngine(
+            client=ScriptedClient("SELECT 1"),
+            database_path=self.database,
+            snapshot=SNAPSHOT,
+            vanna_index_root=self.vanna,
+            vanna_index_version=self.vanna_version,
+            principals=["local-user"],
+            memory_snapshot_id="memory-empty-v1",
+            policy_version="policy-v1",
+        )
+        normalized = engine._grounding_plan_value(
+            {
+                "schema_plan": {
+                    "tables": ["t_activeinfo"],
+                    "columns": ["t_activeinfo.d_sumLogarithm"],
+                    "bindings": [
+                        {
+                            "logical_name": "累计对数值",
+                            "column": "t_activeinfo.d_sumLogarithm",
+                            "value_bindings": [
+                                {
+                                    "logical_value": "4.70",
+                                    "physical_value": "4.70",
+                                    "evidence_ids": ["value:model"],
+                                }
+                            ],
+                        }
+                    ],
+                }
+            },
+            {
+                "value_links": [
+                    {
+                        "column": "t_activeinfo.d_sumLogarithm",
+                        "logical_value": "4.70",
+                        "physical_value": 4.7,
+                    }
+                ]
+            },
+        )
+        values = normalized["bindings"][0]["value_bindings"]
+        self.assertEqual(len(values), 1)
+        self.assertEqual(values[0]["physical_value"], 4.7)
+
+    def test_query_planning_gets_one_bounded_contract_repair(self):
+        sql = (
+            "SELECT COUNT(DISTINCT c_caseCode) AS n "
+            "FROM t_casedesc WHERE c_rockLevel='强烈'"
+        )
+        client = ScriptedClient(sql)
+        valid = json.loads(
+            json.dumps(client.responses["query-planning"][0], ensure_ascii=False)
+        )
+        invalid = json.loads(json.dumps(valid, ensure_ascii=False))
+        invalid["query_spec"]["limit"] = "20"
+        client.responses["query-planning"] = [invalid, valid]
+        engine = Text2SQLAgenticEngine(
+            client=client,
+            database_path=self.database,
+            snapshot=SNAPSHOT,
+            vanna_index_root=self.vanna,
+            vanna_index_version=self.vanna_version,
+            principals=["local-user"],
+            memory_snapshot_id="memory-empty-v1",
+            policy_version="policy-v1",
+        )
+        result = engine.run("强烈岩爆案例有多少个")
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(len(client.calls_for("query-planning")), 2)
+        planning = next(
+            item
+            for item in result["collaboration"]["worker_results"]
+            if item["worker"] == "query-planning"
+        )
+        self.assertTrue(planning["output"]["contract_repaired"])
 
     def test_query_planning_numeric_contract_does_not_coerce_invalid_values(self):
         base = {
@@ -1456,14 +2029,19 @@ class Text2SQLSafetyTests(unittest.TestCase):
             client=client,
             database_path=self.database,
             snapshot=SNAPSHOT,
-            knowledge_store_path=self.knowledge,
+            vanna_index_root=self.vanna,
+            vanna_index_version=self.vanna_version,
             principals=["local-user"],
             memory_snapshot_id="memory-empty-v1",
             policy_version="policy-v1",
         )
         result = engine.run("删除强烈岩爆案例")
         self.assertEqual(result["status"], "rejected")
-        self.assertIn("invalid_final_candidate_index", result["gates"]["errors"])
+        self.assertIn(
+            "write_or_control_statement_forbidden", result["gates"]["errors"]
+        )
+        self.assertIn("no_accepted_sql_candidate", result["gates"]["errors"])
+        self.assertNotIn("invalid_final_candidate_index", result["gates"]["errors"])
         self.assertEqual(result["collaboration"]["sql_generation_repairs"], 1)
         self.assertEqual(len(result["collaboration"]["candidate_gate_rounds"]), 2)
         self.assertEqual(len(client.calls_for("sql-generation")), 2)
@@ -1477,7 +2055,8 @@ class Text2SQLSafetyTests(unittest.TestCase):
             client=ResultQAClient(),
             database_path=self.database,
             snapshot=SNAPSHOT,
-            knowledge_store_path=self.knowledge,
+            vanna_index_root=self.vanna,
+            vanna_index_version=self.vanna_version,
             principals=["local-user"],
             memory_snapshot_id="memory-empty-v1",
             policy_version="policy-v1",
@@ -1515,7 +2094,8 @@ class Text2SQLSafetyTests(unittest.TestCase):
                     client=client,
                     database_path=self.database,
                     snapshot=SNAPSHOT,
-                    knowledge_store_path=self.knowledge,
+                    vanna_index_root=self.vanna,
+            vanna_index_version=self.vanna_version,
                     principals=["local-user"],
                     memory_snapshot_id="memory-empty-v1",
                     policy_version="policy-v1",
@@ -1586,7 +2166,8 @@ class Text2SQLSafetyTests(unittest.TestCase):
                     client=ResultQAClient(),
                     database_path=self.database,
                     snapshot=SNAPSHOT,
-                    knowledge_store_path=self.knowledge,
+                    vanna_index_root=self.vanna,
+            vanna_index_version=self.vanna_version,
                     principals=["local-user"],
                     memory_snapshot_id="memory-empty-v1",
                     policy_version="policy-v1",

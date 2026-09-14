@@ -20,8 +20,15 @@ from evoagent.config import Settings
 from evoagent.llm import JsonChatClient
 from evoagent.text2sql.agentic import Text2SQLAgenticEngine
 from evoagent.text2sql.benchmark import ResumableEvaluationCheckpoint
-from evoagent.text2sql.evaluation import Text2SQLEvaluator, load_dataset
+from evoagent.text2sql.checkpoint_store import Text2SQLRuntimeCheckpointStore
+from evoagent.text2sql.evaluation import (
+    EVALUATION_ARTIFACT_CONTRACT_VERSION,
+    Text2SQLEvaluator,
+    load_dataset,
+)
 from evoagent.text2sql.evolution import Text2SQLEvolutionStore
+from evoagent.text2sql.memory_service import finalize_run
+from evoagent.text2sql.vanna_retriever import VannaRetrieverOnly
 
 
 def _project_path(value: str) -> Path:
@@ -39,11 +46,12 @@ def _portable_artifact_path(path: Path) -> str:
         return resolved.name
 
 
-def _fatal_provider_outcome(outcome) -> bool:
-    if str(outcome.get("failure_kind") or "") != "FRAMEWORK_ERROR":
-        return False
-    error = str(outcome.get("framework_error") or "").lower()
-    return any(
+def _provider_condition(value) -> str:
+    try:
+        error = json.dumps(value, ensure_ascii=True, default=str).lower()
+    except (TypeError, ValueError):
+        error = str(value).lower()
+    if any(
         marker in error
         for marker in (
             "arrearage",
@@ -55,8 +63,32 @@ def _fatal_provider_outcome(outcome) -> bool:
             "http 403",
             "http 429",
             "rate limit",
+            "model_provider_fatal",
         )
-    )
+    ):
+        return "fatal"
+    if any(
+        marker in error
+        for marker in (
+            "remote end closed connection",
+            "connection reset by peer",
+            "connection aborted",
+            "temporary failure in name resolution",
+            "server disconnected",
+        )
+    ):
+        return "transient"
+    return ""
+
+
+def _fatal_provider_outcome(outcome) -> bool:
+    return _provider_condition(outcome) == "fatal"
+
+
+def _provider_tainted_outcome(outcome) -> bool:
+    """Detect provider failures even when a Worker wrapped them as plan output."""
+
+    return bool(_provider_condition(outcome))
 
 
 def main() -> int:
@@ -89,11 +121,6 @@ def main() -> int:
         "--snapshot",
         type=Path,
         default=PROJECT_ROOT / "artifacts" / "text2sql" / "schema" / "database_snapshot.json",
-    )
-    parser.add_argument(
-        "--knowledge-store",
-        type=Path,
-        default=PROJECT_ROOT / "artifacts" / "text2sql" / "knowledge" / "knowledge.sqlite3",
     )
     parser.add_argument(
         "--vanna-index-root",
@@ -145,6 +172,15 @@ def main() -> int:
         default=None,
         help="Append-only resume log; defaults to <output>.checkpoint.jsonl.",
     )
+    parser.add_argument(
+        "--runtime-checkpoint-store",
+        type=Path,
+        default=None,
+        help=(
+            "Durable per-case 11-node checkpoints; defaults to "
+            "<output>.runtime.sqlite3."
+        ),
+    )
     parser.add_argument("--resume", action="store_true")
     parser.add_argument(
         "--resume-from",
@@ -186,6 +222,13 @@ def main() -> int:
     parser.add_argument("--input-cost-per-million", type=float, default=0.0)
     parser.add_argument("--output-cost-per-million", type=float, default=0.0)
     args = parser.parse_args()
+    checkpoint_path = args.checkpoint or args.output.with_suffix(
+        args.output.suffix + ".checkpoint.jsonl"
+    )
+    runtime_checkpoint_path = (
+        args.runtime_checkpoint_store
+        or args.output.with_suffix(args.output.suffix + ".runtime.sqlite3")
+    )
 
     settings = Settings.from_env()
     llm = settings.resolved_llm()
@@ -235,32 +278,42 @@ def main() -> int:
         timeout=settings.agent_time_budget_seconds,
         extra_headers=dict(llm.get("headers") or {}),
     )
+    runtime_checkpoint_store = Text2SQLRuntimeCheckpointStore(
+        runtime_checkpoint_path
+    )
+    principals = tuple(
+        sorted(
+            {
+                str(value).strip()
+                for value in args.principal
+                if str(value).strip()
+            }
+        )
+    ) or ("local-user",)
     with Text2SQLEvolutionStore(args.evolution_store, snapshot) as evolution:
         policy = evolution.get_policy(args.policy_version or None)
         memory_candidate_id = args.memory_candidate_id.strip()
-        if memory_candidate_id:
-            memory_snapshot_id = evolution.memory_snapshot_id_for(
-                memory_candidate_id
-            )
-
-            def memory_provider(skill, limit):
-                return evolution.evaluation_memory(
-                    skill, memory_candidate_id, limit
-                )
-        else:
-            memory_snapshot_id = evolution.memory_snapshot_id
-            memory_provider = evolution.stable_memory
+        memory_bundle = evolution.runtime_memory_snapshot(memory_candidate_id)
+        memory_snapshot_id = str(memory_bundle["memory_snapshot_id"])
+        vanna_index_version = VannaRetrieverOnly.current_index_version(
+            args.vanna_index_root
+        )
         engine = Text2SQLAgenticEngine(
             client=client,
             database_path=args.database,
             snapshot=snapshot,
-            knowledge_store_path=args.knowledge_store,
+
             vanna_index_root=args.vanna_index_root,
-            principals=args.principal,
+            vanna_index_version=vanna_index_version,
+            principals=principals,
             memory_snapshot_id=memory_snapshot_id,
             policy_version=policy.version,
             policy_artifact=policy,
-            stable_memory_provider=memory_provider,
+            policy_source_memory_ids=evolution.policy_source_memory_ids(
+                policy.version
+            ),
+            memory_snapshot_bundle=memory_bundle,
+            checkpoint_store=runtime_checkpoint_store,
             token_budget=settings.agent_token_budget,
             time_budget=settings.agent_time_budget_seconds,
         )
@@ -269,30 +322,70 @@ def main() -> int:
             "dataset_sha256": bundle.dataset_sha256,
             "case_ids": [case.case_id for case in cases],
             "evaluated_splits": splits,
+            "evaluation_artifact_contract_version": (
+                EVALUATION_ARTIFACT_CONTRACT_VERSION
+            ),
             "version_pins": engine.version_pins,
+            "runtime": dict(engine.runtime_identity),
+            "principals": list(principals),
             "model": {
                 "provider": llm["provider"],
                 "model": llm["model"],
                 "temperature": 0,
             },
         }
-        checkpoint_path = args.checkpoint or args.output.with_suffix(
-            args.output.suffix + ".checkpoint.jsonl"
-        )
         checkpoint = ResumableEvaluationCheckpoint(checkpoint_path, identity)
         if args.resume_from is None:
             existing_outcomes = checkpoint.start(args.resume)
         else:
             existing_outcomes = checkpoint.start(False)
             source = ResumableEvaluationCheckpoint(args.resume_from, identity)
-            source_outcomes = source.start(True)
+            source_outcomes = source.seed_outcomes()
             existing_outcomes = tuple(
                 dict(item)
                 for item in source_outcomes
                 if str(item.get("failure_kind") or "") != "FRAMEWORK_ERROR"
+                and not _provider_tainted_outcome(item)
             )
             for outcome in existing_outcomes:
                 checkpoint.append_outcome(outcome)
+
+        def run_case(case):
+            task_id = "%s:%s" % (checkpoint.run_id, case.case_id)
+            result = engine.run(
+                case.question,
+                task_id=task_id,
+            )
+            provider_condition = _provider_condition(result)
+            if provider_condition:
+                raise RuntimeError(
+                    "model_provider_%s; retry this case in a clean evaluation run"
+                    % provider_condition
+                )
+            # Evaluation traces remain auditable but can never teach production
+            # Experience. Persistence is deliberately best-effort.
+            try:
+                with Text2SQLEvolutionStore(
+                    args.evolution_store, snapshot
+                ) as trace_store:
+                    finalize_run(
+                        result,
+                        result,
+                        store=trace_store,
+                        task_id=task_id,
+                        user_id="evaluation",
+                        session_id=checkpoint.run_id,
+                        origin="evaluation",
+                        source_lane=(
+                            "candidate"
+                            if policy.version != trace_store.active_policy_version
+                            or bool(memory_candidate_id)
+                            else "stable"
+                        ),
+                    )
+            except Exception:
+                pass
+            return result
 
         def persist_outcome(outcome):
             if _fatal_provider_outcome(outcome):
@@ -345,6 +438,7 @@ def main() -> int:
                 existing_outcomes=existing_outcomes,
                 progress_callback=persist_outcome,
                 should_continue=should_continue,
+                case_runner=run_case,
             )
         else:
             outcomes = [dict(item) for item in existing_outcomes]
@@ -358,6 +452,7 @@ def main() -> int:
                     (case,),
                     engine.run,
                     redact_holdout=True,
+                    case_runner=run_case,
                 )
                 return dict(one["outcomes"][0])
 
@@ -391,20 +486,35 @@ def main() -> int:
                 existing_outcomes=outcomes,
                 should_continue=lambda _outcomes: False,
             )
-    complete = len(report["outcomes"]) == len(cases)
+    coverage_complete = len(report["outcomes"]) == len(cases)
+    infrastructure_clean = int(
+        (report.get("overall") or {}).get("framework_errors") or 0
+    ) == 0
+    complete = coverage_complete and infrastructure_clean
     measured_usage = usage(report["outcomes"])
     artifact = {
-        "contract_version": 1,
-        "status": "complete" if complete else "incomplete_budget_reached",
+        "contract_version": EVALUATION_ARTIFACT_CONTRACT_VERSION,
+        "status": (
+            "complete"
+            if complete
+            else "incomplete_infrastructure_error"
+            if coverage_complete
+            else "incomplete_budget_reached"
+        ),
         "created_at": datetime.now(timezone.utc).isoformat(),
         "dataset_id": bundle.dataset_id,
         "dataset_sha256": bundle.dataset_sha256,
         "evaluated_splits": splits,
         "evaluated_case_count": len(cases),
         "model": {"provider": llm["provider"], "model": llm["model"], "temperature": 0},
+        "runtime": dict(engine.runtime_identity),
+        "principals": list(principals),
         "memory_candidate_id": args.memory_candidate_id.strip(),
         "experience_candidate_id": args.experience_candidate_id.strip(),
         "checkpoint": _portable_artifact_path(checkpoint_path),
+        "runtime_checkpoint_store": _portable_artifact_path(
+            runtime_checkpoint_path
+        ),
         "resume_from": _portable_artifact_path(args.resume_from) if args.resume_from else "",
         "budget": {
             "enforcement": (
@@ -432,7 +542,7 @@ def main() -> int:
         checkpoint.mark_complete(artifact)
     print(json.dumps({key: artifact[key] for key in artifact if key != "report"}, ensure_ascii=False, indent=2))
     print(json.dumps(report["overall"], ensure_ascii=False, indent=2))
-    return 0
+    return 0 if complete else 2
 
 
 if __name__ == "__main__":

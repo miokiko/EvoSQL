@@ -15,6 +15,10 @@ import sqlglot
 from sqlglot import exp
 
 from .evaluation import result_fingerprint
+from .evolution import validate_evaluation_identity
+
+
+_MIN_MEANINGFUL_LATENCY_REGRESSION_MS = 25.0
 
 
 def _now() -> str:
@@ -106,6 +110,16 @@ def compare_shadow_results(
             and stable_status == candidate_status
             and stable_errors == candidate_errors
         )
+    def clarification_fingerprint(result):
+        if result.get("status") != "needs_clarification":
+            return ""
+        value = result.get("clarification") or (result.get("collaboration") or {}).get("clarification") or {}
+        return _hash({key: value.get(key) for key in ("reason_code", "questions", "missing_concepts")})
+
+    stable_clarification = clarification_fingerprint(stable)
+    candidate_clarification = clarification_fingerprint(candidate)
+    if stable_status == candidate_status == "needs_clarification":
+        result_equivalent = result_equivalent and stable_clarification == candidate_clarification
 
     unsafe_markers = {
         "read_only_query_required",
@@ -139,6 +153,8 @@ def compare_shadow_results(
         "candidate_sql_skeleton": candidate_skeleton,
         "stable_result_fingerprint": stable_result,
         "candidate_result_fingerprint": candidate_result,
+        "stable_clarification_fingerprint": stable_clarification,
+        "candidate_clarification_fingerprint": candidate_clarification,
         "result_equivalent": result_equivalent,
         "sql_changed": sql_changed,
         "wiki_refs_added": sorted(_safe_ref_hash(value) for value in candidate_refs - stable_refs),
@@ -170,6 +186,7 @@ class Text2SQLShadowReleaseManager:
                 stable_policy_version TEXT NOT NULL,
                 candidate_policy_version TEXT NOT NULL,
                 version_pins_json TEXT NOT NULL,
+                evaluation_identity_json TEXT NOT NULL DEFAULT '{}',
                 shadow_percent INTEGER NOT NULL,
                 canary_percent INTEGER NOT NULL DEFAULT 0,
                 min_shadow_samples INTEGER NOT NULL,
@@ -222,7 +239,24 @@ class Text2SQLShadowReleaseManager:
             self.connection.execute(
                 "ALTER TABLE shadow_deployments ADD COLUMN version_pins_json TEXT NOT NULL DEFAULT '{}'"
             )
+        if "evaluation_identity_json" not in deployment_columns:
+            self.connection.execute(
+                "ALTER TABLE shadow_deployments ADD COLUMN evaluation_identity_json TEXT NOT NULL DEFAULT '{}'"
+            )
         self.connection.commit()
+
+    def _candidate_identity(
+        self, stable_identity: Mapping[str, Any], candidate_version: str
+    ) -> Mapping[str, Any]:
+        candidate = {
+            "model": dict(stable_identity.get("model") or {}),
+            "runtime": dict(stable_identity.get("runtime") or {}),
+            "principals": list(stable_identity.get("principals") or ()),
+        }
+        candidate["runtime"]["policy_source_memory_ids"] = list(
+            self.store.policy_source_memory_ids(candidate_version)
+        )
+        return validate_evaluation_identity(candidate)
 
     def configure_shadow(
         self,
@@ -234,6 +268,7 @@ class Text2SQLShadowReleaseManager:
         max_candidate_failure_rate: float = 0.0,
         max_result_disagreement_rate: float = 0.2,
         max_p95_latency_multiplier: float = 1.2,
+        current_evaluation_identity: Optional[Mapping[str, Any]] = None,
     ) -> Mapping[str, Any]:
         if not actor.strip():
             raise ValueError("actor is required")
@@ -258,20 +293,45 @@ class Text2SQLShadowReleaseManager:
         if policy["parent_version"] != stable_version:
             raise ValueError("candidate parent is not the active stable policy")
         run = self.connection.execute(
-            "SELECT candidate_aggregate_json,decision_json FROM evolution_runs "
+            "SELECT baseline_aggregate_json,candidate_aggregate_json,decision_json FROM evolution_runs "
             "WHERE candidate_policy_version=? ORDER BY created_at DESC LIMIT 1",
             (candidate_version,),
         ).fetchone()
         if not run or not json.loads(run["decision_json"]).get("eligible_for_human_approval"):
             raise ValueError("candidate lacks a passing offline evaluation")
-        evaluated_pins = json.loads(run["candidate_aggregate_json"]).get("version_pins") or {}
-        for name in (
-            "database_snapshot_id",
-            "wiki_index_version",
-            "memory_snapshot_id",
+        baseline_aggregate = json.loads(run["baseline_aggregate_json"])
+        candidate_aggregate = json.loads(run["candidate_aggregate_json"])
+        baseline_pins = dict(baseline_aggregate.get("version_pins") or {})
+        candidate_pins = dict(candidate_aggregate.get("version_pins") or {})
+        if dict(current_version_pins) != baseline_pins:
+            raise ValueError("version pins changed after offline evaluation; replay is required")
+        expected_candidate_pins = {
+            **baseline_pins,
+            "policy_version": candidate_version,
+        }
+        if candidate_pins != expected_candidate_pins:
+            raise ValueError("candidate version pins do not match its offline evaluation")
+        if current_evaluation_identity is None:
+            raise ValueError("current evaluation identity is required before shadow")
+        current_identity = validate_evaluation_identity(
+            current_evaluation_identity
+        )
+        baseline_identity = validate_evaluation_identity(
+            baseline_aggregate.get("evaluation_identity") or {}
+        )
+        candidate_identity = validate_evaluation_identity(
+            candidate_aggregate.get("evaluation_identity") or {}
+        )
+        if current_identity != baseline_identity:
+            raise ValueError("runtime, model, or principals changed; replay is required")
+        if self._candidate_identity(current_identity, candidate_version) != (
+            candidate_identity
         ):
-            if str(evaluated_pins.get(name) or "") != str(current_version_pins.get(name) or ""):
-                raise ValueError("%s changed after offline evaluation; replay is required" % name)
+            raise ValueError("candidate runtime identity changed; replay is required")
+        deployment_identity = {
+            "stable": baseline_identity,
+            "candidate": candidate_identity,
+        }
 
         deployment_id = "shadow-%s" % uuid.uuid4().hex
         timestamp = _now()
@@ -289,17 +349,19 @@ class Text2SQLShadowReleaseManager:
             self.connection.execute(
                 """
                 INSERT INTO shadow_deployments(
-                    deployment_id,stable_policy_version,candidate_policy_version,version_pins_json,shadow_percent,
+                    deployment_id,stable_policy_version,candidate_policy_version,version_pins_json,
+                    evaluation_identity_json,shadow_percent,
                     min_shadow_samples,min_canary_samples,max_candidate_failure_rate,
                     max_result_disagreement_rate,max_p95_latency_multiplier,status,created_by,
                     created_at,updated_at
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,'shadow_running',?,?,?)
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,'shadow_running',?,?,?)
                 """,
                 (
                     deployment_id,
                     stable_version,
                     candidate_version,
                     _canonical(dict(current_version_pins)),
+                    _canonical(deployment_identity),
                     int(shadow_percent),
                     int(min_samples),
                     20,
@@ -346,7 +408,10 @@ class Text2SQLShadowReleaseManager:
         return dict(row) if row else None
 
     def assignment(
-        self, task_key: str, current_version_pins: Optional[Mapping[str, str]] = None
+        self,
+        task_key: str,
+        current_version_pins: Optional[Mapping[str, str]] = None,
+        current_evaluation_identity: Optional[Mapping[str, Any]] = None,
     ) -> Mapping[str, Any]:
         deployment = self.active_deployment()
         if not deployment:
@@ -354,23 +419,26 @@ class Text2SQLShadowReleaseManager:
         if deployment["stable_policy_version"] != self.store.active_policy_version:
             self._rollback(deployment["deployment_id"], "stable_policy_changed")
             return {"lane": "stable", "shadow": False, "deployment": None, "bucket": None}
-        if current_version_pins is not None:
-            expected = json.loads(deployment["version_pins_json"])
-            for name in (
-                "database_snapshot_id",
-                "wiki_index_version",
-                "memory_snapshot_id",
+        expected_pins = json.loads(deployment["version_pins_json"])
+        if current_version_pins is None or dict(current_version_pins) != expected_pins:
+            self._rollback(deployment["deployment_id"], "runtime_version_pins_changed")
+            return {"lane": "stable", "shadow": False, "deployment": None, "bucket": None}
+        try:
+            current_identity = validate_evaluation_identity(
+                current_evaluation_identity or {}
+            )
+            expected_identity = json.loads(deployment["evaluation_identity_json"])
+            if current_identity != validate_evaluation_identity(
+                expected_identity.get("stable") or {}
+            ) or self._candidate_identity(
+                current_identity, str(deployment["candidate_policy_version"])
+            ) != validate_evaluation_identity(
+                expected_identity.get("candidate") or {}
             ):
-                if str(expected.get(name) or "") != str(current_version_pins.get(name) or ""):
-                    self._rollback(
-                        deployment["deployment_id"], "runtime_%s_changed" % name
-                    )
-                    return {
-                        "lane": "stable",
-                        "shadow": False,
-                        "deployment": None,
-                        "bucket": None,
-                    }
+                raise ValueError("release identity changed")
+        except (TypeError, ValueError, json.JSONDecodeError):
+            self._rollback(deployment["deployment_id"], "runtime_identity_changed")
+            return {"lane": "stable", "shadow": False, "deployment": None, "bucket": None}
         bucket = int(
             hashlib.sha256(
                 ("text2sql:%s:%s" % (deployment["deployment_id"], task_key)).encode("utf-8")
@@ -406,8 +474,11 @@ class Text2SQLShadowReleaseManager:
         stable_runner: Callable[[str], Mapping[str, Any]],
         candidate_runner_factory: Callable[[str], Callable[[str], Mapping[str, Any]]],
         current_version_pins: Optional[Mapping[str, str]] = None,
+        current_evaluation_identity: Optional[Mapping[str, Any]] = None,
     ) -> Mapping[str, Any]:
-        assignment = self.assignment(task_key, current_version_pins)
+        assignment = self.assignment(
+            task_key, current_version_pins, current_evaluation_identity
+        )
         deployment = assignment["deployment"]
         if not deployment or not assignment["shadow"]:
             stable, error, _ = self._run(stable_runner, question)
@@ -566,11 +637,18 @@ class Text2SQLShadowReleaseManager:
             failure_rate = deployment["shadow_candidate_failures"] / max(1, samples)
             disagreement_rate = deployment["result_disagreements"] / max(1, samples)
             stable_latency, candidate_latency = self._latencies(deployment_id, "stable")
+            stable_p95 = _percentile(stable_latency, 0.95)
+            candidate_p95 = _percentile(candidate_latency, 0.95)
+            # Sub-millisecond runners are dominated by scheduler/timer noise;
+            # a ratio alone can turn 0.001 ms vs 0.006 ms into a false rollback.
+            # Require both the configured ratio and a meaningful absolute delta.
             latency_failed = bool(
                 stable_latency
-                and _percentile(candidate_latency, 0.95)
-                > _percentile(stable_latency, 0.95)
-                * float(deployment["max_p95_latency_multiplier"])
+                and candidate_latency
+                and candidate_p95
+                > stable_p95 * float(deployment["max_p95_latency_multiplier"])
+                and candidate_p95 - stable_p95
+                > _MIN_MEANINGFUL_LATENCY_REGRESSION_MS
             )
             if (
                 failure_rate > float(deployment["max_candidate_failure_rate"])

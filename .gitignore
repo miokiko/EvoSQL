@@ -27,6 +27,22 @@ dist/
 
 database/*.local.sql
 
+# Database exports and machine-local SQLite build metadata are not source code.
+database/*.sql
+database/*.manifest.json
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+
+# Keep only the versioned Schema/Join catalog; never publish run evidence or memory.
+artifacts/*
+!artifacts/text2sql/
+artifacts/text2sql/*
+!artifacts/text2sql/schema/
+
+# Local pasted scratch notes.
+/1.txt
+
 # Local learning and interview-preparation notes are not release artifacts.
 导学-*.md
 面经-*.md

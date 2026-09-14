@@ -98,6 +98,7 @@ def main() -> int:
         / "evolution.sqlite3",
     )
     parser.add_argument("--workers", type=int, default=1)
+    parser.add_argument("--principal", action="append", default=[])
     args = parser.parse_args()
 
     snapshot = json.loads(args.snapshot.read_text(encoding="utf-8"))
@@ -135,6 +136,8 @@ def main() -> int:
             "--workers",
             str(max(1, args.workers)),
         ]
+        for principal in args.principal:
+            common.extend(("--principal", principal))
         offset = 0
         if not baseline_artifact.exists():
             baseline_checkpoint = baseline_artifact.with_suffix(

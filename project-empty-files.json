@@ -1,0 +1,12 @@
+{
+  "empty_files": [
+    "artifacts/text2sql/evaluation/full-240-qwen3.7-plus-draftlink-postfix-20260904.log",
+    "artifacts/text2sql/evaluation/smoke-12-qwen3.7-plus-planfirst-v4-20260905.json.runtime.sqlite3-wal",
+    "artifacts/text2sql/checkpoints/runtime.sqlite3-wal",
+    "artifacts/text2sql/vanna/vanna-7ea7c3091219/663cc0d0-dd14-4356-964c-c7a8c3cf8048/link_lists.bin",
+    "artifacts/text2sql/vanna/vanna-7ea7c3091219/eed30941-1a69-44fa-8584-31b54356ca00/link_lists.bin",
+    "artifacts/text2sql/vanna/vanna-7ea7c3091219/add3ae9f-786c-4c3c-9af2-950ff4de3345/link_lists.bin",
+    "artifacts/text2sql/vanna/vanna-e43d35f3e5ce/4baf9cf2-0635-45fa-a6d1-03e360869428/link_lists.bin",
+    "artifacts/text2sql/vanna/vanna-e43d35f3e5ce/fe947cb7-a2ee-45c4-94af-e76539c0d2c7/link_lists.bin"
+  ]
+}
